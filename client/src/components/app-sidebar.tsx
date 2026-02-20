@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Users, LogOut, UserCog } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, UserCog, Heart } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -39,7 +39,7 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
-            <Users className="h-5 w-5 text-primary-foreground" />
+            <Heart className="h-5 w-5 text-primary-foreground" />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold" data-testid="text-app-name">CareTrack</span>

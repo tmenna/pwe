@@ -11,6 +11,26 @@ declare module "express-session" {
   }
 }
 
+async function verifyRecaptcha(token: string): Promise<boolean> {
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+  if (!secretKey) return true;
+
+  try {
+    const response = await fetch(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${token}`,
+      { method: "POST" }
+    );
+    const data = await response.json() as { success: boolean; score?: number; action?: string };
+    if (!data.success) return false;
+    if (data.action && data.action !== "login") return false;
+    if (data.score !== undefined && data.score < 0.5) return false;
+    return true;
+  } catch (error) {
+    console.error("reCAPTCHA verification error:", error);
+    return false;
+  }
+}
+
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
   const pgStore = connectPg(session);
@@ -37,9 +57,26 @@ export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
 
+  app.get("/api/config/recaptcha", (_req, res) => {
+    const siteKey = process.env.RECAPTCHA_SITE_KEY || "";
+    res.json({ siteKey });
+  });
+
   app.post("/api/login", async (req, res) => {
     try {
       const parsed = loginSchema.parse(req.body);
+
+      const recaptchaToken = req.body.recaptchaToken;
+      if (process.env.RECAPTCHA_SECRET_KEY) {
+        if (!recaptchaToken) {
+          return res.status(400).json({ message: "Bot verification failed. Please try again." });
+        }
+        const isHuman = await verifyRecaptcha(recaptchaToken);
+        if (!isHuman) {
+          return res.status(403).json({ message: "Bot verification failed. Please try again." });
+        }
+      }
+
       const user = await authStorage.getUserByUsername(parsed.username);
       if (!user) {
         return res.status(401).json({ message: "Invalid username or password" });
