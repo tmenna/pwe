@@ -21,15 +21,17 @@ function StatCard({
   icon: Icon,
   color,
   testId,
+  href,
 }: {
   label: string;
   value: number | string;
   icon: any;
   color: string;
   testId: string;
+  href?: string;
 }) {
-  return (
-    <Card className="p-5">
+  const content = (
+    <Card className={`p-5 ${href ? "cursor-pointer hover-elevate" : ""}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>
@@ -41,6 +43,11 @@ function StatCard({
       </div>
     </Card>
   );
+
+  if (href) {
+    return <Link href={href} data-testid={`link-${testId}`}>{content}</Link>;
+  }
+  return content;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -97,10 +104,10 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total Children" value={stats?.totalChildren || 0} icon={Users} color="bg-primary/10 text-primary" testId="stat-total" />
-            <StatCard label="Active" value={stats?.active || 0} icon={UserCheck} color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" testId="stat-active" />
-            <StatCard label="Paused" value={stats?.paused || 0} icon={Pause} color="bg-amber-500/10 text-amber-600 dark:text-amber-400" testId="stat-paused" />
-            <StatCard label="Documents" value={stats?.totalDocuments || 0} icon={FileText} color="bg-violet-500/10 text-violet-600 dark:text-violet-400" testId="stat-documents" />
+            <StatCard label="Total Children" value={stats?.totalChildren || 0} icon={Users} color="bg-primary/10 text-primary" testId="stat-total" href="/children?status=all" />
+            <StatCard label="Active" value={stats?.active || 0} icon={UserCheck} color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" testId="stat-active" href="/children?status=active" />
+            <StatCard label="Paused" value={stats?.paused || 0} icon={Pause} color="bg-amber-500/10 text-amber-600 dark:text-amber-400" testId="stat-paused" href="/children?status=paused" />
+            <StatCard label="Documents" value={stats?.totalDocuments || 0} icon={FileText} color="bg-violet-500/10 text-violet-600 dark:text-violet-400" testId="stat-documents" href="/children?status=all" />
           </div>
         )}
 
