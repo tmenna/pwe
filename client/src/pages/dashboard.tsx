@@ -1,10 +1,12 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Users, FileText, Clock, UserCheck, UserX, Pause, Plus, ArrowRight } from "lucide-react";
+import { Users, FileText, Clock, UserCheck, UserX, Pause, Plus, ArrowRight, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Child, TimelineEntry } from "@shared/schema";
 
 interface Stats {
@@ -66,17 +68,54 @@ function StatusBadge({ status }: { status: string }) {
 export { StatusBadge };
 
 export default function Dashboard() {
+  const [locationFilter, setLocationFilter] = useState("all");
+
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["/api/stats"],
   });
 
-  const { data: children, isLoading: childrenLoading } = useQuery<Child[]>({
+  const { data: allChildren, isLoading: childrenLoading } = useQuery<Child[]>({
     queryKey: ["/api/children"],
   });
 
   const { data: recentTimeline, isLoading: timelineLoading } = useQuery<TimelineEntry[]>({
     queryKey: ["/api/timeline/recent"],
   });
+
+  const locations = useMemo(() => {
+    if (!allChildren) return [];
+    const locSet = new Set<string>();
+    allChildren.forEach((c) => locSet.add(c.location));
+    return Array.from(locSet).sort();
+  }, [allChildren]);
+
+  const filteredChildren = useMemo(() => {
+    if (!allChildren) return [];
+    if (locationFilter === "all") return allChildren;
+    return allChildren.filter((c) => c.location === locationFilter);
+  }, [allChildren, locationFilter]);
+
+  const filteredChildIds = useMemo(() => {
+    return new Set(filteredChildren.map((c) => c.id));
+  }, [filteredChildren]);
+
+  const filteredTimeline = useMemo(() => {
+    if (!recentTimeline || locationFilter === "all") return recentTimeline;
+    return recentTimeline.filter((e) => filteredChildIds.has(e.childId));
+  }, [recentTimeline, locationFilter, filteredChildIds]);
+
+  const filteredStats = useMemo(() => {
+    if (locationFilter === "all") return stats;
+    return {
+      totalChildren: filteredChildren.length,
+      active: filteredChildren.filter((c) => c.status === "active").length,
+      paused: filteredChildren.filter((c) => c.status === "paused").length,
+      exited: filteredChildren.filter((c) => c.status === "exited").length,
+      totalDocuments: stats?.totalDocuments || 0,
+    };
+  }, [stats, filteredChildren, locationFilter]);
+
+  const locationParam = locationFilter !== "all" ? `&location=${encodeURIComponent(locationFilter)}` : "";
 
   return (
     <div className="flex-1 overflow-auto p-6">
@@ -86,12 +125,28 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Dashboard</h1>
             <p className="mt-1 text-sm text-muted-foreground">Overview of all child sponsorship records</p>
           </div>
-          <Button asChild data-testid="button-add-child">
-            <Link href="/children/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Child
-            </Link>
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="w-[260px]" data-testid="select-location-filter">
+                  <SelectValue placeholder="All Locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button asChild data-testid="button-add-child">
+              <Link href="/children/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Child
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {statsLoading ? (
@@ -104,19 +159,21 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total Children" value={stats?.totalChildren || 0} icon={Users} color="bg-primary/10 text-primary" testId="stat-total" href="/children?status=all" />
-            <StatCard label="Active" value={stats?.active || 0} icon={UserCheck} color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" testId="stat-active" href="/children?status=active" />
-            <StatCard label="Paused" value={stats?.paused || 0} icon={Pause} color="bg-amber-500/10 text-amber-600 dark:text-amber-400" testId="stat-paused" href="/children?status=paused" />
-            <StatCard label="Documents" value={stats?.totalDocuments || 0} icon={FileText} color="bg-violet-500/10 text-violet-600 dark:text-violet-400" testId="stat-documents" href="/children?status=all" />
+            <StatCard label="Total Children" value={filteredStats?.totalChildren || 0} icon={Users} color="bg-primary/10 text-primary" testId="stat-total" href={`/children?status=all${locationParam}`} />
+            <StatCard label="Active" value={filteredStats?.active || 0} icon={UserCheck} color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" testId="stat-active" href={`/children?status=active${locationParam}`} />
+            <StatCard label="Paused" value={filteredStats?.paused || 0} icon={Pause} color="bg-amber-500/10 text-amber-600 dark:text-amber-400" testId="stat-paused" href={`/children?status=paused${locationParam}`} />
+            <StatCard label="Documents" value={filteredStats?.totalDocuments || 0} icon={FileText} color="bg-violet-500/10 text-violet-600 dark:text-violet-400" testId="stat-documents" href={`/children?status=all${locationParam}`} />
           </div>
         )}
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="font-semibold" data-testid="text-recent-children">Recent Children</h2>
+              <h2 className="font-semibold" data-testid="text-recent-children">
+                {locationFilter === "all" ? "Recent Children" : `Children in ${locationFilter}`}
+              </h2>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/children" data-testid="link-view-all-children">
+                <Link href={`/children${locationParam ? `?status=all${locationParam}` : ""}`} data-testid="link-view-all-children">
                   View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Link>
               </Button>
@@ -127,17 +184,21 @@ export default function Dashboard() {
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
-            ) : !children?.length ? (
+            ) : !filteredChildren?.length ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Users className="mb-3 h-10 w-10 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">No children added yet</p>
-                <Button variant="outline" size="sm" className="mt-3" asChild>
-                  <Link href="/children/new">Add your first child</Link>
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  {locationFilter === "all" ? "No children added yet" : `No children in ${locationFilter}`}
+                </p>
+                {locationFilter === "all" && (
+                  <Button variant="outline" size="sm" className="mt-3" asChild>
+                    <Link href="/children/new">Add your first child</Link>
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
-                {children.slice(0, 5).map((child) => (
+                {filteredChildren.slice(0, 5).map((child) => (
                   <Link key={child.id} href={`/children/${child.id}`}>
                     <div className="flex items-center gap-3 rounded-md p-3 hover-elevate" data-testid={`card-child-${child.id}`}>
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
@@ -165,14 +226,16 @@ export default function Dashboard() {
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
-            ) : !recentTimeline?.length ? (
+            ) : !filteredTimeline?.length ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Clock className="mb-3 h-10 w-10 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">No activity recorded yet</p>
+                <p className="text-sm text-muted-foreground">
+                  {locationFilter === "all" ? "No activity recorded yet" : `No activity for ${locationFilter}`}
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
-                {recentTimeline.slice(0, 6).map((entry) => (
+                {filteredTimeline.slice(0, 6).map((entry) => (
                   <div key={entry.id} className="flex gap-3" data-testid={`timeline-entry-${entry.id}`}>
                     <div className="mt-1.5 flex flex-col items-center">
                       <div className="h-2 w-2 rounded-full bg-primary" />

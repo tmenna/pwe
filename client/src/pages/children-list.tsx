@@ -14,8 +14,9 @@ export default function ChildrenList() {
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
   const initialStatus = urlParams.get("status") || "all";
+  const initialLocation = urlParams.get("location") || "";
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialLocation);
   const [statusFilter, setStatusFilter] = useState(initialStatus);
 
   const { data: children, isLoading } = useQuery<Child[]>({
