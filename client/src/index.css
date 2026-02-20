@@ -165,6 +165,72 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+[data-color="green"] {
+  --sidebar-primary: 152 73% 39%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 152 18% 90%;
+  --sidebar-accent-foreground: 150 10% 12%;
+  --sidebar-ring: 152 73% 39%;
+  --primary: 152 73% 39%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 152 18% 90%;
+  --accent-foreground: 150 10% 12%;
+  --ring: 152 73% 39%;
+  --chart-1: 152 73% 35%;
+  --chart-2: 38 70% 42%;
+  --chart-4: 180 55% 38%;
+}
+
+[data-color="green"].dark,
+.dark[data-color="green"] {
+  --sidebar-primary: 152 73% 45%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 150 10% 16%;
+  --sidebar-accent-foreground: 150 15% 93%;
+  --sidebar-ring: 152 73% 45%;
+  --primary: 152 73% 43%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 152 12% 16%;
+  --accent-foreground: 150 15% 93%;
+  --ring: 152 73% 45%;
+  --chart-1: 152 73% 50%;
+  --chart-2: 38 65% 50%;
+  --chart-4: 180 50% 48%;
+}
+
+[data-color="blue"] {
+  --sidebar-primary: 221 83% 53%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 221 18% 90%;
+  --sidebar-accent-foreground: 220 10% 12%;
+  --sidebar-ring: 221 83% 53%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 221 18% 90%;
+  --accent-foreground: 220 10% 12%;
+  --ring: 221 83% 53%;
+  --chart-1: 221 83% 48%;
+  --chart-2: 145 55% 35%;
+  --chart-4: 260 55% 50%;
+}
+
+[data-color="blue"].dark,
+.dark[data-color="blue"] {
+  --sidebar-primary: 221 83% 60%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 10% 16%;
+  --sidebar-accent-foreground: 220 15% 93%;
+  --sidebar-ring: 221 83% 60%;
+  --primary: 221 83% 58%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 221 12% 16%;
+  --accent-foreground: 220 15% 93%;
+  --ring: 221 83% 60%;
+  --chart-1: 221 83% 62%;
+  --chart-2: 145 50% 55%;
+  --chart-4: 260 50% 58%;
+}
+
 @layer base {
   * {
     @apply border-border;
