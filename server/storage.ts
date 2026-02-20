@@ -1,38 +1,91 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import {
+  children, documents, timelineEntries,
+  type Child, type InsertChild,
+  type Document, type InsertDocument,
+  type TimelineEntry, type InsertTimelineEntry,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, sql, count } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getChildren(): Promise<Child[]>;
+  getChild(id: number): Promise<Child | undefined>;
+  createChild(child: InsertChild): Promise<Child>;
+  updateChild(id: number, child: Partial<InsertChild>): Promise<Child | undefined>;
+  deleteChild(id: number): Promise<void>;
+
+  getDocumentsByChild(childId: number): Promise<Document[]>;
+  createDocument(doc: InsertDocument): Promise<Document>;
+  deleteDocument(id: number): Promise<void>;
+
+  getTimelineByChild(childId: number): Promise<TimelineEntry[]>;
+  getRecentTimeline(limit?: number): Promise<TimelineEntry[]>;
+  createTimelineEntry(entry: InsertTimelineEntry): Promise<TimelineEntry>;
+
+  getStats(): Promise<{ totalChildren: number; active: number; paused: number; exited: number; totalDocuments: number }>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getChildren(): Promise<Child[]> {
+    return db.select().from(children).orderBy(desc(children.id));
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getChild(id: number): Promise<Child | undefined> {
+    const [child] = await db.select().from(children).where(eq(children.id, id));
+    return child || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createChild(child: InsertChild): Promise<Child> {
+    const [created] = await db.insert(children).values(child).returning();
+    return created;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateChild(id: number, child: Partial<InsertChild>): Promise<Child | undefined> {
+    const [updated] = await db.update(children).set(child).where(eq(children.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteChild(id: number): Promise<void> {
+    await db.delete(children).where(eq(children.id, id));
+  }
+
+  async getDocumentsByChild(childId: number): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.childId, childId)).orderBy(desc(documents.uploadedAt));
+  }
+
+  async createDocument(doc: InsertDocument): Promise<Document> {
+    const [created] = await db.insert(documents).values(doc).returning();
+    return created;
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    await db.delete(documents).where(eq(documents.id, id));
+  }
+
+  async getTimelineByChild(childId: number): Promise<TimelineEntry[]> {
+    return db.select().from(timelineEntries).where(eq(timelineEntries.childId, childId)).orderBy(desc(timelineEntries.createdAt));
+  }
+
+  async getRecentTimeline(limit = 10): Promise<TimelineEntry[]> {
+    return db.select().from(timelineEntries).orderBy(desc(timelineEntries.createdAt)).limit(limit);
+  }
+
+  async createTimelineEntry(entry: InsertTimelineEntry): Promise<TimelineEntry> {
+    const [created] = await db.insert(timelineEntries).values(entry).returning();
+    return created;
+  }
+
+  async getStats() {
+    const allChildren = await db.select().from(children);
+    const [docCount] = await db.select({ count: count() }).from(documents);
+    return {
+      totalChildren: allChildren.length,
+      active: allChildren.filter((c) => c.status === "active").length,
+      paused: allChildren.filter((c) => c.status === "paused").length,
+      exited: allChildren.filter((c) => c.status === "exited").length,
+      totalDocuments: Number(docCount.count),
+    };
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
