@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { children, timelineEntries } from "@shared/schema";
+import { children, documents, timelineEntries } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -21,7 +21,19 @@ export async function seedDatabase() {
   }
 
   const existing = await db.select({ count: sql<number>`count(*)` }).from(children);
-  if (Number(existing[0].count) > 0) return;
+
+  const oldNames = ["Amara Okafor", "Samuel Mensah", "Fatima Hassan", "David Kamau", "Esther Nyambura", "Selam Kebede"];
+  const existingChildren = await db.select({ fullName: children.fullName }).from(children);
+  const hasOldNames = existingChildren.some(c => oldNames.includes(c.fullName));
+
+  if (hasOldNames) {
+    console.log("Replacing old sample data with Ethiopian names...");
+    await db.delete(timelineEntries);
+    await db.delete(documents);
+    await db.delete(children);
+  } else if (Number(existing[0].count) > 0) {
+    return;
+  }
 
   console.log("Seeding database with sample data...");
 
