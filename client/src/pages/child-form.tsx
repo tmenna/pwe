@@ -24,6 +24,7 @@ const childFormSchema = z.object({
   assignedSponsors: z.string().optional(),
   assignedCaseWorker: z.string().min(1, "Case worker is required"),
   status: z.string().min(1, "Status is required"),
+  description: z.string().optional(),
 });
 
 type ChildFormValues = z.infer<typeof childFormSchema>;
@@ -52,6 +53,7 @@ export default function ChildForm() {
       assignedSponsors: "",
       assignedCaseWorker: "",
       status: "active",
+      description: "",
     },
     values: existingChild
       ? {
@@ -64,6 +66,7 @@ export default function ChildForm() {
           assignedSponsors: existingChild.assignedSponsors || "",
           assignedCaseWorker: existingChild.assignedCaseWorker,
           status: existingChild.status,
+          description: existingChild.description || "",
         }
       : undefined,
   });
@@ -223,6 +226,16 @@ export default function ChildForm() {
                   <FormLabel>Assigned Case Worker</FormLabel>
                   <FormControl>
                     <Input placeholder="Case worker name" {...field} data-testid="input-case-worker" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="description" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (optional)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Brief background or notes about this child" {...field} data-testid="input-description" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

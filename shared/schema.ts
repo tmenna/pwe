@@ -16,6 +16,8 @@ export const children = pgTable("children", {
   assignedSponsors: text("assigned_sponsors"),
   assignedCaseWorker: text("assigned_case_worker").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("active"),
+  photoUrl: text("photo_url"),
+  description: text("description"),
 });
 
 export const documents = pgTable("documents", {

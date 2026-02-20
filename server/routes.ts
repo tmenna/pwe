@@ -122,6 +122,21 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/children/:id/photo", isAuthenticated, isNotReadOnly, upload.single("photo"), async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const child = await storage.getChild(id);
+      if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!req.file) return res.status(400).json({ message: "No photo provided" });
+
+      const photoUrl = `/uploads/${req.file.filename}`;
+      const updated = await storage.updateChild(id, { photoUrl });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/children/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
     try {
       await storage.deleteChild(parseInt(req.params.id));

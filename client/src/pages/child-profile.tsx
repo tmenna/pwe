@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation, Link } from "wouter";
 import {
   ArrowLeft, Edit, Upload, Plus, FileText, Image, StickyNote,
-  GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2,
+  GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2, Camera, Check, X, Pencil,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -179,6 +184,69 @@ function AddTimelineDialog({ childId, onClose }: { childId: number; onClose: () 
   );
 }
 
+function InlineDescription({ child, canEdit }: { child: Child; canEdit: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(child.description || "");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/children/${child.id}`, { description: value });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", String(child.id)] });
+      toast({ title: "Description updated" });
+      setEditing(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  if (editing) {
+    return (
+      <div className="mt-4">
+        <Label className="text-xs text-muted-foreground">Description</Label>
+        <Textarea
+          className="mt-1"
+          rows={3}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Add a description for this child..."
+          data-testid="input-inline-description"
+        />
+        <div className="mt-2 flex gap-2">
+          <Button size="sm" onClick={() => mutation.mutate()} disabled={mutation.isPending} data-testid="button-save-description">
+            <Check className="mr-1 h-3 w-3" />
+            {mutation.isPending ? "Saving..." : "Save"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setValue(child.description || ""); }} data-testid="button-cancel-description">
+            <X className="mr-1 h-3 w-3" />
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center gap-2">
+        <Label className="text-xs text-muted-foreground">Description</Label>
+        {canEdit && (
+          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditing(true)} data-testid="button-edit-description">
+            <Pencil className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground" data-testid="text-child-description">
+        {child.description || <span className="italic">No description added yet</span>}
+      </p>
+    </div>
+  );
+}
+
 export default function ChildProfile() {
   const [, params] = useRoute("/children/:id");
   const [, navigate] = useLocation();
@@ -186,7 +254,10 @@ export default function ChildProfile() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const canEdit = user?.role !== "read_only";
 
   const { data: child, isLoading } = useQuery<Child>({
     queryKey: ["/api/children", childId],
@@ -213,6 +284,32 @@ export default function ChildProfile() {
     },
   });
 
+  const photoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("photo", file);
+      const res = await fetch(`/api/children/${childId}/photo`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId] });
+      toast({ title: "Photo updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Photo upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) photoMutation.mutate(file);
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 overflow-auto p-6">
@@ -236,6 +333,8 @@ export default function ChildProfile() {
     );
   }
 
+  const initials = child.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2);
+
   const infoItems = [
     { icon: Calendar, label: "Age", value: `${child.age} years old` },
     { icon: User, label: "Gender", value: child.gender },
@@ -256,8 +355,28 @@ export default function ChildProfile() {
         <Card className="p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
-                {child.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              <div className="group relative">
+                <Avatar className="h-16 w-16" data-testid="img-child-photo">
+                  <AvatarImage src={child.photoUrl || undefined} alt={child.fullName} />
+                  <AvatarFallback className="text-lg font-bold bg-primary/10 text-primary">{initials}</AvatarFallback>
+                </Avatar>
+                {canEdit && (
+                  <button
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={() => photoInputRef.current?.click()}
+                    data-testid="button-upload-photo"
+                  >
+                    <Camera className="h-5 w-5 text-white" />
+                  </button>
+                )}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                  data-testid="input-photo-upload"
+                />
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -267,13 +386,17 @@ export default function ChildProfile() {
                 <p className="mt-0.5 text-sm text-muted-foreground" data-testid="text-child-id">ID: {child.childId}</p>
               </div>
             </div>
-            <Button variant="outline" asChild data-testid="button-edit-child">
-              <Link href={`/children/${child.id}/edit`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </Link>
-            </Button>
+            {canEdit && (
+              <Button variant="outline" asChild data-testid="button-edit-child">
+                <Link href={`/children/${child.id}/edit`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </Button>
+            )}
           </div>
+
+          <InlineDescription child={child} canEdit={canEdit} />
 
           <Separator className="my-5" />
 
@@ -307,20 +430,22 @@ export default function ChildProfile() {
           <TabsContent value="documents" className="mt-4">
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="font-semibold">Documents</h2>
-              <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" data-testid="button-upload-document">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Upload Document</DialogTitle>
-                  </DialogHeader>
-                  <UploadDocumentDialog childId={child.id} onClose={() => setUploadOpen(false)} />
-                </DialogContent>
-              </Dialog>
+              {canEdit && (
+                <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-upload-document">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Upload Document</DialogTitle>
+                    </DialogHeader>
+                    <UploadDocumentDialog childId={child.id} onClose={() => setUploadOpen(false)} />
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
 
             {docsLoading ? (
@@ -357,9 +482,33 @@ export default function ChildProfile() {
                           <FileText className="h-4 w-4" />
                         </a>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(doc.id)} data-testid={`button-delete-doc-${doc.id}`}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canEdit && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" data-testid={`button-delete-doc-${doc.id}`}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this document?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                You're about to remove <strong>{doc.fileName}</strong>. This action cannot be undone. Are you sure you'd like to proceed?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel data-testid={`button-cancel-delete-${doc.id}`}>Keep it</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteMutation.mutate(doc.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                data-testid={`button-confirm-delete-${doc.id}`}
+                              >
+                                Yes, delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </Card>
                 ))}
@@ -370,20 +519,22 @@ export default function ChildProfile() {
           <TabsContent value="timeline" className="mt-4">
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="font-semibold">Progress Timeline</h2>
-              <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" data-testid="button-add-timeline">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Entry
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Timeline Entry</DialogTitle>
-                  </DialogHeader>
-                  <AddTimelineDialog childId={child.id} onClose={() => setTimelineOpen(false)} />
-                </DialogContent>
-              </Dialog>
+              {canEdit && (
+                <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-timeline">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Entry
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Timeline Entry</DialogTitle>
+                    </DialogHeader>
+                    <AddTimelineDialog childId={child.id} onClose={() => setTimelineOpen(false)} />
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
 
             {timelineLoading ? (

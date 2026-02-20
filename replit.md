@@ -1,7 +1,7 @@
-# CareTrack - Child Sponsorship Records Portal
+# PWE (Partners with Ethiopia) - Child Sponsorship Records Portal
 
 ## Overview
-A secure internal case-management portal for nonprofit organizations to store documents, track child progress, and manage sponsorship records over time. Not a fundraising/payment platform.
+A secure internal case-management portal for Partners with Ethiopia (PWE) to store documents, track child progress, and manage sponsorship records over time. Not a fundraising/payment platform.
 
 ## Architecture
 - **Frontend**: React + TypeScript with Vite, Tailwind CSS, shadcn/ui components, wouter routing
@@ -11,8 +11,8 @@ A secure internal case-management portal for nonprofit organizations to store do
 - **File uploads**: Multer, stored in `/uploads` directory
 
 ## Key Features
-- Child Profiles (CRUD with status tracking: active/paused/exited)
-- Document Management (upload files linked to child profiles, 7 categories)
+- Child Profiles (CRUD with status tracking: active/paused/exited, profile photo, inline-editable description)
+- Document Management (upload files linked to child profiles, 7 categories, delete confirmation dialog)
 - Progress Timeline (chronological feed of milestones and events)
 - Dashboard with statistics overview
 - Custom username/password login (no signup - admin creates users)

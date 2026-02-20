@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Users, LogOut, UserCog, Heart } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, UserCog } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import pweLogo from "@assets/pwc_logo_1771579613297.jpg";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -38,12 +39,9 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
-            <Heart className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img src={pweLogo} alt="Partners with Ethiopia" className="h-9 w-9 rounded-md object-cover" data-testid="img-sidebar-logo" />
           <div className="flex flex-col">
-            <span className="text-sm font-semibold" data-testid="text-app-name">CareTrack</span>
-            <span className="text-xs text-muted-foreground">Records Portal</span>
+            <span className="text-xs text-muted-foreground" data-testid="text-app-name">Records Portal</span>
           </div>
         </div>
       </SidebarHeader>
