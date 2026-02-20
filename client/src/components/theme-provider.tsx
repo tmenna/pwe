@@ -1,14 +1,11 @@
 import { useState, useEffect, createContext, useContext } from "react";
 
 type Theme = "light" | "dark";
-type ColorTheme = "amber" | "green" | "blue";
 
 const ThemeContext = createContext<{
   theme: Theme;
   toggleTheme: () => void;
-  colorTheme: ColorTheme;
-  setColorTheme: (color: ColorTheme) => void;
-}>({ theme: "light", toggleTheme: () => {}, colorTheme: "green", setColorTheme: () => {} });
+}>({ theme: "light", toggleTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -18,15 +15,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return "light";
   });
 
-  const [colorTheme, setColorTheme] = useState<ColorTheme>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("colorTheme") as ColorTheme) || "green";
-    }
-    return "green";
-  });
-
   useEffect(() => {
     const root = document.documentElement;
+    root.setAttribute("data-color", "green");
     if (theme === "dark") {
       root.classList.add("dark");
     } else {
@@ -35,19 +26,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.removeAttribute("data-color");
-    if (colorTheme !== "amber") {
-      root.setAttribute("data-color", colorTheme);
-    }
-    localStorage.setItem("colorTheme", colorTheme);
-  }, [colorTheme]);
-
   const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, colorTheme, setColorTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
