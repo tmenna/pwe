@@ -8,7 +8,7 @@ const ThemeContext = createContext<{
   toggleTheme: () => void;
   colorTheme: ColorTheme;
   setColorTheme: (color: ColorTheme) => void;
-}>({ theme: "light", toggleTheme: () => {}, colorTheme: "amber", setColorTheme: () => {} });
+}>({ theme: "light", toggleTheme: () => {}, colorTheme: "green", setColorTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -20,9 +20,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const [colorTheme, setColorTheme] = useState<ColorTheme>(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem("colorTheme") as ColorTheme) || "amber";
+      return (localStorage.getItem("colorTheme") as ColorTheme) || "green";
     }
-    return "amber";
+    return "green";
   });
 
   useEffect(() => {
