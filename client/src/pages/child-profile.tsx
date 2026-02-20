@@ -36,6 +36,72 @@ function DocumentIcon({ type }: { type: string }) {
   }
 }
 
+function InlineEditableText({
+  value,
+  onSave,
+  canEdit,
+  placeholder,
+  testIdPrefix,
+}: {
+  value: string;
+  onSave: (newValue: string) => Promise<void>;
+  canEdit: boolean;
+  placeholder?: string;
+  testIdPrefix: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(value);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(text);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="mt-1 flex items-start gap-2">
+        <Textarea
+          className="min-h-[60px] text-sm"
+          rows={2}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={placeholder}
+          data-testid={`${testIdPrefix}-input`}
+        />
+        <div className="flex flex-col gap-1">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSave} disabled={saving} data-testid={`${testIdPrefix}-save`}>
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(false); setText(value); }} data-testid={`${testIdPrefix}-cancel`}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <span className="group/desc inline-flex items-center gap-1">
+      <span className="text-sm text-muted-foreground">{value || <span className="italic">{placeholder || "No description"}</span>}</span>
+      {canEdit && (
+        <button
+          className="inline-flex h-5 w-5 items-center justify-center rounded opacity-0 transition-opacity hover:bg-muted group-hover/desc:opacity-100"
+          onClick={() => { setText(value); setEditing(true); }}
+          data-testid={`${testIdPrefix}-edit`}
+        >
+          <Pencil className="h-3 w-3 text-muted-foreground" />
+        </button>
+      )}
+    </span>
+  );
+}
+
 function TimelineIcon({ type }: { type: string }) {
   const colors: Record<string, string> = {
     milestone: "bg-emerald-500",
@@ -471,9 +537,20 @@ export default function ChildProfile() {
                       <p className="truncate text-sm font-medium">{doc.fileName}</p>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <Badge variant="outline" className="border-0 bg-muted capitalize text-xs">{doc.documentType.replace("_", " ")}</Badge>
-                        {doc.description && <span>&middot; {doc.description}</span>}
                         <span>&middot; {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : ""}</span>
                         <span>&middot; by {doc.uploadedBy}</span>
+                      </div>
+                      <div className="mt-1">
+                        <InlineEditableText
+                          value={doc.description || ""}
+                          canEdit={canEdit}
+                          placeholder="Add description..."
+                          testIdPrefix={`doc-desc-${doc.id}`}
+                          onSave={async (newDesc) => {
+                            await apiRequest("PATCH", `/api/documents/${doc.id}`, { description: newDesc });
+                            queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "documents"] });
+                          }}
+                        />
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -559,11 +636,21 @@ export default function ChildProfile() {
                     </div>
                     <Card className="mb-3 flex-1 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
+                        <div className="flex-1">
                           <p className="text-sm font-medium">{entry.title}</p>
-                          {entry.description && (
-                            <p className="mt-1 text-sm text-muted-foreground">{entry.description}</p>
-                          )}
+                          <div className="mt-1">
+                            <InlineEditableText
+                              value={entry.description || ""}
+                              canEdit={canEdit}
+                              placeholder="Add description..."
+                              testIdPrefix={`timeline-desc-${entry.id}`}
+                              onSave={async (newDesc) => {
+                                await apiRequest("PATCH", `/api/timeline/${entry.id}`, { description: newDesc });
+                                queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "timeline"] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/timeline/recent"] });
+                              }}
+                            />
+                          </div>
                         </div>
                         <Badge variant="outline" className="border-0 bg-muted capitalize text-xs">
                           {entry.entryType.replace("_", " ")}

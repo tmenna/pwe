@@ -16,11 +16,13 @@ export interface IStorage {
 
   getDocumentsByChild(childId: number): Promise<Document[]>;
   createDocument(doc: InsertDocument): Promise<Document>;
+  updateDocument(id: number, data: { description: string }): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<void>;
 
   getTimelineByChild(childId: number): Promise<TimelineEntry[]>;
   getRecentTimeline(limit?: number): Promise<TimelineEntry[]>;
   createTimelineEntry(entry: InsertTimelineEntry): Promise<TimelineEntry>;
+  updateTimelineEntry(id: number, data: { description: string }): Promise<TimelineEntry | undefined>;
 
   getStats(): Promise<{ totalChildren: number; active: number; paused: number; exited: number; totalDocuments: number }>;
 }
@@ -58,6 +60,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async updateDocument(id: number, data: { description: string }): Promise<Document | undefined> {
+    const [updated] = await db.update(documents).set({ description: data.description }).where(eq(documents.id, id)).returning();
+    return updated || undefined;
+  }
+
   async deleteDocument(id: number): Promise<void> {
     await db.delete(documents).where(eq(documents.id, id));
   }
@@ -73,6 +80,11 @@ export class DatabaseStorage implements IStorage {
   async createTimelineEntry(entry: InsertTimelineEntry): Promise<TimelineEntry> {
     const [created] = await db.insert(timelineEntries).values(entry).returning();
     return created;
+  }
+
+  async updateTimelineEntry(id: number, data: { description: string }): Promise<TimelineEntry | undefined> {
+    const [updated] = await db.update(timelineEntries).set({ description: data.description }).where(eq(timelineEntries.id, id)).returning();
+    return updated || undefined;
   }
 
   async getStats() {

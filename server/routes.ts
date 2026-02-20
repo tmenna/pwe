@@ -200,6 +200,18 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/documents/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
+    try {
+      const { description } = req.body;
+      if (typeof description !== "string") return res.status(400).json({ message: "Description is required" });
+      const updated = await storage.updateDocument(parseInt(req.params.id), { description });
+      if (!updated) return res.status(404).json({ message: "Document not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/documents/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
     try {
       await storage.deleteDocument(parseInt(req.params.id));
@@ -235,6 +247,18 @@ export async function registerRoutes(
       res.status(201).json(entry);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/timeline/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
+    try {
+      const { description } = req.body;
+      if (typeof description !== "string") return res.status(400).json({ message: "Description is required" });
+      const updated = await storage.updateTimelineEntry(parseInt(req.params.id), { description });
+      if (!updated) return res.status(404).json({ message: "Timeline entry not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 
