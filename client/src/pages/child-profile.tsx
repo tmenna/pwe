@@ -411,18 +411,18 @@ export default function ChildProfile() {
   ];
 
   return (
-    <div className="flex-1 overflow-auto p-6">
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
       <div className="mx-auto max-w-4xl">
         <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/children")} data-testid="button-back-profile">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Children
         </Button>
 
-        <Card className="p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
+        <Card className="p-4 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div className="group relative">
-                <Avatar className="h-16 w-16" data-testid="img-child-photo">
+                <Avatar className="h-12 w-12 sm:h-16 sm:w-16" data-testid="img-child-photo">
                   <AvatarImage src={child.photoUrl || undefined} alt={child.fullName} />
                   <AvatarFallback className="text-lg font-bold bg-primary/10 text-primary">{initials}</AvatarFallback>
                 </Avatar>

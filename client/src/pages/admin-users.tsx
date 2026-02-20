@@ -135,7 +135,7 @@ export default function AdminUsers() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
         <Skeleton className="mb-6 h-8 w-48" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -147,13 +147,13 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="flex-1 overflow-auto p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
         <div className="flex items-center gap-3">
-          <UserCog className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold" data-testid="text-admin-title">User Management</h1>
+          <UserCog className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
+          <h1 className="text-xl font-bold sm:text-2xl" data-testid="text-admin-title">User Management</h1>
         </div>
-        <Button onClick={() => setCreateOpen(true)} data-testid="button-add-user">
+        <Button size="sm" onClick={() => setCreateOpen(true)} data-testid="button-add-user">
           <UserPlus className="mr-2 h-4 w-4" />
           Add User
         </Button>

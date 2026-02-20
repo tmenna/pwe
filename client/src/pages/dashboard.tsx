@@ -33,14 +33,14 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <Card className={`p-5 ${href ? "cursor-pointer hover-elevate" : ""}`}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-bold" data-testid={testId}>{value}</p>
+    <Card className={`p-4 sm:p-5 ${href ? "cursor-pointer hover-elevate" : ""}`}>
+      <div className="flex items-start justify-between gap-2 sm:gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-xs text-muted-foreground sm:text-sm">{label}</p>
+          <p className="mt-1 text-xl font-bold sm:text-2xl" data-testid={testId}>{value}</p>
         </div>
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${color}`}>
-          <Icon className="h-5 w-5" />
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md sm:h-10 sm:w-10 ${color}`}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
       </div>
     </Card>
@@ -118,34 +118,34 @@ export default function Dashboard() {
   const locationParam = locationFilter !== "all" ? `&location=${encodeURIComponent(locationFilter)}` : "";
 
   return (
-    <div className="flex-1 overflow-auto p-6">
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Dashboard</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Overview of all child sponsorship records</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="w-[260px]" data-testid="select-location-filter">
-                  <SelectValue placeholder="All Locations" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="mb-6 space-y-4 sm:mb-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold sm:text-2xl" data-testid="text-dashboard-title">Dashboard</h1>
+              <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Overview of all child sponsorship records</p>
             </div>
-            <Button asChild data-testid="button-add-child">
+            <Button asChild size="sm" data-testid="button-add-child">
               <Link href="/children/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Child
               </Link>
             </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <SelectTrigger className="w-full sm:w-[280px]" data-testid="select-location-filter">
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -158,7 +158,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatCard label="Total Children" value={filteredStats?.totalChildren || 0} icon={Users} color="bg-primary/10 text-primary" testId="stat-total" href={`/children?status=all${locationParam}`} />
             <StatCard label="Active" value={filteredStats?.active || 0} icon={UserCheck} color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" testId="stat-active" href={`/children?status=active${locationParam}`} />
             <StatCard label="Paused" value={filteredStats?.paused || 0} icon={Pause} color="bg-amber-500/10 text-amber-600 dark:text-amber-400" testId="stat-paused" href={`/children?status=paused${locationParam}`} />

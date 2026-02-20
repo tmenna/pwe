@@ -33,16 +33,16 @@ export default function ChildrenList() {
   });
 
   return (
-    <div className="flex-1 overflow-auto p-6">
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold" data-testid="text-children-title">Children</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h1 className="text-xl font-bold sm:text-2xl" data-testid="text-children-title">Children</h1>
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
               Manage all child profiles and records
             </p>
           </div>
-          <Button asChild data-testid="button-add-child-list">
+          <Button asChild size="sm" data-testid="button-add-child-list">
             <Link href="/children/new">
               <Plus className="mr-2 h-4 w-4" />
               Add Child
@@ -50,8 +50,8 @@ export default function ChildrenList() {
           </Button>
         </div>
 
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name, ID, or location..."
@@ -62,7 +62,7 @@ export default function ChildrenList() {
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
+            <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-status-filter">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -101,7 +101,7 @@ export default function ChildrenList() {
             )}
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {filtered.map((child) => (
               <Link key={child.id} href={`/children/${child.id}`}>
                 <Card className="p-5 hover-elevate cursor-pointer" data-testid={`card-child-list-${child.id}`}>

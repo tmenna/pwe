@@ -108,14 +108,14 @@ export default function ChildForm() {
   }
 
   return (
-    <div className="flex-1 overflow-auto p-6">
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
       <div className="mx-auto max-w-2xl">
         <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate(isEdit ? `/children/${childDbId}` : "/children")} data-testid="button-back">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
 
-        <h1 className="mb-6 text-2xl font-bold" data-testid="text-form-title">
+        <h1 className="mb-4 text-xl font-bold sm:mb-6 sm:text-2xl" data-testid="text-form-title">
           {isEdit ? "Edit Child" : "Add New Child"}
         </h1>
 
