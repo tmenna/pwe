@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Heart, Shield, Lock, AlertCircle } from "lucide-react";
+import { Shield, Lock, AlertCircle } from "lucide-react";
+import pweLogo from "@assets/pwc_logo_1771579613297.jpg";
 
 declare global {
   interface Window {
@@ -87,11 +88,12 @@ export default function LandingPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-accent/40 px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg">
-            <Heart className="h-8 w-8 text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-landing-logo">CareTrack</h1>
-          <p className="mt-1 text-base font-medium text-primary" data-testid="text-landing-org">Partners with Ethiopia</p>
+          <img
+            src={pweLogo}
+            alt="Partners with Ethiopia"
+            className="mx-auto mb-4 h-24 w-auto"
+            data-testid="img-landing-logo"
+          />
           <p className="mt-1 text-sm text-muted-foreground" data-testid="text-landing-subtitle">Child Sponsorship Records Portal</p>
         </div>
 
