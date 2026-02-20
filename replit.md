@@ -8,7 +8,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - **Backend**: Express.js with TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **Auth**: Custom username/password authentication with bcryptjs password hashing, express-session with connect-pg-simple for PostgreSQL session store
-- **File uploads**: Multer, stored in `/uploads` directory
+- **File uploads**: Replit Object Storage (cloud-based, persists across deployments) with presigned URL upload flow
 
 ## Key Features
 - Child Profiles (CRUD with status tracking: active/paused/exited, profile photo, inline-editable description)
@@ -60,9 +60,13 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - `PATCH /api/children/:id` - Update child (not read_only)
 - `DELETE /api/children/:id` - Delete child (not read_only)
 
+### File Uploads (requires auth)
+- `POST /api/uploads/request-url` - Get presigned URL for file upload (JSON: {name, size, contentType})
+- `GET /objects/*` - Serve uploaded files from cloud storage
+
 ### Documents
 - `GET /api/children/:id/documents` - List documents for child
-- `POST /api/children/:id/documents` - Upload document (multipart form, not read_only)
+- `POST /api/children/:id/documents` - Create document record (JSON: {objectPath, fileName, documentType, description}, not read_only)
 - `DELETE /api/documents/:id` - Delete document (not read_only)
 
 ### Timeline

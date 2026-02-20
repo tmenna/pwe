@@ -117,35 +117,49 @@ function UploadDocumentDialog({ childId, onClose }: { childId: number; onClose: 
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState("");
   const [description, setDescription] = useState("");
+  const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const mutation = useMutation({
-    mutationFn: async () => {
-      if (!file || !docType) throw new Error("File and document type are required");
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("documentType", docType);
-      formData.append("description", description);
-      const res = await fetch(`/api/children/${childId}/documents`, {
+  const handleUpload = async () => {
+    if (!file || !docType) return;
+    setUploading(true);
+    try {
+      const urlRes = await fetch("/api/uploads/request-url", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: () => {
+      if (!urlRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadURL, objectPath } = await urlRes.json();
+
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+      });
+      if (!putRes.ok) throw new Error("Failed to upload file to storage");
+
+      const docRes = await fetch(`/api/children/${childId}/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ objectPath, fileName: file.name, documentType: docType, description }),
+      });
+      if (!docRes.ok) throw new Error(await docRes.text());
+
       queryClient.invalidateQueries({ queryKey: ["/api/children", String(childId), "documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/children", String(childId), "timeline"] });
       queryClient.invalidateQueries({ queryKey: ["/api/timeline/recent"] });
       toast({ title: "Document uploaded", description: "The document has been added to this child's profile." });
       onClose();
-    },
-    onError: (error: Error) => {
+    } catch (error: any) {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-    },
-  });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -187,8 +201,8 @@ function UploadDocumentDialog({ childId, onClose }: { childId: number; onClose: 
       </div>
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={onClose} data-testid="button-cancel-upload">Cancel</Button>
-        <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !file || !docType} data-testid="button-confirm-upload">
-          {mutation.isPending ? "Uploading..." : "Upload"}
+        <Button onClick={handleUpload} disabled={uploading || !file || !docType} data-testid="button-confirm-upload">
+          {uploading ? "Uploading..." : "Upload"}
         </Button>
       </div>
     </div>
@@ -352,12 +366,27 @@ export default function ChildProfile() {
 
   const photoMutation = useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("photo", file);
+      const urlRes = await fetch("/api/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!urlRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadURL, objectPath } = await urlRes.json();
+
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+      });
+      if (!putRes.ok) throw new Error("Failed to upload photo to storage");
+
       const res = await fetch(`/api/children/${childId}/photo`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ objectPath }),
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();

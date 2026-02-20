@@ -2,28 +2,9 @@ import express, { type Express, type RequestHandler } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth";
-import { authStorage } from "./replit_integrations/auth/storage";
 import { insertChildSchema } from "@shared/schema";
 import { z } from "zod";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadDir),
-    filename: (_req, file, cb) => {
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      cb(null, uniqueSuffix + "-" + file.originalname);
-    },
-  }),
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 const documentTypes = ["education", "report_cards", "attendance", "case_notes", "social_worker_notes", "follow_up_reports", "photos"] as const;
 
@@ -58,8 +39,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
-
-  app.use("/uploads", express.static(uploadDir));
+  registerObjectStorageRoutes(app, isAuthenticated);
 
   app.get("/api/children", isAuthenticated, async (_req, res) => {
     try {
@@ -122,15 +102,16 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/children/:id/photo", isAuthenticated, isNotReadOnly, upload.single("photo"), async (req: any, res) => {
+  app.post("/api/children/:id/photo", isAuthenticated, isNotReadOnly, express.json(), async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const child = await storage.getChild(id);
       if (!child) return res.status(404).json({ message: "Child not found" });
-      if (!req.file) return res.status(400).json({ message: "No photo provided" });
 
-      const photoUrl = `/uploads/${req.file.filename}`;
-      const updated = await storage.updateChild(id, { photoUrl });
+      const { objectPath } = req.body;
+      if (!objectPath) return res.status(400).json({ message: "No objectPath provided" });
+
+      const updated = await storage.updateChild(id, { photoUrl: objectPath });
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -155,14 +136,16 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/children/:id/documents", isAuthenticated, isNotReadOnly, upload.single("file"), async (req: any, res) => {
+  app.post("/api/children/:id/documents", isAuthenticated, isNotReadOnly, express.json(), async (req: any, res) => {
     try {
       const childId = parseInt(req.params.id);
       const child = await storage.getChild(childId);
       if (!child) return res.status(404).json({ message: "Child not found" });
-      if (!req.file) return res.status(400).json({ message: "No file provided" });
 
-      const docType = req.body.documentType;
+      const { objectPath, fileName, documentType, description } = req.body;
+      if (!objectPath || !fileName) return res.status(400).json({ message: "objectPath and fileName are required" });
+
+      const docType = documentType;
       if (!documentTypes.includes(docType)) {
         return res.status(400).json({ message: `Invalid document type. Must be one of: ${documentTypes.join(", ")}` });
       }
@@ -171,9 +154,9 @@ export async function registerRoutes(
       const doc = await storage.createDocument({
         childId,
         documentType: docType,
-        description: req.body.description || null,
-        fileName: req.file.originalname,
-        fileUrl: `/uploads/${req.file.filename}`,
+        description: description || null,
+        fileName,
+        fileUrl: objectPath,
         uploadedBy: uploaderName,
       });
 
@@ -189,7 +172,7 @@ export async function registerRoutes(
       await storage.createTimelineEntry({
         childId,
         title: `${typeLabels[docType] || "Document"} uploaded`,
-        description: req.body.description || `${req.file.originalname} was uploaded`,
+        description: description || `${fileName} was uploaded`,
         entryType: "document",
         createdBy: uploaderName,
       });
