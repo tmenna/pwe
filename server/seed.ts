@@ -1,8 +1,25 @@
 import { db } from "./db";
 import { children, timelineEntries } from "@shared/schema";
+import { users } from "@shared/models/auth";
 import { sql } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 export async function seedDatabase() {
+  const existingUsers = await db.select({ count: sql<number>`count(*)` }).from(users);
+  if (Number(existingUsers[0].count) === 0) {
+    console.log("Seeding default admin user...");
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+    await db.insert(users).values({
+      username: "admin",
+      hashedPassword,
+      firstName: "System",
+      lastName: "Admin",
+      email: "admin@caretrack.org",
+      role: "admin",
+    });
+    console.log("Default admin created (username: admin, password: admin123)");
+  }
+
   const existing = await db.select({ count: sql<number>`count(*)` }).from(children);
   if (Number(existing[0].count) > 0) return;
 

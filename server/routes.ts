@@ -33,12 +33,11 @@ const timelineEntrySchema = z.object({
   entryType: z.enum(["milestone", "note", "status_change", "document", "manual"]),
 });
 
-const isNotReadOnly: RequestHandler = async (req, res, next) => {
+const isNotReadOnly: RequestHandler = async (req: any, res, next) => {
   try {
-    const userId = (req.user as any)?.claims?.sub;
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-    const user = await authStorage.getUser(userId);
-    if (user?.role === "read_only") {
+    const user = req.currentUser;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (user.role === "read_only") {
       return res.status(403).json({ message: "Read-only users cannot modify records" });
     }
     next();
@@ -46,6 +45,12 @@ const isNotReadOnly: RequestHandler = async (req, res, next) => {
     next();
   }
 };
+
+function getUserName(req: any): string {
+  const user = req.currentUser;
+  if (user?.firstName) return user.firstName;
+  return user?.username || "System";
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -84,7 +89,7 @@ export async function registerRoutes(
         title: "Child profile created",
         description: `${child.fullName} was enrolled in the program`,
         entryType: "milestone",
-        createdBy: (req.user as any)?.claims?.first_name || "System",
+        createdBy: getUserName(req),
       });
       res.status(201).json(child);
     } catch (error: any) {
@@ -108,7 +113,7 @@ export async function registerRoutes(
           title: `Status changed to ${parsed.status}`,
           description: `Status updated from ${existing.status} to ${parsed.status}`,
           entryType: "status_change",
-          createdBy: (req.user as any)?.claims?.first_name || "System",
+          createdBy: getUserName(req),
         });
       }
       res.json(updated);
@@ -135,7 +140,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/children/:id/documents", isAuthenticated, isNotReadOnly, upload.single("file"), async (req, res) => {
+  app.post("/api/children/:id/documents", isAuthenticated, isNotReadOnly, upload.single("file"), async (req: any, res) => {
     try {
       const childId = parseInt(req.params.id);
       const child = await storage.getChild(childId);
@@ -147,7 +152,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: `Invalid document type. Must be one of: ${documentTypes.join(", ")}` });
       }
 
-      const uploaderName = (req.user as any)?.claims?.first_name || "Unknown";
+      const uploaderName = getUserName(req);
       const doc = await storage.createDocument({
         childId,
         documentType: docType,
@@ -198,7 +203,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/children/:id/timeline", isAuthenticated, isNotReadOnly, async (req, res) => {
+  app.post("/api/children/:id/timeline", isAuthenticated, isNotReadOnly, async (req: any, res) => {
     try {
       const childId = parseInt(req.params.id);
       const child = await storage.getChild(childId);
@@ -210,7 +215,7 @@ export async function registerRoutes(
         title: parsed.title,
         description: parsed.description || null,
         entryType: parsed.entryType,
-        createdBy: (req.user as any)?.claims?.first_name || "Unknown",
+        createdBy: getUserName(req),
       });
       res.status(201).json(entry);
     } catch (error: any) {
