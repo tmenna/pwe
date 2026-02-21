@@ -8,9 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "./dashboard";
+import { useAuth } from "@/hooks/use-auth";
 import type { Child } from "@shared/schema";
 
 export default function ChildrenList() {
+  const { user } = useAuth();
+  const canEdit = user?.role !== "read_only";
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
   const initialStatus = urlParams.get("status") || "all";
@@ -42,12 +45,14 @@ export default function ChildrenList() {
               Manage all child profiles and records
             </p>
           </div>
-          <Button asChild size="sm" data-testid="button-add-child-list">
-            <Link href="/children/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Child
-            </Link>
-          </Button>
+          {canEdit && (
+            <Button asChild size="sm" data-testid="button-add-child-list">
+              <Link href="/children/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Child
+              </Link>
+            </Button>
+          )}
         </div>
 
         <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center">
@@ -91,7 +96,7 @@ export default function ChildrenList() {
                 ? "Try adjusting your search or filters"
                 : "Add your first child to get started"}
             </p>
-            {!search && statusFilter === "all" && (
+            {canEdit && !search && statusFilter === "all" && (
               <Button asChild>
                 <Link href="/children/new">
                   <Plus className="mr-2 h-4 w-4" />

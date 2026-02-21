@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
 import type { Child, TimelineEntry } from "@shared/schema";
 
 interface Stats {
@@ -68,6 +69,8 @@ function StatusBadge({ status }: { status: string }) {
 export { StatusBadge };
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const canEdit = user?.role !== "read_only";
   const [locationFilter, setLocationFilter] = useState("all");
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
@@ -126,12 +129,14 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold sm:text-2xl" data-testid="text-dashboard-title">Dashboard</h1>
               <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Overview of all child sponsorship records</p>
             </div>
-            <Button asChild size="sm" data-testid="button-add-child">
-              <Link href="/children/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Child
-              </Link>
-            </Button>
+            {canEdit && (
+              <Button asChild size="sm" data-testid="button-add-child">
+                <Link href="/children/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Child
+                </Link>
+              </Button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -190,7 +195,7 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">
                   {locationFilter === "all" ? "No children added yet" : `No children in ${locationFilter}`}
                 </p>
-                {locationFilter === "all" && (
+                {canEdit && locationFilter === "all" && (
                   <Button variant="outline" size="sm" className="mt-3" asChild>
                     <Link href="/children/new">Add your first child</Link>
                   </Button>

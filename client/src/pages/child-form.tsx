@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShieldAlert } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient as qc } from "@/lib/queryClient";
 import type { Child } from "@shared/schema";
 
@@ -34,6 +35,20 @@ export default function ChildForm() {
   const [isEdit, params] = useRoute("/children/:id/edit");
   const childDbId = params?.id;
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  if (user?.role === "read_only") {
+    return (
+      <div className="flex flex-1 items-center justify-center p-6">
+        <Card className="max-w-md p-8 text-center">
+          <ShieldAlert className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
+          <h2 className="mb-2 text-lg font-semibold">Access Restricted</h2>
+          <p className="mb-4 text-sm text-muted-foreground">Read-only users cannot create or edit child records.</p>
+          <Button variant="outline" onClick={() => navigate("/children")}>Back to Children</Button>
+        </Card>
+      </div>
+    );
+  }
   const queryClient = useQueryClient();
 
   const { data: existingChild, isLoading: loadingChild } = useQuery<Child>({
