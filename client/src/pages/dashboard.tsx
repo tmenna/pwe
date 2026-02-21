@@ -163,11 +163,10 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             <StatCard label="Total Children" value={filteredStats?.totalChildren || 0} icon={Users} color="bg-primary/10 text-primary" testId="stat-total" href={`/children?status=all${locationParam}`} />
             <StatCard label="Active" value={filteredStats?.active || 0} icon={UserCheck} color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" testId="stat-active" href={`/children?status=active${locationParam}`} />
             <StatCard label="Paused" value={filteredStats?.paused || 0} icon={Pause} color="bg-amber-500/10 text-amber-600 dark:text-amber-400" testId="stat-paused" href={`/children?status=paused${locationParam}`} />
-            <StatCard label="Documents" value={filteredStats?.totalDocuments || 0} icon={FileText} color="bg-violet-500/10 text-violet-600 dark:text-violet-400" testId="stat-documents" href={`/children?status=all${locationParam}`} />
           </div>
         )}
 
