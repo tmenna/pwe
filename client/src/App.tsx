@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -51,6 +52,13 @@ function AuthenticatedLayout() {
 
 function AppContent() {
   const { user, isLoading } = useAuth();
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user && location !== "/") {
+      setLocation("/");
+    }
+  }, [isLoading, user, location, setLocation]);
 
   if (isLoading) {
     return (
