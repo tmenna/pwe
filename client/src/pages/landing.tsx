@@ -120,7 +120,7 @@ export default function LandingPage() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
+                  placeholder="Enter your email address"
                   required
                   autoFocus
                   data-testid="input-username"

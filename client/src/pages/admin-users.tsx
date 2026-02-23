@@ -52,6 +52,7 @@ export default function AdminUsers() {
   });
 
   const [editForm, setEditForm] = useState({
+    username: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -70,7 +71,7 @@ export default function AdminUsers() {
         password: form.password,
         firstName: form.firstName || null,
         lastName: form.lastName || null,
-        email: form.email || null,
+        email: form.username || null,
         role: form.role,
       });
       return res.json();
@@ -89,9 +90,10 @@ export default function AdminUsers() {
   const updateMutation = useMutation({
     mutationFn: async () => {
       const body: any = {
+        username: editForm.username,
         firstName: editForm.firstName || null,
         lastName: editForm.lastName || null,
-        email: editForm.email || null,
+        email: editForm.username || null,
         role: editForm.role,
       };
       if (editForm.password) body.password = editForm.password;
@@ -125,6 +127,7 @@ export default function AdminUsers() {
   const openEdit = (u: SafeUser) => {
     setEditUser(u);
     setEditForm({
+      username: u.username,
       firstName: u.firstName || "",
       lastName: u.lastName || "",
       email: u.email || "",
@@ -204,12 +207,13 @@ export default function AdminUsers() {
             className="space-y-4"
           >
             <div className="space-y-2">
-              <Label>Username</Label>
+              <Label>Username (Email Address)</Label>
               <Input
+                type="email"
                 value={form.username}
                 onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
                 required
-                minLength={3}
+                placeholder="user@example.com"
                 data-testid="input-new-username"
               />
             </div>
@@ -241,15 +245,6 @@ export default function AdminUsers() {
                   data-testid="input-new-lastname"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                data-testid="input-new-email"
-              />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
@@ -286,6 +281,17 @@ export default function AdminUsers() {
             }}
             className="space-y-4"
           >
+            <div className="space-y-2">
+              <Label>Username (Email Address)</Label>
+              <Input
+                type="email"
+                value={editForm.username}
+                onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))}
+                required
+                placeholder="user@example.com"
+                data-testid="input-edit-username"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>First Name</Label>
@@ -303,15 +309,6 @@ export default function AdminUsers() {
                   data-testid="input-edit-lastname"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={editForm.email}
-                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
-                data-testid="input-edit-email"
-              />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>

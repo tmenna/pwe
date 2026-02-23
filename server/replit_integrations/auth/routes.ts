@@ -59,6 +59,13 @@ export function registerAuthRoutes(app: Express): void {
     try {
       const parsed = updateUserSchema.parse(req.body);
       const updateData: any = {};
+      if (parsed.username !== undefined) {
+        const existing = await authStorage.getUserByUsername(parsed.username);
+        if (existing && existing.id !== req.params.id) {
+          return res.status(409).json({ message: "Username already exists" });
+        }
+        updateData.username = parsed.username;
+      }
       if (parsed.firstName !== undefined) updateData.firstName = parsed.firstName;
       if (parsed.lastName !== undefined) updateData.lastName = parsed.lastName;
       if (parsed.email !== undefined) updateData.email = parsed.email;
