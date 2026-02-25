@@ -4,6 +4,7 @@ import { useRoute, useLocation, Link } from "wouter";
 import {
   ArrowLeft, Edit, Upload, Plus, FileText, Image, StickyNote,
   GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2, Camera, Check, X, Pencil,
+  Milestone, MessageSquare, RefreshCw,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,7 @@ function InlineEditableText({
     return (
       <div className="mt-1 flex items-start gap-2">
         <Textarea
-          className="min-h-[60px] text-sm"
+          className="min-h-[60px] text-sm rounded-lg border-border/60"
           rows={2}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -75,10 +76,10 @@ function InlineEditableText({
           data-testid={`${testIdPrefix}-input`}
         />
         <div className="flex flex-col gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSave} disabled={saving} data-testid={`${testIdPrefix}-save`}>
+          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={handleSave} disabled={saving} data-testid={`${testIdPrefix}-save`}>
             <Check className="h-3.5 w-3.5" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(false); setText(value); }} data-testid={`${testIdPrefix}-cancel`}>
+          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => { setEditing(false); setText(value); }} data-testid={`${testIdPrefix}-cancel`}>
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -91,7 +92,7 @@ function InlineEditableText({
       <span className="text-sm text-muted-foreground">{value || <span className="italic">{placeholder || "No description"}</span>}</span>
       {canEdit && (
         <button
-          className="inline-flex h-5 w-5 items-center justify-center rounded opacity-0 transition-opacity hover:bg-muted group-hover/desc:opacity-100"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-md opacity-0 transition-opacity hover:bg-muted group-hover/desc:opacity-100"
           onClick={() => { setText(value); setEditing(true); }}
           data-testid={`${testIdPrefix}-edit`}
         >
@@ -102,15 +103,29 @@ function InlineEditableText({
   );
 }
 
+const timelineColors: Record<string, { bg: string; icon: string }> = {
+  milestone: { bg: "bg-primary/10", icon: "text-primary" },
+  document: { bg: "bg-blue-500/10", icon: "text-blue-500" },
+  status_change: { bg: "bg-amber-500/10", icon: "text-amber-500" },
+  note: { bg: "bg-violet-500/10", icon: "text-violet-500" },
+  manual: { bg: "bg-slate-500/10", icon: "text-slate-500" },
+};
+
 function TimelineIcon({ type }: { type: string }) {
-  const colors: Record<string, string> = {
-    milestone: "bg-emerald-500",
-    document: "bg-primary",
-    status_change: "bg-amber-500",
-    note: "bg-violet-500",
-    manual: "bg-muted-foreground",
+  const color = timelineColors[type] || timelineColors.manual;
+  const icons: Record<string, any> = {
+    milestone: Milestone,
+    document: FileText,
+    status_change: RefreshCw,
+    note: MessageSquare,
+    manual: Clock,
   };
-  return <div className={`h-2.5 w-2.5 rounded-full ${colors[type] || "bg-primary"}`} />;
+  const Icon = icons[type] || Clock;
+  return (
+    <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${color.bg}`}>
+      <Icon className={`h-3.5 w-3.5 ${color.icon}`} />
+    </div>
+  );
 }
 
 function UploadDocumentDialog({ childId, onClose }: { childId: number; onClose: () => void }) {
@@ -162,11 +177,11 @@ function UploadDocumentDialog({ childId, onClose }: { childId: number; onClose: 
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Label>Document Type</Label>
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Document Type</Label>
         <Select value={docType} onValueChange={setDocType}>
-          <SelectTrigger className="mt-1.5" data-testid="select-doc-type">
+          <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-doc-type">
             <SelectValue placeholder="Select type" />
           </SelectTrigger>
           <SelectContent>
@@ -180,28 +195,28 @@ function UploadDocumentDialog({ childId, onClose }: { childId: number; onClose: 
           </SelectContent>
         </Select>
       </div>
-      <div>
-        <Label>File</Label>
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">File</Label>
         <Input
           type="file"
-          className="mt-1.5"
+          className="rounded-lg border-border/60"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           data-testid="input-file-upload"
         />
       </div>
-      <div>
-        <Label>Description (optional)</Label>
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Description (optional)</Label>
         <Textarea
-          className="mt-1.5"
+          className="rounded-lg border-border/60"
           placeholder="Brief description of the document"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           data-testid="input-doc-description"
         />
       </div>
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={onClose} data-testid="button-cancel-upload">Cancel</Button>
-        <Button onClick={handleUpload} disabled={uploading || !file || !docType} data-testid="button-confirm-upload">
+      <div className="flex justify-end gap-3 pt-1">
+        <Button variant="outline" className="rounded-lg" onClick={onClose} data-testid="button-cancel-upload">Cancel</Button>
+        <Button className="rounded-lg shadow-sm" onClick={handleUpload} disabled={uploading || !file || !docType} data-testid="button-confirm-upload">
           {uploading ? "Uploading..." : "Upload"}
         </Button>
       </div>
@@ -232,11 +247,11 @@ function AddTimelineDialog({ childId, onClose }: { childId: number; onClose: () 
   });
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Label>Entry Type</Label>
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Entry Type</Label>
         <Select value={entryType} onValueChange={setEntryType}>
-          <SelectTrigger className="mt-1.5" data-testid="select-timeline-type">
+          <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-timeline-type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -246,17 +261,17 @@ function AddTimelineDialog({ childId, onClose }: { childId: number; onClose: () 
           </SelectContent>
         </Select>
       </div>
-      <div>
-        <Label>Title</Label>
-        <Input className="mt-1.5" placeholder="e.g. Completed literacy milestone" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="input-timeline-title" />
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Title</Label>
+        <Input className="h-11 rounded-lg border-border/60" placeholder="e.g. Completed literacy milestone" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="input-timeline-title" />
       </div>
-      <div>
-        <Label>Description (optional)</Label>
-        <Textarea className="mt-1.5" placeholder="Additional details" value={description} onChange={(e) => setDescription(e.target.value)} data-testid="input-timeline-description" />
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Description (optional)</Label>
+        <Textarea className="rounded-lg border-border/60" placeholder="Additional details" value={description} onChange={(e) => setDescription(e.target.value)} data-testid="input-timeline-description" />
       </div>
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !title} data-testid="button-confirm-timeline">
+      <div className="flex justify-end gap-3 pt-1">
+        <Button variant="outline" className="rounded-lg" onClick={onClose}>Cancel</Button>
+        <Button className="rounded-lg shadow-sm" onClick={() => mutation.mutate()} disabled={mutation.isPending || !title} data-testid="button-confirm-timeline">
           {mutation.isPending ? "Adding..." : "Add Entry"}
         </Button>
       </div>
@@ -286,23 +301,23 @@ function InlineDescription({ child, canEdit }: { child: Child; canEdit: boolean 
 
   if (editing) {
     return (
-      <div className="mt-4">
+      <div className="mt-5">
         <Label className="text-xs text-muted-foreground">Description</Label>
         <Textarea
-          className="mt-1"
+          className="mt-1.5 rounded-lg border-border/60"
           rows={3}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Add a description for this child..."
           data-testid="input-inline-description"
         />
-        <div className="mt-2 flex gap-2">
-          <Button size="sm" onClick={() => mutation.mutate()} disabled={mutation.isPending} data-testid="button-save-description">
-            <Check className="mr-1 h-3 w-3" />
+        <div className="mt-2.5 flex gap-2">
+          <Button size="sm" className="rounded-lg shadow-sm" onClick={() => mutation.mutate()} disabled={mutation.isPending} data-testid="button-save-description">
+            <Check className="mr-1.5 h-3 w-3" />
             {mutation.isPending ? "Saving..." : "Save"}
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setValue(child.description || ""); }} data-testid="button-cancel-description">
-            <X className="mr-1 h-3 w-3" />
+          <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => { setEditing(false); setValue(child.description || ""); }} data-testid="button-cancel-description">
+            <X className="mr-1.5 h-3 w-3" />
             Cancel
           </Button>
         </div>
@@ -311,11 +326,11 @@ function InlineDescription({ child, canEdit }: { child: Child; canEdit: boolean 
   }
 
   return (
-    <div className="mt-4">
+    <div className="mt-5">
       <div className="flex items-center gap-2">
         <Label className="text-xs text-muted-foreground">Description</Label>
         {canEdit && (
-          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditing(true)} data-testid="button-edit-description">
+          <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md" onClick={() => setEditing(true)} data-testid="button-edit-description">
             <Pencil className="h-3 w-3" />
           </Button>
         )}
@@ -409,8 +424,8 @@ export default function ChildProfile() {
     return (
       <div className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-4xl space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <Card className="p-6"><Skeleton className="h-40 w-full" /></Card>
+          <Skeleton className="h-8 w-48 rounded-lg" />
+          <Card className="p-6 border-border/50"><Skeleton className="h-40 w-full rounded-lg" /></Card>
         </div>
       </div>
     );
@@ -419,9 +434,9 @@ export default function ChildProfile() {
   if (!child) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center p-6">
-        <User className="mb-4 h-12 w-12 text-muted-foreground/40" />
+        <User className="mb-4 h-12 w-12 text-muted-foreground/30" />
         <h2 className="text-lg font-semibold">Child not found</h2>
-        <Button variant="outline" className="mt-4" onClick={() => navigate("/children")}>
+        <Button variant="outline" className="mt-4 rounded-lg" onClick={() => navigate("/children")}>
           Back to Children
         </Button>
       </div>
@@ -440,20 +455,20 @@ export default function ChildProfile() {
   ];
 
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6">
+    <div className="flex-1 overflow-auto p-5 sm:p-8">
       <div className="mx-auto max-w-4xl">
-        <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/children")} data-testid="button-back-profile">
+        <Button variant="ghost" size="sm" className="mb-5 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => navigate("/children")} data-testid="button-back-profile">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Children
         </Button>
 
-        <Card className="p-4 sm:p-6">
+        <Card className="p-5 sm:p-7 border-border/50">
           <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="group relative">
-                <Avatar className="h-12 w-12 sm:h-16 sm:w-16" data-testid="img-child-photo">
+                <Avatar className="h-14 w-14 sm:h-16 sm:w-16" data-testid="img-child-photo">
                   <AvatarImage src={child.photoUrl || undefined} alt={child.fullName} />
-                  <AvatarFallback className="text-lg font-bold bg-primary/10 text-primary">{initials}</AvatarFallback>
+                  <AvatarFallback className="text-lg font-bold bg-primary/8 text-primary">{initials}</AvatarFallback>
                 </Avatar>
                 {canEdit && (
                   <button
@@ -475,14 +490,14 @@ export default function ChildProfile() {
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-xl font-bold" data-testid="text-child-name">{child.fullName}</h1>
+                  <h1 className="text-xl font-bold tracking-tight" data-testid="text-child-name">{child.fullName}</h1>
                   <StatusBadge status={child.status} />
                 </div>
-                <p className="mt-0.5 text-sm text-muted-foreground" data-testid="text-child-id">ID: {child.childId}</p>
+                <p className="mt-1 text-sm text-muted-foreground" data-testid="text-child-id">ID: {child.childId}</p>
               </div>
             </div>
             {canEdit && (
-              <Button variant="outline" asChild data-testid="button-edit-child">
+              <Button variant="outline" className="rounded-lg" asChild data-testid="button-edit-child">
                 <Link href={`/children/${child.id}/edit`}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
@@ -493,42 +508,45 @@ export default function ChildProfile() {
 
           <InlineDescription child={child} canEdit={canEdit} />
 
-          <Separator className="my-5" />
+          <Separator className="my-6 opacity-50" />
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {infoItems.map((item) => (
               <div key={item.label} className="flex items-start gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/70">
                   <item.icon className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{item.label}</p>
-                  <p className="text-sm font-medium capitalize">{item.value}</p>
+                  <p className="text-sm font-medium capitalize mt-0.5">{item.value}</p>
                 </div>
               </div>
             ))}
           </div>
         </Card>
 
-        <Tabs defaultValue="documents" className="mt-6">
-          <TabsList data-testid="tabs-profile">
-            <TabsTrigger value="documents" data-testid="tab-documents">
+        <Tabs defaultValue="documents" className="mt-7">
+          <TabsList className="rounded-lg" data-testid="tabs-profile">
+            <TabsTrigger value="documents" className="rounded-md" data-testid="tab-documents">
               <FileText className="mr-2 h-4 w-4" />
               Documents
             </TabsTrigger>
-            <TabsTrigger value="timeline" data-testid="tab-timeline">
+            <TabsTrigger value="timeline" className="rounded-md" data-testid="tab-timeline">
               <Clock className="mr-2 h-4 w-4" />
               Timeline
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="documents" className="mt-4">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="font-semibold">Documents</h2>
+          <TabsContent value="documents" className="mt-5">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
+                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
+                Documents
+              </h2>
               {canEdit && (
                 <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-upload-document">
+                    <Button size="sm" className="rounded-lg shadow-sm" data-testid="button-upload-document">
                       <Upload className="mr-2 h-4 w-4" />
                       Upload
                     </Button>
@@ -545,31 +563,33 @@ export default function ChildProfile() {
 
             {docsLoading ? (
               <div className="space-y-3">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
               </div>
             ) : !documents?.length ? (
-              <Card className="flex flex-col items-center justify-center p-12 text-center">
-                <FileText className="mb-3 h-10 w-10 text-muted-foreground/40" />
+              <Card className="flex flex-col items-center justify-center p-14 text-center border-border/50">
+                <FileText className="mb-3 h-10 w-10 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => setUploadOpen(true)}>
-                  Upload First Document
-                </Button>
+                {canEdit && (
+                  <Button variant="outline" size="sm" className="mt-4 rounded-lg" onClick={() => setUploadOpen(true)}>
+                    Upload First Document
+                  </Button>
+                )}
               </Card>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {documents.map((doc) => (
-                  <Card key={doc.id} className="flex items-center gap-4 p-4" data-testid={`doc-item-${doc.id}`}>
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <Card key={doc.id} className="flex items-center gap-4 p-4 border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`doc-item-${doc.id}`}>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
                       <DocumentIcon type={doc.documentType} />
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <p className="truncate text-sm font-medium">{doc.fileName}</p>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant="outline" className="border-0 bg-muted capitalize text-xs">{doc.documentType.replace("_", " ")}</Badge>
-                        <span>&middot; {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : ""}</span>
-                        <span>&middot; by {doc.uploadedBy}</span>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
+                        <Badge variant="outline" className="border-border/60 capitalize text-xs rounded-md">{doc.documentType.replace("_", " ")}</Badge>
+                        <span>· {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : ""}</span>
+                        <span>· by {doc.uploadedBy}</span>
                       </div>
-                      <div className="mt-1">
+                      <div className="mt-1.5">
                         <InlineEditableText
                           value={doc.description || ""}
                           canEdit={canEdit}
@@ -583,7 +603,7 @@ export default function ChildProfile() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" asChild>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" asChild>
                         <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" data-testid={`button-view-doc-${doc.id}`}>
                           <FileText className="h-4 w-4" />
                         </a>
@@ -591,7 +611,7 @@ export default function ChildProfile() {
                       {canEdit && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" data-testid={`button-delete-doc-${doc.id}`}>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-destructive/8 hover:text-destructive" data-testid={`button-delete-doc-${doc.id}`}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -603,10 +623,10 @@ export default function ChildProfile() {
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel data-testid={`button-cancel-delete-${doc.id}`}>Keep it</AlertDialogCancel>
+                              <AlertDialogCancel className="rounded-lg" data-testid={`button-cancel-delete-${doc.id}`}>Keep it</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => deleteMutation.mutate(doc.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg"
                                 data-testid={`button-confirm-delete-${doc.id}`}
                               >
                                 Yes, delete
@@ -622,13 +642,16 @@ export default function ChildProfile() {
             )}
           </TabsContent>
 
-          <TabsContent value="timeline" className="mt-4">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="font-semibold">Progress Timeline</h2>
+          <TabsContent value="timeline" className="mt-5">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
+                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
+                Progress Timeline
+              </h2>
               {canEdit && (
                 <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-add-timeline">
+                    <Button size="sm" className="rounded-lg shadow-sm" data-testid="button-add-timeline">
                       <Plus className="mr-2 h-4 w-4" />
                       Add Entry
                     </Button>
@@ -645,25 +668,27 @@ export default function ChildProfile() {
 
             {timelineLoading ? (
               <div className="space-y-3">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
               </div>
             ) : !timeline?.length ? (
-              <Card className="flex flex-col items-center justify-center p-12 text-center">
-                <Clock className="mb-3 h-10 w-10 text-muted-foreground/40" />
+              <Card className="flex flex-col items-center justify-center p-14 text-center border-border/50">
+                <Clock className="mb-3 h-10 w-10 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">No timeline entries yet</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => setTimelineOpen(true)}>
-                  Add First Entry
-                </Button>
+                {canEdit && (
+                  <Button variant="outline" size="sm" className="mt-4 rounded-lg" onClick={() => setTimelineOpen(true)}>
+                    Add First Entry
+                  </Button>
+                )}
               </Card>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {timeline.map((entry, index) => (
                   <div key={entry.id} className="flex gap-4" data-testid={`timeline-item-${entry.id}`}>
                     <div className="flex flex-col items-center pt-2">
                       <TimelineIcon type={entry.entryType} />
-                      {index < timeline.length - 1 && <div className="mt-1 w-px flex-1 bg-border" />}
+                      {index < timeline.length - 1 && <div className="mt-1.5 w-px flex-1 bg-border/50" />}
                     </div>
-                    <Card className="mb-3 flex-1 p-4">
+                    <Card className="mb-2 flex-1 p-4 border-border/50 transition-all duration-150 hover:shadow-sm">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="flex-1">
                           <p className="text-sm font-medium">{entry.title}</p>
@@ -681,11 +706,11 @@ export default function ChildProfile() {
                             />
                           </div>
                         </div>
-                        <Badge variant="outline" className="border-0 bg-muted capitalize text-xs">
+                        <Badge variant="outline" className="border-border/60 capitalize text-xs rounded-md">
                           {entry.entryType.replace("_", " ")}
                         </Badge>
                       </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      <div className="mt-2.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                         <span>{entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}</span>
                         <span>by {entry.createdBy}</span>
                       </div>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Lock, AlertCircle } from "lucide-react";
+import { Shield, Lock, AlertCircle, ArrowRight } from "lucide-react";
 import pweLogo from "@assets/pwc_logo_1771579613297.jpg";
 
 declare global {
@@ -85,36 +85,38 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-accent/40 px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 px-4">
+      <div className="w-full max-w-[420px]">
+        <div className="mb-10 text-center">
           <img
             src={pweLogo}
             alt="Partners with Ethiopia"
-            className="mx-auto mb-4 h-24 w-auto"
+            className="mx-auto mb-5 h-20 w-auto rounded-xl shadow-md"
             data-testid="img-landing-logo"
           />
-          <p className="mt-1 text-sm text-muted-foreground" data-testid="text-landing-subtitle">Child Sponsorship Records Portal</p>
+          <p className="text-sm text-muted-foreground" data-testid="text-landing-subtitle">Child Sponsorship Records Portal</p>
         </div>
 
-        <Card className="border-border/60 shadow-md">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4 text-muted-foreground" />
+        <Card className="border-border/50 shadow-lg">
+          <CardHeader className="pb-2 pt-7 px-7">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <Lock className="h-4 w-4 text-primary" />
+              </div>
               <h2 className="text-lg font-semibold" data-testid="text-login-title">Sign In</h2>
             </div>
-            <p className="text-sm text-muted-foreground">Enter your credentials to access the portal</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">Enter your credentials to access the portal</p>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="px-7 pb-7 pt-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {loginMutation.isError && (
-                <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive" data-testid="text-login-error">
+                <div className="flex items-center gap-2.5 rounded-lg bg-destructive/8 p-3.5 text-sm text-destructive" data-testid="text-login-error">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   <span>{loginMutation.error?.message}</span>
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username" className="text-sm font-medium">Username</Label>
                 <Input
                   id="username"
                   type="text"
@@ -123,11 +125,12 @@ export default function LandingPage() {
                   placeholder="Enter your email address"
                   required
                   autoFocus
+                  className="h-11 rounded-lg border-border/60 bg-background px-4"
                   data-testid="input-username"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -135,32 +138,38 @@ export default function LandingPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
+                  className="h-11 rounded-lg border-border/60 bg-background px-4"
                   data-testid="input-password"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-11 rounded-lg text-[15px] font-medium shadow-sm"
                 disabled={loginMutation.isPending}
                 data-testid="button-login"
               >
-                {loginMutation.isPending ? "Signing in..." : "Sign In"}
+                {loginMutation.isPending ? "Signing in..." : (
+                  <>
+                    Sign In
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        <div className="mt-6 flex flex-col items-center gap-2">
+        <div className="mt-8 flex flex-col items-center gap-2">
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <Shield className="h-3 w-3" />
               <span>Secure Access</span>
             </div>
-            <span>&middot;</span>
+            <span className="text-border">&middot;</span>
             <span>Contact your admin for access</span>
           </div>
           {siteKey && (
-            <p className="text-center text-[10px] text-muted-foreground/60">
+            <p className="text-center text-[10px] text-muted-foreground/50">
               Protected by reCAPTCHA
             </p>
           )}

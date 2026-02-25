@@ -40,11 +40,11 @@ export default function ChildForm() {
   if (user?.role === "read_only") {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
-        <Card className="max-w-md p-8 text-center">
+        <Card className="max-w-md p-8 text-center border-border/50">
           <ShieldAlert className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
           <h2 className="mb-2 text-lg font-semibold">Access Restricted</h2>
           <p className="mb-4 text-sm text-muted-foreground">Read-only users cannot create or edit child records.</p>
-          <Button variant="outline" onClick={() => navigate("/children")}>Back to Children</Button>
+          <Button variant="outline" className="rounded-lg" onClick={() => navigate("/children")}>Back to Children</Button>
         </Card>
       </div>
     );
@@ -110,10 +110,10 @@ export default function ChildForm() {
     return (
       <div className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-2xl">
-          <Card className="p-8">
-            <div className="animate-pulse space-y-4">
+          <Card className="p-8 border-border/50">
+            <div className="animate-pulse space-y-5">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="h-10 rounded bg-muted" />
+                <div key={i} className="h-11 rounded-lg bg-muted" />
               ))}
             </div>
           </Card>
@@ -123,57 +123,57 @@ export default function ChildForm() {
   }
 
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6">
+    <div className="flex-1 overflow-auto p-5 sm:p-8">
       <div className="mx-auto max-w-2xl">
-        <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate(isEdit ? `/children/${childDbId}` : "/children")} data-testid="button-back">
+        <Button variant="ghost" size="sm" className="mb-5 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => navigate(isEdit ? `/children/${childDbId}` : "/children")} data-testid="button-back">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
 
-        <h1 className="mb-4 text-xl font-bold sm:mb-6 sm:text-2xl" data-testid="text-form-title">
+        <h1 className="mb-6 text-2xl font-bold tracking-tight" data-testid="text-form-title">
           {isEdit ? "Edit Child" : "Add New Child"}
         </h1>
 
-        <Card className="p-6">
+        <Card className="p-7 border-border/50">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              <div className="grid gap-5 sm:grid-cols-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <FormField control={form.control} name="childId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Child ID</FormLabel>
+                    <FormLabel className="text-sm font-medium">Child ID</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. CHD-001" {...field} data-testid="input-child-id" />
+                      <Input placeholder="e.g. CHD-001" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-child-id" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="fullName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel className="text-sm font-medium">Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter full name" {...field} data-testid="input-full-name" />
+                      <Input placeholder="Enter full name" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-full-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-3">
+              <div className="grid gap-6 sm:grid-cols-3">
                 <FormField control={form.control} name="age" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Age</FormLabel>
+                    <FormLabel className="text-sm font-medium">Age</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} max={25} {...field} data-testid="input-age" />
+                      <Input type="number" min={0} max={25} className="h-11 rounded-lg border-border/60" {...field} data-testid="input-age" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="gender" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender</FormLabel>
+                    <FormLabel className="text-sm font-medium">Gender</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-gender">
+                        <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-gender">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                       </FormControl>
@@ -187,10 +187,10 @@ export default function ChildForm() {
                 )} />
                 <FormField control={form.control} name="status" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel className="text-sm font-medium">Status</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-status">
+                        <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-status">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                       </FormControl>
@@ -205,11 +205,13 @@ export default function ChildForm() {
                 )} />
               </div>
 
+              <div className="h-px bg-border/40" />
+
               <FormField control={form.control} name="location" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel className="text-sm font-medium">Location</FormLabel>
                   <FormControl>
-                    <Input placeholder="Region / City" {...field} data-testid="input-location" />
+                    <Input placeholder="Region / City" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-location" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -217,19 +219,21 @@ export default function ChildForm() {
 
               <FormField control={form.control} name="programEnrollment" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Program Enrollment</FormLabel>
+                  <FormLabel className="text-sm font-medium">Program Enrollment</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Primary School, Accelerated Learning" {...field} data-testid="input-program" />
+                    <Input placeholder="e.g. Primary School, Accelerated Learning" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-program" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
 
+              <div className="h-px bg-border/40" />
+
               <FormField control={form.control} name="assignedSponsors" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assigned Sponsor(s)</FormLabel>
+                  <FormLabel className="text-sm font-medium">Assigned Sponsor(s)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Optional" {...field} data-testid="input-sponsors" />
+                    <Input placeholder="Optional" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-sponsors" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -237,9 +241,9 @@ export default function ChildForm() {
 
               <FormField control={form.control} name="assignedCaseWorker" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assigned Case Worker</FormLabel>
+                  <FormLabel className="text-sm font-medium">Assigned Case Worker</FormLabel>
                   <FormControl>
-                    <Input placeholder="Case worker name" {...field} data-testid="input-case-worker" />
+                    <Input placeholder="Case worker name" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-case-worker" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -247,19 +251,19 @@ export default function ChildForm() {
 
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description (optional)</FormLabel>
+                  <FormLabel className="text-sm font-medium">Description (optional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Brief background or notes about this child" {...field} data-testid="input-description" />
+                    <Textarea placeholder="Brief background or notes about this child" className="rounded-lg border-border/60 min-h-[100px]" {...field} data-testid="input-description" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
 
-              <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => navigate(isEdit ? `/children/${childDbId}` : "/children")} data-testid="button-cancel">
+              <div className="flex justify-end gap-3 pt-3">
+                <Button type="button" variant="outline" className="rounded-lg h-11 px-5" onClick={() => navigate(isEdit ? `/children/${childDbId}` : "/children")} data-testid="button-cancel">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={mutation.isPending} data-testid="button-submit-child">
+                <Button type="submit" className="rounded-lg h-11 px-6 shadow-sm" disabled={mutation.isPending} data-testid="button-submit-child">
                   {mutation.isPending ? "Saving..." : isEdit ? "Update Child" : "Create Child"}
                 </Button>
               </div>

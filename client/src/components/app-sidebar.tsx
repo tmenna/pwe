@@ -37,25 +37,25 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-5">
         <div className="flex items-center gap-3">
-          <img src={pweLogo} alt="Partners with Ethiopia" className="h-9 w-9 rounded-md object-cover" data-testid="img-sidebar-logo" />
+          <img src={pweLogo} alt="Partners with Ethiopia" className="h-9 w-9 rounded-lg object-cover shadow-sm" data-testid="img-sidebar-logo" />
           <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground" data-testid="text-app-name">Records Portal</span>
+            <span className="text-[13px] text-muted-foreground font-medium" data-testid="text-app-name">Records Portal</span>
           </div>
         </div>
       </SidebarHeader>
-      <Separator />
-      <SidebarContent>
+      <Separator className="opacity-50" />
+      <SidebarContent className="px-2 pt-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[11px] uppercase tracking-wider font-medium text-muted-foreground/70 px-3">Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {allNavItems.map((item) => {
                 const isActive = item.url === "/" ? location === "/" : location.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild data-active={isActive} className={isActive ? "bg-sidebar-accent" : ""}>
+                    <SidebarMenuButton asChild data-active={isActive} className={`rounded-lg h-10 ${isActive ? "bg-primary/8 text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}>
                       <Link href={item.url} data-testid={`link-nav-${item.title.toLowerCase().replace(/\s/g, "-")}`}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
@@ -69,10 +69,10 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4">
-        <Separator className="mb-4" />
+        <Separator className="mb-4 opacity-50" />
         <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="text-xs bg-primary/8 text-primary font-medium">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex flex-1 flex-col overflow-hidden">
             <span className="truncate text-sm font-medium" data-testid="text-user-name">
@@ -82,7 +82,7 @@ export function AppSidebar() {
               {user?.role === "admin" ? "Administrator" : user?.role === "case_worker" ? "Case Worker" : "Read Only"}
             </span>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => logout()} data-testid="button-logout">
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground" onClick={() => logout()} data-testid="button-logout">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>

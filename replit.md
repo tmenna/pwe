@@ -3,6 +3,18 @@
 ## Overview
 A secure internal case-management portal for Partners with Ethiopia (PWE) to store documents, track child progress, and manage sponsorship records over time. Not a fundraising/payment platform.
 
+## Design System
+- **Style**: Balbooa Forms-inspired — soft, rounded, spacious, minimalist
+- **Font**: Inter (sans-serif), IBM Plex Mono (monospace) via Google Fonts
+- **Primary Color**: Green (#1BAE6A / HSL 152 73% 39%)
+- **Border Radius**: 12px (lg), 8px (md), 6px (sm) — rounded, friendly feel
+- **Shadows**: Soft, layered shadows (not flat/zero-shadow)
+- **Inputs**: h-11, rounded-lg, border-border/60, soft green glow on focus (box-shadow ring)
+- **Buttons**: Rounded-lg, shadow-sm on primary, h-11 for form buttons, h-9 for action buttons
+- **Cards**: border-border/50, hover:shadow-md, whisper-light borders
+- **Spacing**: Generous — p-5/p-7/p-8, space-y-5/6 for form fields
+- **Section Headers**: Green accent bar (w-1 h-5 rounded-full bg-primary) before title text
+
 ## Architecture
 - **Frontend**: React + TypeScript with Vite, Tailwind CSS, shadcn/ui components, wouter routing
 - **Backend**: Express.js with TypeScript
