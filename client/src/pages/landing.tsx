@@ -113,7 +113,7 @@ export default function LandingPage() {
             <div className="h-px w-8 bg-border" />
           </div>
           <p className="mt-3 text-sm text-muted-foreground max-w-[300px]">
-            Partners with Ethiopia — Empowering children through sponsorship
+            Partners with Ethiopia — From Poverty to Possibility
           </p>
         </div>
 
