@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Lock, AlertCircle, ArrowRight } from "lucide-react";
+import { Shield, Lock, AlertCircle, ArrowRight, Heart } from "lucide-react";
 import pweLogo from "@assets/pwe-large-logo_1772038246752.jpg";
 
 declare global {
@@ -84,36 +85,49 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-950 px-4">
-      <div className="w-full max-w-[400px]">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      <div className="absolute inset-0 bg-white dark:bg-gray-950" />
+      <div className="absolute top-0 left-0 right-0 h-[45%] bg-[#66DAB5] dark:bg-[#66DAB5]/90" />
+      <div className="absolute top-[45%] left-0 right-0 h-8 bg-gradient-to-b from-[#66DAB5] to-transparent dark:from-[#66DAB5]/90 dark:to-transparent" />
+
+      <div className="relative z-10 w-full max-w-[440px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <img
-            src={pweLogo}
-            alt="Partners with Ethiopia"
-            className="h-20 w-20 rounded-xl object-cover mb-5"
-            data-testid="img-landing-logo"
-          />
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100" data-testid="text-landing-title">
+          <div className="relative mb-5">
+            <div className="absolute -inset-3 rounded-full bg-white/20 blur-lg" />
+            <img
+              src={pweLogo}
+              alt="Partners with Ethiopia"
+              className="relative h-24 w-24 rounded-2xl bg-white object-cover shadow-xl ring-4 ring-white/80 dark:ring-white/20"
+              data-testid="img-landing-logo"
+            />
+          </div>
+          <h1 className="text-[26px] font-bold tracking-tight text-white drop-shadow-sm sm:text-[30px]" data-testid="text-landing-title">
             Child Sponsorship
           </h1>
-          <h2 className="mt-1 text-base font-medium text-gray-500 dark:text-gray-400" data-testid="text-landing-subtitle">
+          <h2 className="mt-0.5 text-lg font-semibold text-white/85 sm:text-xl" data-testid="text-landing-subtitle">
             Records Portal
           </h2>
-          <p className="mt-2 text-sm text-gray-400 dark:text-gray-500 italic">
+          <div className="mt-3 flex items-center gap-2.5">
+            <div className="h-px w-10 bg-white/30" />
+            <Heart className="h-3.5 w-3.5 text-white/70" />
+            <div className="h-px w-10 bg-white/30" />
+          </div>
+          <p className="mt-2.5 text-[13px] font-medium text-white/75 max-w-[300px] italic">
             From Poverty to Possibility
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-7 sm:p-8 shadow-sm">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-800">
-              <Lock className="h-4 w-4 text-gray-400" />
+        <Card className="border-0 shadow-2xl bg-white dark:bg-gray-900">
+          <CardContent className="px-7 py-7 sm:px-8 sm:py-8">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#66DAB5]/12">
+                <Lock className="h-4 w-4 text-[#4ec9a0]" />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold" data-testid="text-login-title">Welcome back</h3>
+                <p className="text-xs text-muted-foreground">Sign in to access the portal</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100" data-testid="text-login-title">Sign in</h3>
-              <p className="text-xs text-gray-400">Enter your credentials</p>
-            </div>
-          </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {loginMutation.isError && (
@@ -132,7 +146,7 @@ export default function LandingPage() {
                   placeholder="Enter your email address"
                   required
                   autoFocus
-                  className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4 focus:border-[#66DAB5] focus:ring-[#66DAB5]/20"
+                  className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4"
                   data-testid="input-username"
                 />
               </div>
@@ -145,7 +159,7 @@ export default function LandingPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
-                  className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4 focus:border-[#66DAB5] focus:ring-[#66DAB5]/20"
+                  className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4"
                   data-testid="input-password"
                 />
               </div>
@@ -163,19 +177,20 @@ export default function LandingPage() {
                 )}
               </Button>
             </form>
-        </div>
+          </CardContent>
+        </Card>
 
         <div className="mt-8 flex flex-col items-center gap-2.5">
-          <div className="flex items-center gap-4 text-xs text-gray-400">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground/70">
             <div className="flex items-center gap-1.5">
               <Shield className="h-3 w-3" />
               <span>Secure Access</span>
             </div>
-            <span className="text-gray-200 dark:text-gray-700">&middot;</span>
+            <span className="text-border/60">&middot;</span>
             <span>Contact your admin for access</span>
           </div>
           {siteKey && (
-            <p className="text-center text-[10px] text-gray-300 dark:text-gray-600">
+            <p className="text-center text-[10px] text-muted-foreground/40">
               Protected by reCAPTCHA
             </p>
           )}
