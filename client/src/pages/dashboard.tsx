@@ -22,28 +22,35 @@ function StatCard({
   label,
   value,
   icon: Icon,
+  accentColor,
   iconBg,
   iconColor,
+  valueTint,
   testId,
   href,
 }: {
   label: string;
   value: number | string;
   icon: any;
+  accentColor: string;
   iconBg: string;
   iconColor: string;
+  valueTint: string;
   testId: string;
   href?: string;
 }) {
   const content = (
-    <Card className={`p-5 sm:p-6 transition-all duration-200 border-border/50 ${href ? "cursor-pointer hover:shadow-md hover:border-primary/20 hover:-translate-y-0.5" : ""}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight" data-testid={testId}>{value}</p>
-        </div>
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-          <Icon className={`h-5 w-5 ${iconColor}`} />
+    <Card className={`relative overflow-hidden transition-all duration-200 border-border/50 ${href ? "cursor-pointer hover:shadow-md hover:-translate-y-0.5" : ""}`}>
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${accentColor}`} />
+      <div className="p-5 sm:p-6 pl-5 sm:pl-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+            <p className={`mt-2.5 text-3xl font-bold tracking-tight ${valueTint}`} data-testid={testId}>{value}</p>
+          </div>
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+            <Icon className={`h-5 w-5 ${iconColor}`} />
+          </div>
         </div>
       </div>
     </Card>
@@ -192,9 +199,39 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
-            <StatCard label="Total Children" value={filteredStats?.totalChildren || 0} icon={Users} iconBg="bg-primary/10" iconColor="text-primary" testId="stat-total" href={`/children?status=all${locationParam}`} />
-            <StatCard label="Active" value={filteredStats?.active || 0} icon={UserCheck} iconBg="bg-emerald-50 dark:bg-emerald-500/10" iconColor="text-emerald-600 dark:text-emerald-400" testId="stat-active" href={`/children?status=active${locationParam}`} />
-            <StatCard label="Paused" value={filteredStats?.paused || 0} icon={Pause} iconBg="bg-amber-50 dark:bg-amber-500/10" iconColor="text-amber-600 dark:text-amber-400" testId="stat-paused" href={`/children?status=paused${locationParam}`} />
+            <StatCard
+              label="Total Children"
+              value={filteredStats?.totalChildren || 0}
+              icon={Users}
+              accentColor="bg-blue-500"
+              iconBg="bg-blue-50 dark:bg-blue-500/10"
+              iconColor="text-blue-600 dark:text-blue-400"
+              valueTint="text-blue-700 dark:text-blue-300"
+              testId="stat-total"
+              href={`/children?status=all${locationParam}`}
+            />
+            <StatCard
+              label="Active"
+              value={filteredStats?.active || 0}
+              icon={UserCheck}
+              accentColor="bg-emerald-500"
+              iconBg="bg-emerald-50 dark:bg-emerald-500/10"
+              iconColor="text-emerald-600 dark:text-emerald-400"
+              valueTint="text-emerald-700 dark:text-emerald-300"
+              testId="stat-active"
+              href={`/children?status=active${locationParam}`}
+            />
+            <StatCard
+              label="Paused"
+              value={filteredStats?.paused || 0}
+              icon={Pause}
+              accentColor="bg-amber-500"
+              iconBg="bg-amber-50 dark:bg-amber-500/10"
+              iconColor="text-amber-600 dark:text-amber-400"
+              valueTint="text-amber-700 dark:text-amber-300"
+              testId="stat-paused"
+              href={`/children?status=paused${locationParam}`}
+            />
           </div>
         )}
 
