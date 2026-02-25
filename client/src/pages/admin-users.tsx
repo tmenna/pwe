@@ -162,7 +162,7 @@ export default function AdminUsers() {
               <p className="text-sm text-muted-foreground mt-0.5">Manage portal accounts and roles</p>
             </div>
           </div>
-          <Button size="sm" className="rounded-lg shadow-sm h-9 px-4" onClick={() => setCreateOpen(true)} data-testid="button-add-user">
+          <Button size="sm" className="rounded-lg shadow-sm h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setCreateOpen(true)} data-testid="button-add-user">
             <UserPlus className="mr-2 h-4 w-4" />
             Add User
           </Button>
@@ -271,7 +271,7 @@ export default function AdminUsers() {
               </div>
               <DialogFooter className="pt-2">
                 <Button type="button" variant="outline" className="rounded-lg" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                <Button type="submit" className="rounded-lg shadow-sm" disabled={createMutation.isPending} data-testid="button-confirm-create-user">
+                <Button type="submit" className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white" disabled={createMutation.isPending} data-testid="button-confirm-create-user">
                   {createMutation.isPending ? "Creating..." : "Create User"}
                 </Button>
               </DialogFooter>

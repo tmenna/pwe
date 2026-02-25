@@ -71,7 +71,7 @@ function StatusBadge({ status }: { status: string }) {
 export { StatusBadge };
 
 const timelineDotColors: Record<string, string> = {
-  milestone: "bg-primary/12",
+  milestone: "bg-emerald-500/12",
   document: "bg-blue-500/12",
   status_change: "bg-amber-500/12",
   note: "bg-violet-500/12",
@@ -79,7 +79,7 @@ const timelineDotColors: Record<string, string> = {
 };
 
 const timelineIconColors: Record<string, string> = {
-  milestone: "text-primary",
+  milestone: "text-emerald-600",
   document: "text-blue-500",
   status_change: "text-amber-500",
   note: "text-violet-500",
@@ -158,7 +158,7 @@ export default function Dashboard() {
               <p className="mt-1.5 text-sm text-muted-foreground">Overview of all child sponsorship records</p>
             </div>
             {canEdit && (
-              <Button asChild size="sm" className="rounded-lg shadow-sm h-9 px-4" data-testid="button-add-child">
+              <Button asChild size="sm" className="rounded-lg shadow-sm h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="button-add-child">
                 <Link href="/children/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Child

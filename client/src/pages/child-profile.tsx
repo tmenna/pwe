@@ -104,7 +104,7 @@ function InlineEditableText({
 }
 
 const timelineColors: Record<string, { bg: string; icon: string }> = {
-  milestone: { bg: "bg-primary/10", icon: "text-primary" },
+  milestone: { bg: "bg-emerald-500/10", icon: "text-emerald-600" },
   document: { bg: "bg-blue-500/10", icon: "text-blue-500" },
   status_change: { bg: "bg-amber-500/10", icon: "text-amber-500" },
   note: { bg: "bg-violet-500/10", icon: "text-violet-500" },

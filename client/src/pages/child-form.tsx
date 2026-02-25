@@ -263,7 +263,7 @@ export default function ChildForm() {
                 <Button type="button" variant="outline" className="rounded-lg h-11 px-5" onClick={() => navigate(isEdit ? `/children/${childDbId}` : "/children")} data-testid="button-cancel">
                   Cancel
                 </Button>
-                <Button type="submit" className="rounded-lg h-11 px-6 shadow-sm" disabled={mutation.isPending} data-testid="button-submit-child">
+                <Button type="submit" className={`rounded-lg h-11 px-6 shadow-sm ${!isEdit ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}`} disabled={mutation.isPending} data-testid="button-submit-child">
                   {mutation.isPending ? "Saving..." : isEdit ? "Update Child" : "Create Child"}
                 </Button>
               </div>

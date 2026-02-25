@@ -46,7 +46,7 @@ export default function ChildrenList() {
             </p>
           </div>
           {canEdit && (
-            <Button asChild size="sm" className="rounded-lg shadow-sm h-9 px-4" data-testid="button-add-child-list">
+            <Button asChild size="sm" className="rounded-lg shadow-sm h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="button-add-child-list">
               <Link href="/children/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Child
@@ -97,7 +97,7 @@ export default function ChildrenList() {
                 : "Add your first child to get started"}
             </p>
             {canEdit && !search && statusFilter === "all" && (
-              <Button asChild className="rounded-lg shadow-sm">
+              <Button asChild className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white">
                 <Link href="/children/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Child

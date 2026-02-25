@@ -17,7 +17,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.setAttribute("data-color", "green");
     if (theme === "dark") {
       root.classList.add("dark");
     } else {
