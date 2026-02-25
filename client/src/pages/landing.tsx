@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Lock, AlertCircle, ArrowRight, Heart } from "lucide-react";
+import { Shield, Lock, AlertCircle, ArrowRight } from "lucide-react";
 import pweLogo from "@assets/pwe-large-logo_1772038246752.jpg";
 
 declare global {
@@ -164,20 +163,19 @@ export default function LandingPage() {
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+        </div>
 
         <div className="mt-8 flex flex-col items-center gap-2.5">
-          <div className="flex items-center gap-4 text-xs text-muted-foreground/70">
+          <div className="flex items-center gap-4 text-xs text-gray-400">
             <div className="flex items-center gap-1.5">
               <Shield className="h-3 w-3" />
               <span>Secure Access</span>
             </div>
-            <span className="text-border/60">&middot;</span>
+            <span className="text-gray-200 dark:text-gray-700">&middot;</span>
             <span>Contact your admin for access</span>
           </div>
           {siteKey && (
-            <p className="text-center text-[10px] text-muted-foreground/40">
+            <p className="text-center text-[10px] text-gray-300 dark:text-gray-600">
               Protected by reCAPTCHA
             </p>
           )}
