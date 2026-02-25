@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import pweLogo from "@assets/pwc_logo_1771579613297.jpg";
+import pweLogo from "@assets/pwe-large-logo_1772038246752.jpg";
 
 const navItems = [
   {

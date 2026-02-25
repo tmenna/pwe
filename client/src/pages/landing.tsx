@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Lock, AlertCircle, ArrowRight, Heart } from "lucide-react";
-import pweLogo from "@assets/pwc_logo_1771579613297.jpg";
+import pweLogo from "@assets/pwe-large-logo_1772038246752.jpg";
 
 declare global {
   interface Window {
@@ -86,43 +86,42 @@ export default function LandingPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-green-50/70 via-background to-amber-50/30 dark:from-green-950/15 dark:via-background dark:to-amber-950/10" />
-      <div className="absolute top-0 left-1/3 w-[700px] h-[700px] rounded-full bg-green-600/[0.04] blur-3xl" />
-      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-amber-400/[0.04] blur-3xl" />
-      <div className="absolute top-1/3 right-0 w-[400px] h-[400px] rounded-full bg-rose-700/[0.02] blur-3xl" />
+      <div className="absolute inset-0 bg-white dark:bg-gray-950" />
+      <div className="absolute top-0 left-0 right-0 h-[45%] bg-[#66DAB5] dark:bg-[#66DAB5]/90" />
+      <div className="absolute top-[45%] left-0 right-0 h-8 bg-gradient-to-b from-[#66DAB5] to-transparent dark:from-[#66DAB5]/90 dark:to-transparent" />
 
       <div className="relative z-10 w-full max-w-[440px]">
-        <div className="mb-10 flex flex-col items-center text-center">
-          <div className="relative mb-6">
-            <div className="absolute -inset-4 rounded-2xl bg-green-600/[0.06] blur-xl" />
+        <div className="mb-8 flex flex-col items-center text-center">
+          <div className="relative mb-5">
+            <div className="absolute -inset-3 rounded-full bg-white/20 blur-lg" />
             <img
               src={pweLogo}
               alt="Partners with Ethiopia"
-              className="relative h-[88px] w-[88px] rounded-2xl object-cover shadow-lg ring-1 ring-green-700/10 dark:ring-green-400/10"
+              className="relative h-24 w-24 rounded-2xl bg-white object-cover shadow-xl ring-4 ring-white/80 dark:ring-white/20"
               data-testid="img-landing-logo"
             />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-green-800 dark:text-green-200 sm:text-[28px]" data-testid="text-landing-title">
+          <h1 className="text-[26px] font-bold tracking-tight text-white drop-shadow-sm sm:text-[30px]" data-testid="text-landing-title">
             Child Sponsorship
           </h1>
-          <h2 className="mt-1 text-lg font-semibold text-green-600 dark:text-green-400 sm:text-xl" data-testid="text-landing-subtitle">
+          <h2 className="mt-0.5 text-lg font-semibold text-white/85 sm:text-xl" data-testid="text-landing-subtitle">
             Records Portal
           </h2>
-          <div className="mt-3.5 flex items-center gap-2.5">
-            <div className="h-px w-10 bg-gradient-to-r from-transparent to-amber-400/50" />
-            <Heart className="h-3.5 w-3.5 text-rose-600/70" />
-            <div className="h-px w-10 bg-gradient-to-l from-transparent to-amber-400/50" />
+          <div className="mt-3 flex items-center gap-2.5">
+            <div className="h-px w-10 bg-white/30" />
+            <Heart className="h-3.5 w-3.5 text-white/70" />
+            <div className="h-px w-10 bg-white/30" />
           </div>
-          <p className="mt-3 text-[13px] font-medium text-muted-foreground max-w-[300px] italic">
-            Partners with Ethiopia — From Poverty to Possibility
+          <p className="mt-2.5 text-[13px] font-medium text-white/75 max-w-[300px] italic">
+            From Poverty to Possibility
           </p>
         </div>
 
-        <Card className="border-green-700/8 dark:border-green-400/8 shadow-xl bg-card/80 backdrop-blur-sm">
+        <Card className="border-0 shadow-2xl bg-white dark:bg-gray-900">
           <CardContent className="px-7 py-7 sm:px-8 sm:py-8">
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-600/10 dark:bg-green-500/10">
-                <Lock className="h-4 w-4 text-green-700 dark:text-green-400" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#66DAB5]/12">
+                <Lock className="h-4 w-4 text-[#4ec9a0]" />
               </div>
               <div>
                 <h3 className="text-[15px] font-semibold" data-testid="text-login-title">Welcome back</h3>
@@ -147,7 +146,7 @@ export default function LandingPage() {
                   placeholder="Enter your email address"
                   required
                   autoFocus
-                  className="h-11 rounded-lg border-border/60 bg-background px-4"
+                  className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4 focus:border-[#66DAB5] focus:ring-[#66DAB5]/20"
                   data-testid="input-username"
                 />
               </div>
@@ -160,13 +159,13 @@ export default function LandingPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
-                  className="h-11 rounded-lg border-border/60 bg-background px-4"
+                  className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4 focus:border-[#66DAB5] focus:ring-[#66DAB5]/20"
                   data-testid="input-password"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full h-11 rounded-lg text-[15px] font-medium shadow-md hover:shadow-lg transition-shadow bg-green-700 hover:bg-green-800 text-white dark:bg-green-600 dark:hover:bg-green-700"
+                className="w-full h-11 rounded-lg text-[15px] font-medium shadow-md hover:shadow-lg transition-all bg-[#66DAB5] hover:bg-[#55c9a4] text-white"
                 disabled={loginMutation.isPending}
                 data-testid="button-login"
               >
