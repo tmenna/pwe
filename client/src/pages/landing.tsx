@@ -86,42 +86,43 @@ export default function LandingPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-background to-emerald-50/40 dark:from-blue-950/20 dark:via-background dark:to-emerald-950/10" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-primary/[0.03] blur-3xl" />
-      <div className="absolute bottom-0 right-0 w-[600px] h-[600px] rounded-full bg-emerald-500/[0.03] blur-3xl" />
+      <div className="absolute inset-0 bg-gradient-to-br from-green-50/70 via-background to-amber-50/30 dark:from-green-950/15 dark:via-background dark:to-amber-950/10" />
+      <div className="absolute top-0 left-1/3 w-[700px] h-[700px] rounded-full bg-green-600/[0.04] blur-3xl" />
+      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-amber-400/[0.04] blur-3xl" />
+      <div className="absolute top-1/3 right-0 w-[400px] h-[400px] rounded-full bg-rose-700/[0.02] blur-3xl" />
 
       <div className="relative z-10 w-full max-w-[440px]">
         <div className="mb-10 flex flex-col items-center text-center">
           <div className="relative mb-6">
-            <div className="absolute -inset-3 rounded-2xl bg-primary/[0.06] blur-xl" />
+            <div className="absolute -inset-4 rounded-2xl bg-green-600/[0.06] blur-xl" />
             <img
               src={pweLogo}
               alt="Partners with Ethiopia"
-              className="relative h-20 w-20 rounded-2xl object-cover shadow-lg ring-1 ring-white/50 dark:ring-white/10"
+              className="relative h-[88px] w-[88px] rounded-2xl object-cover shadow-lg ring-1 ring-green-700/10 dark:ring-green-400/10"
               data-testid="img-landing-logo"
             />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]" data-testid="text-landing-title">
+          <h1 className="text-2xl font-bold tracking-tight text-green-800 dark:text-green-200 sm:text-[28px]" data-testid="text-landing-title">
             Child Sponsorship
           </h1>
-          <h2 className="mt-1 text-lg font-semibold text-primary sm:text-xl" data-testid="text-landing-subtitle">
+          <h2 className="mt-1 text-lg font-semibold text-green-600 dark:text-green-400 sm:text-xl" data-testid="text-landing-subtitle">
             Records Portal
           </h2>
-          <div className="mt-3 flex items-center gap-2">
-            <div className="h-px w-8 bg-border" />
-            <Heart className="h-3.5 w-3.5 text-emerald-500" />
-            <div className="h-px w-8 bg-border" />
+          <div className="mt-3.5 flex items-center gap-2.5">
+            <div className="h-px w-10 bg-gradient-to-r from-transparent to-amber-400/50" />
+            <Heart className="h-3.5 w-3.5 text-rose-600/70" />
+            <div className="h-px w-10 bg-gradient-to-l from-transparent to-amber-400/50" />
           </div>
-          <p className="mt-3 text-sm text-muted-foreground max-w-[300px]">
+          <p className="mt-3 text-[13px] font-medium text-muted-foreground max-w-[300px] italic">
             Partners with Ethiopia — From Poverty to Possibility
           </p>
         </div>
 
-        <Card className="border-border/40 shadow-xl bg-card/80 backdrop-blur-sm">
+        <Card className="border-green-700/8 dark:border-green-400/8 shadow-xl bg-card/80 backdrop-blur-sm">
           <CardContent className="px-7 py-7 sm:px-8 sm:py-8">
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-                <Lock className="h-4 w-4 text-primary" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-600/10 dark:bg-green-500/10">
+                <Lock className="h-4 w-4 text-green-700 dark:text-green-400" />
               </div>
               <div>
                 <h3 className="text-[15px] font-semibold" data-testid="text-login-title">Welcome back</h3>
@@ -165,7 +166,7 @@ export default function LandingPage() {
               </div>
               <Button
                 type="submit"
-                className="w-full h-11 rounded-lg text-[15px] font-medium shadow-md hover:shadow-lg transition-shadow"
+                className="w-full h-11 rounded-lg text-[15px] font-medium shadow-md hover:shadow-lg transition-shadow bg-green-700 hover:bg-green-800 text-white dark:bg-green-600 dark:hover:bg-green-700"
                 disabled={loginMutation.isPending}
                 data-testid="button-login"
               >
