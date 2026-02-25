@@ -78,8 +78,8 @@ export function AppSidebar() {
             <img src={pweLogo} alt="Partners with Ethiopia" className="h-10 w-10 rounded-xl object-cover shadow-sm ring-1 ring-border/40" data-testid="img-sidebar-logo" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold tracking-tight" data-testid="text-app-name">PWE Portal</span>
-            <span className="text-[11px] text-muted-foreground/70">Child Sponsorship</span>
+            <span className="text-[15px] font-bold tracking-tight leading-tight" data-testid="text-app-name">PWE Portal</span>
+            <span className="text-[13px] font-medium text-primary/70 tracking-tight">Child Sponsorship</span>
           </div>
         </div>
       </SidebarHeader>
