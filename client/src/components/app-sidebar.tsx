@@ -73,13 +73,13 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="px-5 pt-6 pb-5">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <img src={pweLogo} alt="Partners with Ethiopia" className="h-10 w-10 rounded-xl object-cover shadow-sm ring-1 ring-border/40" data-testid="img-sidebar-logo" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[15px] font-bold tracking-tight leading-tight" data-testid="text-app-name">PWE Portal</span>
-            <span className="text-[13px] font-medium text-primary/70 tracking-tight">Child Sponsorship</span>
+        <div className="flex items-center gap-3.5">
+          <img src={pweLogo} alt="Partners with Ethiopia" className="h-11 w-11 rounded-xl object-cover shadow-md ring-1 ring-border/30" data-testid="img-sidebar-logo" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-base font-bold tracking-tight leading-tight text-foreground" data-testid="text-app-name">
+              <span className="text-[#2e8b57]">PWE</span> Portal
+            </span>
+            <span className="text-[12px] font-semibold tracking-wide uppercase text-[#66DAB5]">Child Sponsorship</span>
           </div>
         </div>
       </SidebarHeader>
