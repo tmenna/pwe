@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Users, LogOut, UserCog, Shield } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, UserCog, Shield, Building2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -37,14 +37,24 @@ const navItems = [
   },
 ];
 
-const adminNavItem = {
-  title: "User Management",
-  url: "/admin/users",
-  icon: UserCog,
-  activeIconBg: "bg-violet-50 dark:bg-violet-500/10",
-  activeIconColor: "text-violet-600 dark:text-violet-400",
-  inactiveIconColor: "text-slate-400 dark:text-slate-500",
-};
+const adminNavItems = [
+  {
+    title: "Organizations",
+    url: "/organizations",
+    icon: Building2,
+    activeIconBg: "bg-orange-50 dark:bg-orange-500/10",
+    activeIconColor: "text-orange-500 dark:text-orange-400",
+    inactiveIconColor: "text-slate-400 dark:text-slate-500",
+  },
+  {
+    title: "User Management",
+    url: "/admin/users",
+    icon: UserCog,
+    activeIconBg: "bg-violet-50 dark:bg-violet-500/10",
+    activeIconColor: "text-violet-600 dark:text-violet-400",
+    inactiveIconColor: "text-slate-400 dark:text-slate-500",
+  },
+];
 
 const roleBadgeStyles: Record<string, string> = {
   admin: "bg-violet-50 text-violet-700 border-violet-200/60 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
@@ -67,7 +77,7 @@ export function AppSidebar() {
     : "U";
 
   const allNavItems = user?.role === "admin"
-    ? [...navItems, adminNavItem]
+    ? [...navItems, ...adminNavItems]
     : navItems;
 
   return (

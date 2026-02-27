@@ -1,14 +1,14 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Users, FileText, Clock, UserCheck, UserX, Pause, Plus, ArrowRight, MapPin, Milestone, MessageSquare, RefreshCw } from "lucide-react";
+import { Users, FileText, Clock, UserCheck, UserX, Pause, Plus, ArrowRight, MapPin, Milestone, MessageSquare, RefreshCw, Heart } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import type { Child, TimelineEntry } from "@shared/schema";
+import type { Child, TimelineEntry, Message } from "@shared/schema";
 
 interface Stats {
   totalChildren: number;
@@ -16,6 +16,8 @@ interface Stats {
   paused: number;
   exited: number;
   totalDocuments: number;
+  sponsored: number;
+  nonSponsored: number;
 }
 
 function StatCard({
@@ -110,6 +112,11 @@ export default function Dashboard() {
     queryKey: ["/api/timeline/recent"],
   });
 
+  const { data: pendingMessages } = useQuery<Message[]>({
+    queryKey: ["/api/messages/pending"],
+    enabled: user?.role === "admin" || user?.role === "case_worker",
+  });
+
   const locations = useMemo(() => {
     if (!allChildren) return [];
     const locSet = new Set<string>();
@@ -140,6 +147,8 @@ export default function Dashboard() {
       paused: filteredChildren.filter((c) => c.status === "paused").length,
       exited: filteredChildren.filter((c) => c.status === "exited").length,
       totalDocuments: stats?.totalDocuments || 0,
+      sponsored: filteredChildren.filter((c) => c.isSponsored).length,
+      nonSponsored: filteredChildren.filter((c) => !c.isSponsored).length,
     };
   }, [stats, filteredChildren, locationFilter]);
 
@@ -198,7 +207,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
             <StatCard
               label="Total Children"
               value={filteredStats?.totalChildren || 0}
@@ -231,6 +240,16 @@ export default function Dashboard() {
               valueTint="text-amber-700 dark:text-amber-300"
               testId="stat-paused"
               href={`/children?status=paused${locationParam}`}
+            />
+            <StatCard
+              label="Sponsored"
+              value={filteredStats?.sponsored || 0}
+              icon={Heart}
+              accentColor="bg-pink-500"
+              iconBg="bg-pink-50 dark:bg-pink-500/10"
+              iconColor="text-pink-600 dark:text-pink-400"
+              valueTint="text-pink-700 dark:text-pink-300"
+              testId="stat-sponsored"
             />
           </div>
         )}
@@ -336,6 +355,35 @@ export default function Dashboard() {
             )}
           </Card>
         </div>
+
+        {(user?.role === "admin" || user?.role === "case_worker") && pendingMessages && pendingMessages.length > 0 && (
+          <Card className="mt-6 border-border/50 p-6">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h2 className="text-[15px] font-semibold flex items-center gap-2.5" data-testid="text-pending-messages">
+                <span className="inline-block w-1 h-5 rounded-full bg-amber-500" />
+                Pending Messages ({pendingMessages.length})
+              </h2>
+            </div>
+            <div className="space-y-2">
+              {pendingMessages.slice(0, 5).map((msg) => (
+                <Link key={msg.id} href={`/children/${msg.childId}`}>
+                  <div className="flex items-start gap-3 rounded-xl p-3 transition-all duration-150 hover:bg-primary/[0.04] border border-transparent hover:border-primary/10" data-testid={`pending-msg-${msg.id}`}>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10">
+                      <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <p className="text-sm font-medium truncate">From {msg.senderName}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{msg.content}</p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 text-[10px]">
+                      Pending
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { useRoute, useLocation, Link } from "wouter";
 import {
   ArrowLeft, Edit, Upload, Plus, FileText, Image, StickyNote,
   GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2, Camera, Check, X, Pencil,
-  Milestone, MessageSquare, RefreshCw,
+  Milestone, MessageSquare, RefreshCw, Heart, Mail, Send, MoreHorizontal,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { StatusBadge } from "./dashboard";
-import type { Child, Document, TimelineEntry } from "@shared/schema";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { Child, Document, TimelineEntry, Message } from "@shared/schema";
 
 function DocumentIcon({ type }: { type: string }) {
   switch (type) {
@@ -342,6 +345,69 @@ function InlineDescription({ child, canEdit }: { child: Child; canEdit: boolean 
   );
 }
 
+function SendMessageDialog({
+  onSend,
+  isPending,
+  onClose,
+}: {
+  onSend: (data: { senderName: string; senderRole: string; content: string }) => void;
+  isPending: boolean;
+  onClose: () => void;
+}) {
+  const [senderName, setSenderName] = useState("");
+  const [senderRole, setSenderRole] = useState("sponsor");
+  const [content, setContent] = useState("");
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Sender Name</Label>
+        <Input
+          className="h-11 rounded-lg border-border/60"
+          placeholder="Enter sender name"
+          value={senderName}
+          onChange={(e) => setSenderName(e.target.value)}
+          data-testid="input-sender-name"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Sender Role</Label>
+        <Select value={senderRole} onValueChange={setSenderRole}>
+          <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-sender-role">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sponsor">Sponsor</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Message</Label>
+        <Textarea
+          className="rounded-lg border-border/60"
+          placeholder="Write your message..."
+          rows={4}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          data-testid="input-message-content"
+        />
+      </div>
+      <div className="flex justify-end gap-3 pt-1">
+        <Button variant="outline" className="rounded-lg" onClick={onClose} data-testid="button-cancel-message">Cancel</Button>
+        <Button
+          className="rounded-lg shadow-sm"
+          onClick={() => onSend({ senderName, senderRole, content })}
+          disabled={isPending || !senderName || !content}
+          data-testid="button-confirm-message"
+        >
+          {isPending ? "Sending..." : "Send"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function ChildProfile() {
   const [, params] = useRoute("/children/:id");
   const [, navigate] = useLocation();
@@ -352,6 +418,8 @@ export default function ChildProfile() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const sponsorPhotoInputRef = useRef<HTMLInputElement>(null);
+  const [messageOpen, setMessageOpen] = useState(false);
   const canEdit = user?.role !== "read_only";
 
   const { data: child, isLoading } = useQuery<Child>({
@@ -366,6 +434,11 @@ export default function ChildProfile() {
 
   const { data: timeline, isLoading: timelineLoading } = useQuery<TimelineEntry[]>({
     queryKey: ["/api/children", childId, "timeline"],
+    enabled: !!childId,
+  });
+
+  const { data: messagesData, isLoading: messagesLoading } = useQuery<Message[]>({
+    queryKey: ["/api/children", childId, "messages"],
     enabled: !!childId,
   });
 
@@ -415,9 +488,84 @@ export default function ChildProfile() {
     },
   });
 
+  const sponsorPhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const urlRes = await fetch("/api/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!urlRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadURL, objectPath } = await urlRes.json();
+
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+      });
+      if (!putRes.ok) throw new Error("Failed to upload sponsor photo");
+
+      const res = await fetch(`/api/children/${childId}/sponsor-photo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ objectPath }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId] });
+      toast({ title: "Sponsor photo updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Sponsor photo upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sendMessageMutation = useMutation({
+    mutationFn: async (data: { senderName: string; senderRole: string; content: string }) => {
+      return apiRequest("POST", `/api/children/${childId}/messages`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
+      toast({ title: "Message sent" });
+      setMessageOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send message", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateMessageMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      return apiRequest("PATCH", `/api/messages/${id}`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
+      toast({ title: "Message status updated" });
+    },
+  });
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/messages/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
+      toast({ title: "Message deleted" });
+    },
+  });
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) photoMutation.mutate(file);
+  };
+
+  const handleSponsorPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) sponsorPhotoMutation.mutate(file);
   };
 
   if (isLoading) {
@@ -452,6 +600,7 @@ export default function ChildProfile() {
     { icon: BookOpen, label: "Program", value: child.programEnrollment },
     { icon: User, label: "Case Worker", value: child.assignedCaseWorker },
     { icon: User, label: "Sponsor(s)", value: child.assignedSponsors || "None assigned" },
+    { icon: Heart, label: "Sponsored", value: child.isSponsored ? "Yes" : "No", color: child.isSponsored ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground" },
   ];
 
   return (
@@ -488,6 +637,32 @@ export default function ChildProfile() {
                   data-testid="input-photo-upload"
                 />
               </div>
+              <div className="group relative">
+                <Avatar className="h-14 w-14 sm:h-16 sm:w-16" data-testid="img-sponsor-photo">
+                  <AvatarImage src={child.sponsorPhotoUrl || undefined} alt="Sponsor" />
+                  <AvatarFallback className="text-lg font-bold bg-rose-500/8 text-rose-500">
+                    <Heart className="h-5 w-5" />
+                  </AvatarFallback>
+                </Avatar>
+                {canEdit && (
+                  <button
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={() => sponsorPhotoInputRef.current?.click()}
+                    data-testid="button-upload-sponsor-photo"
+                  >
+                    <Camera className="h-5 w-5 text-white" />
+                  </button>
+                )}
+                <input
+                  ref={sponsorPhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleSponsorPhotoChange}
+                  data-testid="input-sponsor-photo-upload"
+                />
+                <p className="mt-1 text-center text-[10px] text-muted-foreground">Sponsor</p>
+              </div>
               <div>
                 <div className="flex flex-wrap items-center gap-3">
                   <h1 className="text-xl font-bold tracking-tight" data-testid="text-child-name">{child.fullName}</h1>
@@ -512,13 +687,13 @@ export default function ChildProfile() {
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {infoItems.map((item) => (
-              <div key={item.label} className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/70">
-                  <item.icon className="h-4 w-4 text-muted-foreground" />
+              <div key={item.label} className="flex items-start gap-3" data-testid={`info-${item.label.toLowerCase().replace(/[^a-z]/g, "-")}`}>
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.label === "Sponsored" ? (child.isSponsored ? "bg-pink-50 dark:bg-pink-500/10" : "bg-muted/70") : "bg-muted/70"}`}>
+                  <item.icon className={`h-4 w-4 ${item.label === "Sponsored" ? (child.isSponsored ? "text-pink-500" : "text-muted-foreground") : "text-muted-foreground"}`} />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{item.label}</p>
-                  <p className="text-sm font-medium capitalize mt-0.5">{item.value}</p>
+                  <p className={`text-sm font-medium capitalize mt-0.5 ${"color" in item && item.color ? item.color : ""}`}>{item.value}</p>
                 </div>
               </div>
             ))}
@@ -534,6 +709,10 @@ export default function ChildProfile() {
             <TabsTrigger value="timeline" className="rounded-md" data-testid="tab-timeline">
               <Clock className="mr-2 h-4 w-4" />
               Timeline
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="rounded-md" data-testid="tab-messages">
+              <Mail className="mr-2 h-4 w-4" />
+              Messages
             </TabsTrigger>
           </TabsList>
 
@@ -717,6 +896,121 @@ export default function ChildProfile() {
                     </Card>
                   </div>
                 ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="messages" className="mt-5">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
+                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
+                Messages
+              </h2>
+              {canEdit && (
+                <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="rounded-lg shadow-sm" data-testid="button-send-message">
+                      <Send className="mr-2 h-4 w-4" />
+                      Send Message
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Send Message</DialogTitle>
+                    </DialogHeader>
+                    <SendMessageDialog
+                      onSend={(data) => sendMessageMutation.mutate(data)}
+                      isPending={sendMessageMutation.isPending}
+                      onClose={() => setMessageOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+
+            {messagesLoading ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+              </div>
+            ) : !messagesData?.length ? (
+              <Card className="flex flex-col items-center justify-center p-14 text-center border-border/50">
+                <Mail className="mb-3 h-10 w-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">No messages yet</p>
+                {canEdit && (
+                  <Button variant="outline" size="sm" className="mt-4 rounded-lg" onClick={() => setMessageOpen(true)} data-testid="button-send-first-message">
+                    Send First Message
+                  </Button>
+                )}
+              </Card>
+            ) : (
+              <div className="space-y-2.5">
+                {messagesData.map((msg) => {
+                  const roleColor = msg.senderRole === "sponsor" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-blue-500/10 text-blue-700 dark:text-blue-400";
+                  const statusColors: Record<string, string> = {
+                    pending: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                    delivered: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+                    read: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+                  };
+                  const statusColor = statusColors[msg.status] || statusColors.pending;
+
+                  return (
+                    <Card key={msg.id} className="p-4 border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`message-item-${msg.id}`}>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium" data-testid={`text-sender-${msg.id}`}>{msg.senderName}</span>
+                            <Badge variant="secondary" className={`text-xs rounded-md ${roleColor}`} data-testid={`badge-role-${msg.id}`}>
+                              {msg.senderRole}
+                            </Badge>
+                            <Badge variant="secondary" className={`text-xs rounded-md ${statusColor}`} data-testid={`badge-status-${msg.id}`}>
+                              {msg.status}
+                            </Badge>
+                          </div>
+                          <p className="mt-2 text-sm text-muted-foreground" data-testid={`text-message-content-${msg.id}`}>{msg.content}</p>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : ""}
+                          </p>
+                        </div>
+                        {canEdit && (
+                          <div className="flex items-center gap-1">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" data-testid={`button-message-actions-${msg.id}`}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {msg.status !== "delivered" && (
+                                  <DropdownMenuItem
+                                    onClick={() => updateMessageMutation.mutate({ id: msg.id, status: "delivered" })}
+                                    data-testid={`button-mark-delivered-${msg.id}`}
+                                  >
+                                    Mark as Delivered
+                                  </DropdownMenuItem>
+                                )}
+                                {msg.status !== "read" && (
+                                  <DropdownMenuItem
+                                    onClick={() => updateMessageMutation.mutate({ id: msg.id, status: "read" })}
+                                    data-testid={`button-mark-read-${msg.id}`}
+                                  >
+                                    Mark as Read
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => deleteMessageMutation.mutate(msg.id)}
+                                  data-testid={`button-delete-message-${msg.id}`}
+                                >
+                                  Delete Message
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>

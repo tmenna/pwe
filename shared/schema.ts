@@ -1,9 +1,16 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, serial, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export * from "./models/auth";
+
+export const organizations = pgTable("organizations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
 export const children = pgTable("children", {
   id: serial("id").primaryKey(),
@@ -18,6 +25,9 @@ export const children = pgTable("children", {
   status: varchar("status", { length: 20 }).notNull().default("active"),
   photoUrl: text("photo_url"),
   description: text("description"),
+  isSponsored: boolean("is_sponsored").notNull().default(false),
+  sponsorPhotoUrl: text("sponsor_photo_url"),
+  organizationId: integer("organization_id").references(() => organizations.id, { onDelete: "set null" }),
 });
 
 export const documents = pgTable("documents", {
@@ -41,9 +51,25 @@ export const timelineEntries = pgTable("timeline_entries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const childrenRelations = relations(children, ({ many }) => ({
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  childId: integer("child_id").notNull().references(() => children.id, { onDelete: "cascade" }),
+  senderName: text("sender_name").notNull(),
+  senderRole: varchar("sender_role", { length: 20 }).notNull(),
+  content: text("content").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  children: many(children),
+}));
+
+export const childrenRelations = relations(children, ({ many, one }) => ({
   documents: many(documents),
   timelineEntries: many(timelineEntries),
+  messages: many(messages),
+  organization: one(organizations, { fields: [children.organizationId], references: [organizations.id] }),
 }));
 
 export const documentsRelations = relations(documents, ({ one }) => ({
@@ -53,6 +79,15 @@ export const documentsRelations = relations(documents, ({ one }) => ({
 export const timelineEntriesRelations = relations(timelineEntries, ({ one }) => ({
   child: one(children, { fields: [timelineEntries.childId], references: [children.id] }),
 }));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  child: one(children, { fields: [messages.childId], references: [children.id] }),
+}));
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+});
 
 export const insertChildSchema = createInsertSchema(children).omit({
   id: true,
@@ -68,9 +103,18 @@ export const insertTimelineEntrySchema = createInsertSchema(timelineEntries).omi
   createdAt: true,
 });
 
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Organization = typeof organizations.$inferSelect;
 export type InsertChild = z.infer<typeof insertChildSchema>;
 export type Child = typeof children.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertTimelineEntry = z.infer<typeof insertTimelineEntrySchema>;
 export type TimelineEntry = typeof timelineEntries.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = typeof messages.$inferSelect;

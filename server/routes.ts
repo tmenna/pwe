@@ -27,6 +27,19 @@ const isNotReadOnly: RequestHandler = async (req: any, res, next) => {
   }
 };
 
+const isAdmin: RequestHandler = async (req: any, res, next) => {
+  try {
+    const user = req.currentUser;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (user.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    next();
+  } catch {
+    next();
+  }
+};
+
 function getUserName(req: any): string {
   const user = req.currentUser;
   if (user?.firstName) return user.firstName;
@@ -41,9 +54,63 @@ export async function registerRoutes(
   registerAuthRoutes(app);
   registerObjectStorageRoutes(app, isAuthenticated);
 
-  app.get("/api/children", isAuthenticated, async (_req, res) => {
+  // --- Organizations ---
+  app.get("/api/organizations", isAuthenticated, async (_req, res) => {
     try {
-      const result = await storage.getChildren();
+      const result = await storage.getOrganizations();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/organizations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const org = await storage.getOrganization(parseInt(req.params.id));
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      res.json(org);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/organizations", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { name, description } = req.body;
+      if (!name) return res.status(400).json({ message: "Name is required" });
+      const org = await storage.createOrganization({ name, description: description || null });
+      res.status(201).json(org);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/organizations/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name, description } = req.body;
+      const updated = await storage.updateOrganization(id, { name, description });
+      if (!updated) return res.status(404).json({ message: "Organization not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/organizations/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteOrganization(parseInt(req.params.id));
+      res.json({ message: "Deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Children ---
+  app.get("/api/children", isAuthenticated, async (req, res) => {
+    try {
+      const orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
+      const result = await storage.getChildren(orgId);
       res.json(result);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -118,6 +185,22 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/children/:id/sponsor-photo", isAuthenticated, isNotReadOnly, express.json(), async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const child = await storage.getChild(id);
+      if (!child) return res.status(404).json({ message: "Child not found" });
+
+      const { objectPath } = req.body;
+      if (!objectPath) return res.status(400).json({ message: "No objectPath provided" });
+
+      const updated = await storage.updateChild(id, { sponsorPhotoUrl: objectPath });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/children/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
     try {
       await storage.deleteChild(parseInt(req.params.id));
@@ -127,6 +210,7 @@ export async function registerRoutes(
     }
   });
 
+  // --- Documents ---
   app.get("/api/children/:id/documents", isAuthenticated, async (req, res) => {
     try {
       const docs = await storage.getDocumentsByChild(parseInt(req.params.id));
@@ -204,6 +288,7 @@ export async function registerRoutes(
     }
   });
 
+  // --- Timeline ---
   app.get("/api/children/:id/timeline", isAuthenticated, async (req, res) => {
     try {
       const entries = await storage.getTimelineByChild(parseInt(req.params.id));
@@ -254,9 +339,138 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/stats", isAuthenticated, async (_req, res) => {
+  // --- Messages ---
+  app.get("/api/children/:id/messages", isAuthenticated, async (req, res) => {
     try {
-      const stats = await storage.getStats();
+      const msgs = await storage.getMessagesByChild(parseInt(req.params.id));
+      res.json(msgs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/children/:id/messages", isAuthenticated, isNotReadOnly, async (req: any, res) => {
+    try {
+      const childId = parseInt(req.params.id);
+      const child = await storage.getChild(childId);
+      if (!child) return res.status(404).json({ message: "Child not found" });
+
+      const { senderName, senderRole, content } = req.body;
+      if (!senderName || !content) return res.status(400).json({ message: "senderName and content are required" });
+      if (!["sponsor", "admin"].includes(senderRole)) return res.status(400).json({ message: "senderRole must be 'sponsor' or 'admin'" });
+
+      const msg = await storage.createMessage({
+        childId,
+        senderName,
+        senderRole,
+        content,
+        status: "pending",
+      });
+      res.status(201).json(msg);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/messages/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!["pending", "delivered", "read"].includes(status)) {
+        return res.status(400).json({ message: "Status must be pending, delivered, or read" });
+      }
+      const updated = await storage.updateMessageStatus(parseInt(req.params.id), status);
+      if (!updated) return res.status(404).json({ message: "Message not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/messages/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
+    try {
+      await storage.deleteMessage(parseInt(req.params.id));
+      res.json({ message: "Deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/messages/pending", isAuthenticated, async (_req, res) => {
+    try {
+      const msgs = await storage.getPendingMessages();
+      res.json(msgs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Export ---
+  app.post("/api/export/children", isAuthenticated, async (req, res) => {
+    try {
+      const { fields, organizationId, format } = req.body;
+      if (!fields || !Array.isArray(fields) || fields.length === 0) {
+        return res.status(400).json({ message: "At least one field must be selected" });
+      }
+
+      const orgId = organizationId ? parseInt(organizationId) : undefined;
+      const allChildren = await storage.getChildren(orgId);
+
+      const fieldMap: Record<string, { label: string; getter: (c: any) => string }> = {
+        childId: { label: "Child ID", getter: (c) => c.childId },
+        fullName: { label: "Full Name", getter: (c) => c.fullName },
+        age: { label: "Age", getter: (c) => String(c.age) },
+        gender: { label: "Gender", getter: (c) => c.gender },
+        location: { label: "Location", getter: (c) => c.location },
+        programEnrollment: { label: "Program", getter: (c) => c.programEnrollment },
+        assignedSponsors: { label: "Sponsor(s)", getter: (c) => c.assignedSponsors || "" },
+        assignedCaseWorker: { label: "Case Worker", getter: (c) => c.assignedCaseWorker },
+        status: { label: "Status", getter: (c) => c.status },
+        isSponsored: { label: "Sponsored", getter: (c) => c.isSponsored ? "Yes" : "No" },
+      };
+
+      const validFields = fields.filter((f: string) => fieldMap[f]);
+      const headers = validFields.map((f: string) => fieldMap[f].label);
+      const rows = allChildren.map((child) =>
+        validFields.map((f: string) => fieldMap[f].getter(child))
+      );
+
+      if (format === "csv") {
+        const escapeCsv = (val: string) => {
+          if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+            return `"${val.replace(/"/g, '""')}"`;
+          }
+          return val;
+        };
+        const csvContent = [
+          headers.map(escapeCsv).join(","),
+          ...rows.map((row) => row.map(escapeCsv).join(",")),
+        ].join("\n");
+
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", "attachment; filename=children-export.csv");
+        res.send(csvContent);
+      } else {
+        const XLSX = await import("xlsx");
+        const wsData = [headers, ...rows];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Children");
+        const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", "attachment; filename=children-export.xlsx");
+        res.send(buffer);
+      }
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Stats ---
+  app.get("/api/stats", isAuthenticated, async (req, res) => {
+    try {
+      const orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
+      const stats = await storage.getStats(orgId);
       res.json(stats);
     } catch (error: any) {
       res.status(500).json({ message: error.message });

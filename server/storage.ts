@@ -1,14 +1,22 @@
 import {
-  children, documents, timelineEntries,
+  children, documents, timelineEntries, organizations, messages,
   type Child, type InsertChild,
   type Document, type InsertDocument,
   type TimelineEntry, type InsertTimelineEntry,
+  type Organization, type InsertOrganization,
+  type Message, type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, count } from "drizzle-orm";
+import { eq, desc, sql, count, and } from "drizzle-orm";
 
 export interface IStorage {
-  getChildren(): Promise<Child[]>;
+  getOrganizations(): Promise<Organization[]>;
+  getOrganization(id: number): Promise<Organization | undefined>;
+  createOrganization(org: InsertOrganization): Promise<Organization>;
+  updateOrganization(id: number, org: Partial<InsertOrganization>): Promise<Organization | undefined>;
+  deleteOrganization(id: number): Promise<void>;
+
+  getChildren(organizationId?: number): Promise<Child[]>;
   getChild(id: number): Promise<Child | undefined>;
   createChild(child: InsertChild): Promise<Child>;
   updateChild(id: number, child: Partial<InsertChild>): Promise<Child | undefined>;
@@ -24,11 +32,43 @@ export interface IStorage {
   createTimelineEntry(entry: InsertTimelineEntry): Promise<TimelineEntry>;
   updateTimelineEntry(id: number, data: { description: string }): Promise<TimelineEntry | undefined>;
 
-  getStats(): Promise<{ totalChildren: number; active: number; paused: number; exited: number; totalDocuments: number }>;
+  getMessagesByChild(childId: number): Promise<Message[]>;
+  getPendingMessages(): Promise<Message[]>;
+  createMessage(msg: InsertMessage): Promise<Message>;
+  updateMessageStatus(id: number, status: string): Promise<Message | undefined>;
+  deleteMessage(id: number): Promise<void>;
+
+  getStats(organizationId?: number): Promise<{ totalChildren: number; active: number; paused: number; exited: number; totalDocuments: number; sponsored: number; nonSponsored: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getChildren(): Promise<Child[]> {
+  async getOrganizations(): Promise<Organization[]> {
+    return db.select().from(organizations).orderBy(desc(organizations.id));
+  }
+
+  async getOrganization(id: number): Promise<Organization | undefined> {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return org || undefined;
+  }
+
+  async createOrganization(org: InsertOrganization): Promise<Organization> {
+    const [created] = await db.insert(organizations).values(org).returning();
+    return created;
+  }
+
+  async updateOrganization(id: number, org: Partial<InsertOrganization>): Promise<Organization | undefined> {
+    const [updated] = await db.update(organizations).set(org).where(eq(organizations.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteOrganization(id: number): Promise<void> {
+    await db.delete(organizations).where(eq(organizations.id, id));
+  }
+
+  async getChildren(organizationId?: number): Promise<Child[]> {
+    if (organizationId) {
+      return db.select().from(children).where(eq(children.organizationId, organizationId)).orderBy(desc(children.id));
+    }
     return db.select().from(children).orderBy(desc(children.id));
   }
 
@@ -87,8 +127,35 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  async getStats() {
-    const allChildren = await db.select().from(children);
+  async getMessagesByChild(childId: number): Promise<Message[]> {
+    return db.select().from(messages).where(eq(messages.childId, childId)).orderBy(desc(messages.createdAt));
+  }
+
+  async getPendingMessages(): Promise<Message[]> {
+    return db.select().from(messages).where(eq(messages.status, "pending")).orderBy(desc(messages.createdAt));
+  }
+
+  async createMessage(msg: InsertMessage): Promise<Message> {
+    const [created] = await db.insert(messages).values(msg).returning();
+    return created;
+  }
+
+  async updateMessageStatus(id: number, status: string): Promise<Message | undefined> {
+    const [updated] = await db.update(messages).set({ status }).where(eq(messages.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteMessage(id: number): Promise<void> {
+    await db.delete(messages).where(eq(messages.id, id));
+  }
+
+  async getStats(organizationId?: number) {
+    let allChildren: Child[];
+    if (organizationId) {
+      allChildren = await db.select().from(children).where(eq(children.organizationId, organizationId));
+    } else {
+      allChildren = await db.select().from(children);
+    }
     const [docCount] = await db.select({ count: count() }).from(documents);
     return {
       totalChildren: allChildren.length,
@@ -96,6 +163,8 @@ export class DatabaseStorage implements IStorage {
       paused: allChildren.filter((c) => c.status === "paused").length,
       exited: allChildren.filter((c) => c.status === "exited").length,
       totalDocuments: Number(docCount.count),
+      sponsored: allChildren.filter((c) => c.isSponsored).length,
+      nonSponsored: allChildren.filter((c) => !c.isSponsored).length,
     };
   }
 }

@@ -9,11 +9,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient as qc } from "@/lib/queryClient";
-import type { Child } from "@shared/schema";
+import type { Child, Organization } from "@shared/schema";
 
 const childFormSchema = z.object({
   childId: z.string().min(1, "Child ID is required"),
@@ -23,9 +24,11 @@ const childFormSchema = z.object({
   location: z.string().min(1, "Location is required"),
   programEnrollment: z.string().min(1, "Program enrollment is required"),
   assignedSponsors: z.string().optional(),
+  isSponsored: z.boolean().default(false),
   assignedCaseWorker: z.string().min(1, "Case worker is required"),
   status: z.string().min(1, "Status is required"),
   description: z.string().optional(),
+  organizationId: z.coerce.number().optional().nullable(),
 });
 
 type ChildFormValues = z.infer<typeof childFormSchema>;
@@ -56,6 +59,10 @@ export default function ChildForm() {
     enabled: !!isEdit && !!childDbId,
   });
 
+  const { data: organizations } = useQuery<Organization[]>({
+    queryKey: ["/api/organizations"],
+  });
+
   const form = useForm<ChildFormValues>({
     resolver: zodResolver(childFormSchema),
     defaultValues: {
@@ -66,9 +73,11 @@ export default function ChildForm() {
       location: "",
       programEnrollment: "",
       assignedSponsors: "",
+      isSponsored: false,
       assignedCaseWorker: "",
       status: "active",
       description: "",
+      organizationId: null,
     },
     values: existingChild
       ? {
@@ -79,9 +88,11 @@ export default function ChildForm() {
           location: existingChild.location,
           programEnrollment: existingChild.programEnrollment,
           assignedSponsors: existingChild.assignedSponsors || "",
+          isSponsored: existingChild.isSponsored ?? false,
           assignedCaseWorker: existingChild.assignedCaseWorker,
           status: existingChild.status,
           description: existingChild.description || "",
+          organizationId: existingChild.organizationId ?? null,
         }
       : undefined,
   });
@@ -239,6 +250,18 @@ export default function ChildForm() {
                 </FormItem>
               )} />
 
+              <FormField control={form.control} name="isSponsored" render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-lg border border-border/60 p-4">
+                  <div>
+                    <FormLabel className="text-sm font-medium">Sponsored Status</FormLabel>
+                    <p className="text-xs text-muted-foreground mt-0.5">Mark this child as currently sponsored</p>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-is-sponsored" />
+                  </FormControl>
+                </FormItem>
+              )} />
+
               <FormField control={form.control} name="assignedCaseWorker" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm font-medium">Assigned Case Worker</FormLabel>
@@ -248,6 +271,31 @@ export default function ChildForm() {
                   <FormMessage />
                 </FormItem>
               )} />
+
+              {organizations && organizations.length > 0 && (
+                <FormField control={form.control} name="organizationId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Organization</FormLabel>
+                    <Select
+                      onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))}
+                      value={field.value ? String(field.value) : "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-organization">
+                          <SelectValue placeholder="Select organization" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No Organization</SelectItem>
+                        {organizations.map((org) => (
+                          <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
 
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem>

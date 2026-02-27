@@ -17,6 +17,7 @@ import ChildrenList from "@/pages/children-list";
 import ChildForm from "@/pages/child-form";
 import ChildProfile from "@/pages/child-profile";
 import AdminUsers from "@/pages/admin-users";
+import Organizations from "@/pages/organizations";
 
 function AuthenticatedLayout() {
   const style = {
@@ -40,6 +41,7 @@ function AuthenticatedLayout() {
               <Route path="/children/new" component={ChildForm} />
               <Route path="/children/:id/edit" component={ChildForm} />
               <Route path="/children/:id" component={ChildProfile} />
+              <Route path="/organizations" component={Organizations} />
               <Route path="/admin/users" component={AdminUsers} />
               <Route component={NotFound} />
             </Switch>

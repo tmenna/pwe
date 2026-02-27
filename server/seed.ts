@@ -48,6 +48,7 @@ export async function seedDatabase() {
       assignedSponsors: "Johnson Family",
       assignedCaseWorker: "Dawit Bekele",
       status: "active",
+      isSponsored: true,
     },
     {
       childId: "CHD-002",
@@ -59,6 +60,7 @@ export async function seedDatabase() {
       assignedSponsors: "Martin & Claire Dubois",
       assignedCaseWorker: "Tigist Hailu",
       status: "active",
+      isSponsored: true,
     },
     {
       childId: "CHD-003",
