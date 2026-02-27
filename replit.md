@@ -35,13 +35,13 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - Dashboard with statistics overview (total, active, paused, sponsored counts), org filter, and pending messages
 - Custom username/password login (no signup - admin creates users)
 - Admin user management panel (create, edit, delete users, assign roles and organizations)
-- Role-based access control: admin, case_worker, read_only
+- Role-based access control: admin, case_worker, read_only, sponsor
 
 ## Auth System
 - Login via username/password (POST /api/login), no signup form
 - Default admin account seeded: username "admin", password "admin123"
 - Sessions stored in PostgreSQL via connect-pg-simple
-- Roles: admin (full access + user management + org management), case_worker (CRUD on children/docs/timeline/messages), read_only (view only)
+- Roles: admin (full access + user management + org management), case_worker (CRUD on children/docs/timeline/messages), read_only (view only), sponsor (view assigned children + send messages only)
 - Admin panel at /admin/users for managing user accounts
 
 ## Project Structure
@@ -59,7 +59,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 
 ## Database Tables
 - `organizations` - id, name, description, createdAt
-- `children` - id, childId, fullName, age, gender, location, programEnrollment, assignedSponsors, assignedCaseWorker, status, photoUrl, description, isSponsored, sponsorPhotoUrl, organizationId (FK)
+- `children` - id, childId, fullName, age, gender, location, programEnrollment, assignedSponsors, assignedCaseWorker, status, photoUrl, description, isSponsored, sponsorPhotoUrl, organizationId (FK), sponsorUserId (varchar, links to users.id)
 - `documents` - id, childId (FK), documentType, description, fileName, fileUrl, uploadedBy, uploadedAt
 - `timeline_entries` - id, childId (FK), title, description, entryType, createdBy, createdAt
 - `messages` - id, childId (FK), senderName, senderRole, content, status, createdAt

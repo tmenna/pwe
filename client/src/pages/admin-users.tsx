@@ -29,12 +29,14 @@ const roleLabels: Record<string, string> = {
   admin: "Administrator",
   case_worker: "Case Worker",
   read_only: "Read Only",
+  sponsor: "Sponsor",
 };
 
 const roleBadgeColors: Record<string, string> = {
   admin: "bg-primary/10 text-primary border-primary/20",
   case_worker: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/25",
   read_only: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/25",
+  sponsor: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/25",
 };
 
 export default function AdminUsers() {
@@ -278,7 +280,7 @@ export default function AdminUsers() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Role</Label>
-                <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}>
+                <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v, organizationId: v === "sponsor" ? "" : f.organizationId }))}>
                   <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-new-role">
                     <SelectValue />
                   </SelectTrigger>
@@ -286,10 +288,14 @@ export default function AdminUsers() {
                     <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="case_worker">Case Worker</SelectItem>
                     <SelectItem value="read_only">Read Only</SelectItem>
+                    <SelectItem value="sponsor">Sponsor</SelectItem>
                   </SelectContent>
                 </Select>
+                {form.role === "sponsor" && (
+                  <p className="text-xs text-muted-foreground">Sponsors can only view their assigned children and send messages</p>
+                )}
               </div>
-              {organizations && organizations.length > 0 && (
+              {form.role !== "sponsor" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Organization</Label>
                   <Select value={form.organizationId} onValueChange={(v) => setForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}>
@@ -362,7 +368,7 @@ export default function AdminUsers() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Role</Label>
-                <Select value={editForm.role} onValueChange={(v) => setEditForm((f) => ({ ...f, role: v }))}>
+                <Select value={editForm.role} onValueChange={(v) => setEditForm((f) => ({ ...f, role: v, organizationId: v === "sponsor" ? "" : f.organizationId }))}>
                   <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-edit-role">
                     <SelectValue />
                   </SelectTrigger>
@@ -370,10 +376,14 @@ export default function AdminUsers() {
                     <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="case_worker">Case Worker</SelectItem>
                     <SelectItem value="read_only">Read Only</SelectItem>
+                    <SelectItem value="sponsor">Sponsor</SelectItem>
                   </SelectContent>
                 </Select>
+                {editForm.role === "sponsor" && (
+                  <p className="text-xs text-muted-foreground">Sponsors can only view their assigned children and send messages</p>
+                )}
               </div>
-              {organizations && organizations.length > 0 && (
+              {editForm.role !== "sponsor" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Organization</Label>
                   <Select value={editForm.organizationId || "none"} onValueChange={(v) => setEditForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}>

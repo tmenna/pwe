@@ -16,6 +16,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient as qc } from "@/lib/queryClient";
 import type { Child, Organization } from "@shared/schema";
 
+type SafeUser = {
+  id: string;
+  username: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+};
+
 const childFormSchema = z.object({
   childId: z.string().min(1, "Child ID is required"),
   fullName: z.string().min(1, "Full name is required"),
@@ -29,6 +37,7 @@ const childFormSchema = z.object({
   status: z.string().min(1, "Status is required"),
   description: z.string().optional(),
   organizationId: z.coerce.number().optional().nullable(),
+  sponsorUserId: z.string().optional().nullable(),
 });
 
 type ChildFormValues = z.infer<typeof childFormSchema>;
@@ -63,6 +72,13 @@ export default function ChildForm() {
     queryKey: ["/api/organizations"],
   });
 
+  const { data: allUsers } = useQuery<SafeUser[]>({
+    queryKey: ["/api/users"],
+    enabled: user?.role === "admin",
+  });
+
+  const sponsorUsers = allUsers?.filter((u) => u.role === "sponsor") || [];
+
   const form = useForm<ChildFormValues>({
     resolver: zodResolver(childFormSchema),
     defaultValues: {
@@ -78,6 +94,7 @@ export default function ChildForm() {
       status: "active",
       description: "",
       organizationId: null,
+      sponsorUserId: null,
     },
     values: existingChild
       ? {
@@ -93,6 +110,7 @@ export default function ChildForm() {
           status: existingChild.status,
           description: existingChild.description || "",
           organizationId: existingChild.organizationId ?? null,
+          sponsorUserId: existingChild.sponsorUserId ?? null,
         }
       : undefined,
   });
@@ -261,6 +279,38 @@ export default function ChildForm() {
                   </FormControl>
                 </FormItem>
               )} />
+
+              {user?.role === "admin" && (
+                <FormField control={form.control} name="sponsorUserId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Assigned Sponsor Account</FormLabel>
+                    <Select
+                      onValueChange={(val) => field.onChange(val === "none" ? null : val)}
+                      value={field.value || "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-sponsor-user">
+                          <SelectValue placeholder="No sponsor account assigned" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No sponsor account</SelectItem>
+                        {sponsorUsers.map((su) => (
+                          <SelectItem key={su.id} value={su.id}>
+                            {su.firstName && su.lastName ? `${su.firstName} ${su.lastName}` : su.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {sponsorUsers.length > 0
+                        ? "Link a sponsor user account so they can view this child and send messages"
+                        : "No sponsor accounts exist yet. Create one in User Management first."}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
 
               <FormField control={form.control} name="assignedCaseWorker" render={({ field }) => (
                 <FormItem>

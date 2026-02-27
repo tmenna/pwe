@@ -28,6 +28,7 @@ export const children = pgTable("children", {
   isSponsored: boolean("is_sponsored").notNull().default(false),
   sponsorPhotoUrl: text("sponsor_photo_url"),
   organizationId: integer("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+  sponsorUserId: varchar("sponsor_user_id"),
 });
 
 export const documents = pgTable("documents", {

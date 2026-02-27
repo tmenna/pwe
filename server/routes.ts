@@ -18,8 +18,8 @@ const isNotReadOnly: RequestHandler = async (req: any, res, next) => {
   try {
     const user = req.currentUser;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-    if (user.role === "read_only") {
-      return res.status(403).json({ message: "Read-only users cannot modify records" });
+    if (user.role === "read_only" || user.role === "sponsor") {
+      return res.status(403).json({ message: "You do not have permission to modify records" });
     }
     next();
   } catch {
@@ -48,11 +48,17 @@ function getUserName(req: any): string {
 
 function getUserOrgId(req: any): number | null {
   const user = req.currentUser;
-  if (!user || user.role === "admin") return null;
+  if (!user || user.role === "admin" || user.role === "sponsor") return null;
   return user.organizationId || null;
 }
 
-function canAccessChild(req: any, child: { organizationId: number | null }): boolean {
+function canAccessChild(req: any, child: { organizationId: number | null; sponsorUserId?: string | null }): boolean {
+  const user = req.currentUser;
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  if (user.role === "sponsor") {
+    return child.sponsorUserId === user.id;
+  }
   const userOrgId = getUserOrgId(req);
   if (userOrgId === null) return true;
   return child.organizationId === userOrgId;
@@ -121,6 +127,11 @@ export async function registerRoutes(
   // --- Children ---
   app.get("/api/children", isAuthenticated, async (req: any, res) => {
     try {
+      if (req.currentUser?.role === "sponsor") {
+        const all = await storage.getChildren();
+        const filtered = all.filter((c) => c.sponsorUserId === req.currentUser.id);
+        return res.json(filtered);
+      }
       let orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
       if (req.currentUser?.role !== "admin" && req.currentUser?.organizationId) {
         orgId = req.currentUser.organizationId;
@@ -390,14 +401,22 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/children/:id/messages", isAuthenticated, isNotReadOnly, async (req: any, res) => {
+  app.post("/api/children/:id/messages", isAuthenticated, async (req: any, res) => {
     try {
+      const user = req.currentUser;
+      if (!user) return res.status(401).json({ message: "Unauthorized" });
+      if (user.role === "read_only") return res.status(403).json({ message: "Read-only users cannot send messages" });
+
       const childId = parseInt(req.params.id);
       const child = await storage.getChild(childId);
       if (!child) return res.status(404).json({ message: "Child not found" });
       if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
 
-      const { senderName, senderRole, content } = req.body;
+      let { senderName, senderRole, content } = req.body;
+      if (user.role === "sponsor") {
+        senderName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username;
+        senderRole = "sponsor";
+      }
       if (!senderName || !content) return res.status(400).json({ message: "senderName and content are required" });
       if (!["sponsor", "admin"].includes(senderRole)) return res.status(400).json({ message: "senderRole must be 'sponsor' or 'admin'" });
 
@@ -514,6 +533,19 @@ export async function registerRoutes(
   // --- Stats ---
   app.get("/api/stats", isAuthenticated, async (req: any, res) => {
     try {
+      if (req.currentUser?.role === "sponsor") {
+        const all = await storage.getChildren();
+        const assigned = all.filter((c) => c.sponsorUserId === req.currentUser.id);
+        return res.json({
+          totalChildren: assigned.length,
+          active: assigned.filter((c) => c.status === "active").length,
+          paused: assigned.filter((c) => c.status === "paused").length,
+          exited: assigned.filter((c) => c.status === "exited").length,
+          totalDocuments: 0,
+          sponsored: assigned.filter((c) => c.isSponsored).length,
+          nonSponsored: assigned.filter((c) => !c.isSponsored).length,
+        });
+      }
       let orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
       if (req.currentUser?.role !== "admin" && req.currentUser?.organizationId) {
         orgId = req.currentUser.organizationId;

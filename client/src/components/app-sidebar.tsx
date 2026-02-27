@@ -60,12 +60,14 @@ const roleBadgeStyles: Record<string, string> = {
   admin: "bg-violet-50 text-violet-700 border-violet-200/60 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
   case_worker: "bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20",
   read_only: "bg-slate-50 text-slate-600 border-slate-200/60 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/20",
+  sponsor: "bg-pink-50 text-pink-700 border-pink-200/60 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/20",
 };
 
 const roleLabels: Record<string, string> = {
   admin: "Admin",
   case_worker: "Case Worker",
   read_only: "Read Only",
+  sponsor: "Sponsor",
 };
 
 export function AppSidebar() {
