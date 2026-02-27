@@ -1,10 +1,21 @@
 import { db } from "./db";
-import { children, documents, timelineEntries } from "@shared/schema";
+import { children, documents, timelineEntries, organizations } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export async function seedDatabase() {
+  const existingOrgs = await db.select({ count: sql<number>`count(*)` }).from(organizations);
+  if (Number(existingOrgs[0].count) === 0) {
+    console.log("Seeding organizations...");
+    await db.insert(organizations).values([
+      { name: "Bright Future", description: null },
+      { name: "I Care", description: null },
+      { name: "Hope Sponsorship", description: null },
+    ]);
+    console.log("Organizations seeded (Bright Future, I Care, Hope Sponsorship)");
+  }
+
   const existingUsers = await db.select({ count: sql<number>`count(*)` }).from(users);
   if (Number(existingUsers[0].count) === 0) {
     console.log("Seeding default admin user...");
