@@ -1,13 +1,16 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Users, FileText, Clock, UserCheck, UserX, Pause, Plus, ArrowRight, Building2, Milestone, MessageSquare, RefreshCw, Heart } from "lucide-react";
+import { Users, FileText, Clock, UserCheck, UserX, Pause, Plus, ArrowRight, Building2, Milestone, MessageSquare, RefreshCw, Heart, Trash2, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import type { Child, Organization, TimelineEntry, Message } from "@shared/schema";
 
 interface Stats {
@@ -97,10 +100,28 @@ const timelineIconColors: Record<string, string> = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const qClient = useQueryClient();
   const canEdit = user?.role !== "read_only";
   const isAdmin = user?.role === "admin";
   const userOrgId = user?.organizationId;
   const [orgFilter, setOrgFilter] = useState<string>(userOrgId ? String(userOrgId) : "all");
+  const [deleteChild, setDeleteChild] = useState<Child | null>(null);
+
+  const deleteChildMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/children/${id}`);
+    },
+    onSuccess: () => {
+      qClient.invalidateQueries({ queryKey: ["/api/children"] });
+      qClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({ title: "Child removed", description: "The child record has been deleted." });
+      setDeleteChild(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
   const { data: organizations } = useQuery<Organization[]>({
     queryKey: ["/api/organizations"],
@@ -248,6 +269,7 @@ export default function Dashboard() {
               iconColor="text-pink-600 dark:text-pink-400"
               valueTint="text-pink-700 dark:text-pink-300"
               testId="stat-sponsored"
+              href="/children?sponsored=sponsored"
             />
           </div>
         )}
@@ -286,8 +308,8 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-1">
                 {allChildren.slice(0, 5).map((child) => (
-                  <Link key={child.id} href={`/children/${child.id}`}>
-                    <div className="flex items-center gap-3 rounded-xl p-3 transition-all duration-150 hover:bg-primary/[0.04] border border-transparent hover:border-primary/10" data-testid={`card-child-${child.id}`}>
+                  <div key={child.id} className="flex items-center gap-3 rounded-xl p-3 transition-all duration-150 hover:bg-primary/[0.04] border border-transparent hover:border-primary/10" data-testid={`card-child-${child.id}`}>
+                    <Link href={`/children/${child.id}`} className="flex flex-1 items-center gap-3 min-w-0">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/8 text-sm font-semibold text-primary">
                         {child.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
@@ -296,8 +318,19 @@ export default function Dashboard() {
                         <p className="truncate text-xs text-muted-foreground mt-0.5">{child.childId} · {child.location}</p>
                       </div>
                       <StatusBadge status={child.status} />
-                    </div>
-                  </Link>
+                    </Link>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/8 hover:text-destructive transition-opacity [div:hover>&]:opacity-100"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteChild(child); }}
+                        data-testid={`button-delete-child-${child.id}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -382,6 +415,33 @@ export default function Dashboard() {
             </div>
           </Card>
         )}
+        <Dialog open={!!deleteChild} onOpenChange={(open) => !open && setDeleteChild(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Remove Child</DialogTitle>
+            </DialogHeader>
+            <div className="flex items-start gap-3 py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+                <AlertCircle className="h-4.5 w-4.5 text-destructive" />
+              </div>
+              <p className="text-sm leading-relaxed">
+                Are you sure you want to remove <strong>{deleteChild?.fullName}</strong> ({deleteChild?.childId})? This will permanently delete all associated documents, timeline entries, and messages. This action cannot be undone.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" className="rounded-lg" onClick={() => setDeleteChild(null)} data-testid="button-cancel-delete-child">Cancel</Button>
+              <Button
+                variant="destructive"
+                className="rounded-lg shadow-sm"
+                onClick={() => deleteChild && deleteChildMutation.mutate(deleteChild.id)}
+                disabled={deleteChildMutation.isPending}
+                data-testid="button-confirm-delete-child"
+              >
+                {deleteChildMutation.isPending ? "Removing..." : "Remove"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

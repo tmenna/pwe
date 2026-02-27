@@ -135,10 +135,11 @@ export default function ChildrenList() {
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
   const initialStatus = urlParams.get("status") || "all";
+  const initialSponsored = urlParams.get("sponsored") || "all";
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [sponsoredFilter, setSponsoredFilter] = useState("all");
+  const [sponsoredFilter, setSponsoredFilter] = useState(initialSponsored);
   const [orgFilter, setOrgFilter] = useState("all");
   const [exportOpen, setExportOpen] = useState(false);
 
