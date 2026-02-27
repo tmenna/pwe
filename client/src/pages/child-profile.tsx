@@ -4,7 +4,7 @@ import { useRoute, useLocation, Link } from "wouter";
 import {
   ArrowLeft, Edit, Upload, Plus, FileText, Image, StickyNote,
   GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2, Camera, Check, X, Pencil,
-  Milestone, MessageSquare, RefreshCw, Heart, Mail, Send, MoreHorizontal,
+  Milestone, MessageSquare, RefreshCw, Heart, Mail, Send, MoreHorizontal, Building2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ import { StatusBadge } from "./dashboard";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Child, Document, TimelineEntry, Message } from "@shared/schema";
+import type { Child, Document, TimelineEntry, Message, Organization } from "@shared/schema";
 
 function DocumentIcon({ type }: { type: string }) {
   switch (type) {
@@ -442,6 +442,10 @@ export default function ChildProfile() {
     enabled: !!childId,
   });
 
+  const { data: organizations } = useQuery<Organization[]>({
+    queryKey: ["/api/organizations"],
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (docId: number) => {
       return apiRequest("DELETE", `/api/documents/${docId}`);
@@ -593,6 +597,10 @@ export default function ChildProfile() {
 
   const initials = child.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2);
 
+  const orgName = child.organizationId && organizations
+    ? organizations.find((o) => o.id === child.organizationId)?.name || "Unknown"
+    : "Not assigned";
+
   const infoItems = [
     { icon: Calendar, label: "Age", value: `${child.age} years old` },
     { icon: User, label: "Gender", value: child.gender },
@@ -601,6 +609,7 @@ export default function ChildProfile() {
     { icon: User, label: "Case Worker", value: child.assignedCaseWorker },
     { icon: User, label: "Sponsor(s)", value: child.assignedSponsors || "None assigned" },
     { icon: Heart, label: "Sponsored", value: child.isSponsored ? "Yes" : "No", color: child.isSponsored ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground" },
+    { icon: Building2, label: "Organization", value: orgName, color: child.organizationId ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground" },
   ];
 
   return (
@@ -612,58 +621,71 @@ export default function ChildProfile() {
         </Button>
 
         <Card className="p-5 sm:p-7 border-border/50">
-          <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="group relative">
-                <Avatar className="h-14 w-14 sm:h-16 sm:w-16" data-testid="img-child-photo">
-                  <AvatarImage src={child.photoUrl || undefined} alt={child.fullName} />
-                  <AvatarFallback className="text-lg font-bold bg-primary/8 text-primary">{initials}</AvatarFallback>
-                </Avatar>
-                {canEdit && (
-                  <button
-                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={() => photoInputRef.current?.click()}
-                    data-testid="button-upload-photo"
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+            <div className="flex flex-col sm:flex-row items-start gap-5">
+              <div className="flex gap-4">
+                <div className="group relative flex flex-col items-center">
+                  <div
+                    className="relative h-[120px] w-[120px] sm:h-[140px] sm:w-[140px] rounded-xl border-2 border-border/40 overflow-hidden bg-primary/8 flex items-center justify-center shrink-0"
+                    data-testid="img-child-photo"
                   >
-                    <Camera className="h-5 w-5 text-white" />
-                  </button>
-                )}
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoChange}
-                  data-testid="input-photo-upload"
-                />
-              </div>
-              <div className="group relative">
-                <Avatar className="h-14 w-14 sm:h-16 sm:w-16" data-testid="img-sponsor-photo">
-                  <AvatarImage src={child.sponsorPhotoUrl || undefined} alt="Sponsor" />
-                  <AvatarFallback className="text-lg font-bold bg-rose-500/8 text-rose-500">
-                    <Heart className="h-5 w-5" />
-                  </AvatarFallback>
-                </Avatar>
-                {canEdit && (
-                  <button
-                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={() => sponsorPhotoInputRef.current?.click()}
-                    data-testid="button-upload-sponsor-photo"
+                    {child.photoUrl ? (
+                      <img src={child.photoUrl} alt={child.fullName} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-3xl font-bold text-primary">{initials}</span>
+                    )}
+                    {canEdit && (
+                      <button
+                        className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={() => photoInputRef.current?.click()}
+                        data-testid="button-upload-photo"
+                      >
+                        <Camera className="h-6 w-6 text-white" />
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoChange}
+                    data-testid="input-photo-upload"
+                  />
+                  <p className="mt-1.5 text-center text-[11px] font-medium text-muted-foreground">Child Photo</p>
+                </div>
+                <div className="group relative flex flex-col items-center">
+                  <div
+                    className="relative h-[120px] w-[120px] sm:h-[140px] sm:w-[140px] rounded-xl border-2 border-rose-200/50 dark:border-rose-500/20 overflow-hidden bg-rose-500/8 flex items-center justify-center shrink-0"
+                    data-testid="img-sponsor-photo"
                   >
-                    <Camera className="h-5 w-5 text-white" />
-                  </button>
-                )}
-                <input
-                  ref={sponsorPhotoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleSponsorPhotoChange}
-                  data-testid="input-sponsor-photo-upload"
-                />
-                <p className="mt-1 text-center text-[10px] text-muted-foreground">Sponsor</p>
+                    {child.sponsorPhotoUrl ? (
+                      <img src={child.sponsorPhotoUrl} alt="Sponsor" className="h-full w-full object-cover" />
+                    ) : (
+                      <Heart className="h-8 w-8 text-rose-500" />
+                    )}
+                    {canEdit && (
+                      <button
+                        className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={() => sponsorPhotoInputRef.current?.click()}
+                        data-testid="button-upload-sponsor-photo"
+                      >
+                        <Camera className="h-6 w-6 text-white" />
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={sponsorPhotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleSponsorPhotoChange}
+                    data-testid="input-sponsor-photo-upload"
+                  />
+                  <p className="mt-1.5 text-center text-[11px] font-medium text-muted-foreground">Sponsor Photo</p>
+                </div>
               </div>
-              <div>
+              <div className="pt-1">
                 <div className="flex flex-wrap items-center gap-3">
                   <h1 className="text-xl font-bold tracking-tight" data-testid="text-child-name">{child.fullName}</h1>
                   <StatusBadge status={child.status} />
@@ -672,7 +694,7 @@ export default function ChildProfile() {
               </div>
             </div>
             {canEdit && (
-              <Button variant="outline" className="rounded-lg" asChild data-testid="button-edit-child">
+              <Button variant="outline" className="rounded-lg shrink-0" asChild data-testid="button-edit-child">
                 <Link href={`/children/${child.id}/edit`}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
@@ -685,18 +707,29 @@ export default function ChildProfile() {
 
           <Separator className="my-6 opacity-50" />
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {infoItems.map((item) => (
-              <div key={item.label} className="flex items-start gap-3" data-testid={`info-${item.label.toLowerCase().replace(/[^a-z]/g, "-")}`}>
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.label === "Sponsored" ? (child.isSponsored ? "bg-pink-50 dark:bg-pink-500/10" : "bg-muted/70") : "bg-muted/70"}`}>
-                  <item.icon className={`h-4 w-4 ${item.label === "Sponsored" ? (child.isSponsored ? "text-pink-500" : "text-muted-foreground") : "text-muted-foreground"}`} />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {infoItems.map((item) => {
+              let iconBg = "bg-muted/70";
+              let iconColor = "text-muted-foreground";
+              if (item.label === "Sponsored" && child.isSponsored) {
+                iconBg = "bg-pink-50 dark:bg-pink-500/10";
+                iconColor = "text-pink-500";
+              } else if (item.label === "Organization" && child.organizationId) {
+                iconBg = "bg-orange-50 dark:bg-orange-500/10";
+                iconColor = "text-orange-500";
+              }
+              return (
+                <div key={item.label} className="flex items-start gap-3" data-testid={`info-${item.label.toLowerCase().replace(/[^a-z]/g, "-")}`}>
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+                    <item.icon className={`h-4 w-4 ${iconColor}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                    <p className={`text-sm font-medium capitalize mt-0.5 ${"color" in item && item.color ? item.color : ""}`}>{item.value}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{item.label}</p>
-                  <p className={`text-sm font-medium capitalize mt-0.5 ${"color" in item && item.color ? item.color : ""}`}>{item.value}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
 
