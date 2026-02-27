@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "wouter";
-import { Plus, Search, Users, MapPin, Download, Heart } from "lucide-react";
+import { Plus, Search, Users, MapPin, Download, Heart, Building2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { StatusBadge } from "./dashboard";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import type { Child } from "@shared/schema";
+import type { Child, Organization } from "@shared/schema";
 
 const EXPORT_FIELDS = [
   { key: "childId", label: "Child ID" },
@@ -131,18 +131,30 @@ function ExportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
 export default function ChildrenList() {
   const { user } = useAuth();
   const canEdit = user?.role !== "read_only";
+  const isAdmin = user?.role === "admin";
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
   const initialStatus = urlParams.get("status") || "all";
-  const initialLocation = urlParams.get("location") || "";
 
-  const [search, setSearch] = useState(initialLocation);
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [sponsoredFilter, setSponsoredFilter] = useState("all");
+  const [orgFilter, setOrgFilter] = useState("all");
   const [exportOpen, setExportOpen] = useState(false);
 
+  const { data: organizations } = useQuery<Organization[]>({
+    queryKey: ["/api/organizations"],
+  });
+
+  const orgQueryParam = orgFilter !== "all" ? `?organizationId=${orgFilter}` : "";
+
   const { data: children, isLoading } = useQuery<Child[]>({
-    queryKey: ["/api/children"],
+    queryKey: ["/api/children", orgFilter],
+    queryFn: async () => {
+      const res = await fetch(`/api/children${orgQueryParam}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch children");
+      return res.json();
+    },
   });
 
   const filtered = children?.filter((c) => {
@@ -216,6 +228,19 @@ export default function ChildrenList() {
               <SelectItem value="non-sponsored">Non-Sponsored</SelectItem>
             </SelectContent>
           </Select>
+          {isAdmin && organizations && organizations.length > 0 && (
+            <Select value={orgFilter} onValueChange={setOrgFilter}>
+              <SelectTrigger className="w-full sm:w-[200px] h-11 rounded-lg border-border/60" data-testid="select-org-filter">
+                <SelectValue placeholder="All Organizations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Organizations</SelectItem>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {isLoading ? (

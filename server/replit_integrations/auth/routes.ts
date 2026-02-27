@@ -47,6 +47,7 @@ export function registerAuthRoutes(app: Express): void {
         lastName: parsed.lastName || null,
         email: parsed.email || null,
         role: parsed.role,
+        organizationId: parsed.organizationId || null,
       });
       const { hashedPassword: _, ...safeUser } = user;
       res.status(201).json(safeUser);
@@ -70,6 +71,7 @@ export function registerAuthRoutes(app: Express): void {
       if (parsed.lastName !== undefined) updateData.lastName = parsed.lastName;
       if (parsed.email !== undefined) updateData.email = parsed.email;
       if (parsed.role !== undefined) updateData.role = parsed.role;
+      if (parsed.organizationId !== undefined) updateData.organizationId = parsed.organizationId;
       if (parsed.password) {
         updateData.hashedPassword = await bcrypt.hash(parsed.password, 10);
       }

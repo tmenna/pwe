@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -21,6 +21,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   email: varchar("email"),
   role: varchar("role", { length: 20 }).default("case_worker").notNull(),
+  organizationId: integer("organization_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -44,6 +45,7 @@ export const createUserSchema = z.object({
   lastName: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   role: z.enum(["admin", "case_worker", "read_only"]),
+  organizationId: z.coerce.number().optional().nullable(),
 });
 
 export const updateUserSchema = z.object({
@@ -53,6 +55,7 @@ export const updateUserSchema = z.object({
   email: z.string().email().optional().nullable(),
   role: z.enum(["admin", "case_worker", "read_only"]).optional(),
   password: z.string().min(6).optional(),
+  organizationId: z.coerce.number().optional().nullable(),
 });
 
 export type UpsertUser = typeof users.$inferInsert;

@@ -46,6 +46,18 @@ function getUserName(req: any): string {
   return user?.username || "System";
 }
 
+function getUserOrgId(req: any): number | null {
+  const user = req.currentUser;
+  if (!user || user.role === "admin") return null;
+  return user.organizationId || null;
+}
+
+function canAccessChild(req: any, child: { organizationId: number | null }): boolean {
+  const userOrgId = getUserOrgId(req);
+  if (userOrgId === null) return true;
+  return child.organizationId === userOrgId;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -107,9 +119,12 @@ export async function registerRoutes(
   });
 
   // --- Children ---
-  app.get("/api/children", isAuthenticated, async (req, res) => {
+  app.get("/api/children", isAuthenticated, async (req: any, res) => {
     try {
-      const orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
+      let orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
+      if (req.currentUser?.role !== "admin" && req.currentUser?.organizationId) {
+        orgId = req.currentUser.organizationId;
+      }
       const result = await storage.getChildren(orgId);
       res.json(result);
     } catch (error: any) {
@@ -117,19 +132,24 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/children/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/children/:id", isAuthenticated, async (req: any, res) => {
     try {
       const child = await storage.getChild(parseInt(req.params.id));
       if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
       res.json(child);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
 
-  app.post("/api/children", isAuthenticated, isNotReadOnly, async (req, res) => {
+  app.post("/api/children", isAuthenticated, isNotReadOnly, async (req: any, res) => {
     try {
       const parsed = insertChildSchema.parse(req.body);
+      const userOrgId = getUserOrgId(req);
+      if (userOrgId !== null) {
+        parsed.organizationId = userOrgId;
+      }
       const child = await storage.createChild(parsed);
       await storage.createTimelineEntry({
         childId: child.id,
@@ -144,11 +164,12 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/children/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
+  app.patch("/api/children/:id", isAuthenticated, isNotReadOnly, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const existing = await storage.getChild(id);
       if (!existing) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, existing)) return res.status(403).json({ message: "Access denied" });
 
       const updateSchema = insertChildSchema.partial();
       const parsed = updateSchema.parse(req.body);
@@ -174,6 +195,7 @@ export async function registerRoutes(
       const id = parseInt(req.params.id);
       const child = await storage.getChild(id);
       if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
 
       const { objectPath } = req.body;
       if (!objectPath) return res.status(400).json({ message: "No objectPath provided" });
@@ -190,6 +212,7 @@ export async function registerRoutes(
       const id = parseInt(req.params.id);
       const child = await storage.getChild(id);
       if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
 
       const { objectPath } = req.body;
       if (!objectPath) return res.status(400).json({ message: "No objectPath provided" });
@@ -201,9 +224,13 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/children/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
+  app.delete("/api/children/:id", isAuthenticated, isNotReadOnly, async (req: any, res) => {
     try {
-      await storage.deleteChild(parseInt(req.params.id));
+      const id = parseInt(req.params.id);
+      const child = await storage.getChild(id);
+      if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
+      await storage.deleteChild(id);
       res.json({ message: "Deleted" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -211,9 +238,13 @@ export async function registerRoutes(
   });
 
   // --- Documents ---
-  app.get("/api/children/:id/documents", isAuthenticated, async (req, res) => {
+  app.get("/api/children/:id/documents", isAuthenticated, async (req: any, res) => {
     try {
-      const docs = await storage.getDocumentsByChild(parseInt(req.params.id));
+      const childId = parseInt(req.params.id);
+      const child = await storage.getChild(childId);
+      if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
+      const docs = await storage.getDocumentsByChild(childId);
       res.json(docs);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -225,6 +256,7 @@ export async function registerRoutes(
       const childId = parseInt(req.params.id);
       const child = await storage.getChild(childId);
       if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
 
       const { objectPath, fileName, documentType, description } = req.body;
       if (!objectPath || !fileName) return res.status(400).json({ message: "objectPath and fileName are required" });
@@ -289,9 +321,13 @@ export async function registerRoutes(
   });
 
   // --- Timeline ---
-  app.get("/api/children/:id/timeline", isAuthenticated, async (req, res) => {
+  app.get("/api/children/:id/timeline", isAuthenticated, async (req: any, res) => {
     try {
-      const entries = await storage.getTimelineByChild(parseInt(req.params.id));
+      const childId = parseInt(req.params.id);
+      const child = await storage.getChild(childId);
+      if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
+      const entries = await storage.getTimelineByChild(childId);
       res.json(entries);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -303,6 +339,7 @@ export async function registerRoutes(
       const childId = parseInt(req.params.id);
       const child = await storage.getChild(childId);
       if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
 
       const parsed = timelineEntrySchema.parse(req.body);
       const entry = await storage.createTimelineEntry({
@@ -340,9 +377,13 @@ export async function registerRoutes(
   });
 
   // --- Messages ---
-  app.get("/api/children/:id/messages", isAuthenticated, async (req, res) => {
+  app.get("/api/children/:id/messages", isAuthenticated, async (req: any, res) => {
     try {
-      const msgs = await storage.getMessagesByChild(parseInt(req.params.id));
+      const childId = parseInt(req.params.id);
+      const child = await storage.getChild(childId);
+      if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
+      const msgs = await storage.getMessagesByChild(childId);
       res.json(msgs);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -354,6 +395,7 @@ export async function registerRoutes(
       const childId = parseInt(req.params.id);
       const child = await storage.getChild(childId);
       if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
 
       const { senderName, senderRole, content } = req.body;
       if (!senderName || !content) return res.status(400).json({ message: "senderName and content are required" });
@@ -405,14 +447,17 @@ export async function registerRoutes(
   });
 
   // --- Export ---
-  app.post("/api/export/children", isAuthenticated, async (req, res) => {
+  app.post("/api/export/children", isAuthenticated, async (req: any, res) => {
     try {
       const { fields, organizationId, format } = req.body;
       if (!fields || !Array.isArray(fields) || fields.length === 0) {
         return res.status(400).json({ message: "At least one field must be selected" });
       }
 
-      const orgId = organizationId ? parseInt(organizationId) : undefined;
+      let orgId = organizationId ? parseInt(organizationId) : undefined;
+      if (req.currentUser?.role !== "admin" && req.currentUser?.organizationId) {
+        orgId = req.currentUser.organizationId;
+      }
       const allChildren = await storage.getChildren(orgId);
 
       const fieldMap: Record<string, { label: string; getter: (c: any) => string }> = {
@@ -467,9 +512,12 @@ export async function registerRoutes(
   });
 
   // --- Stats ---
-  app.get("/api/stats", isAuthenticated, async (req, res) => {
+  app.get("/api/stats", isAuthenticated, async (req: any, res) => {
     try {
-      const orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
+      let orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
+      if (req.currentUser?.role !== "admin" && req.currentUser?.organizationId) {
+        orgId = req.currentUser.organizationId;
+      }
       const stats = await storage.getStats(orgId);
       res.json(stats);
     } catch (error: any) {

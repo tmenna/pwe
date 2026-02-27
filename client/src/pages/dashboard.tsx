@@ -1,14 +1,14 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Users, FileText, Clock, UserCheck, UserX, Pause, Plus, ArrowRight, MapPin, Milestone, MessageSquare, RefreshCw, Heart } from "lucide-react";
+import { Users, FileText, Clock, UserCheck, UserX, Pause, Plus, ArrowRight, Building2, Milestone, MessageSquare, RefreshCw, Heart } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import type { Child, TimelineEntry, Message } from "@shared/schema";
+import type { Child, Organization, TimelineEntry, Message } from "@shared/schema";
 
 interface Stats {
   totalChildren: number;
@@ -98,14 +98,32 @@ const timelineIconColors: Record<string, string> = {
 export default function Dashboard() {
   const { user } = useAuth();
   const canEdit = user?.role !== "read_only";
-  const [locationFilter, setLocationFilter] = useState("all");
+  const isAdmin = user?.role === "admin";
+  const userOrgId = user?.organizationId;
+  const [orgFilter, setOrgFilter] = useState<string>(userOrgId ? String(userOrgId) : "all");
+
+  const { data: organizations } = useQuery<Organization[]>({
+    queryKey: ["/api/organizations"],
+  });
+
+  const orgQueryParam = orgFilter !== "all" ? `?organizationId=${orgFilter}` : "";
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
-    queryKey: ["/api/stats"],
+    queryKey: ["/api/stats", orgFilter],
+    queryFn: async () => {
+      const res = await fetch(`/api/stats${orgQueryParam}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
   });
 
   const { data: allChildren, isLoading: childrenLoading } = useQuery<Child[]>({
-    queryKey: ["/api/children"],
+    queryKey: ["/api/children", orgFilter],
+    queryFn: async () => {
+      const res = await fetch(`/api/children${orgQueryParam}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch children");
+      return res.json();
+    },
   });
 
   const { data: recentTimeline, isLoading: timelineLoading } = useQuery<TimelineEntry[]>({
@@ -117,42 +135,20 @@ export default function Dashboard() {
     enabled: user?.role === "admin" || user?.role === "case_worker",
   });
 
-  const locations = useMemo(() => {
-    if (!allChildren) return [];
-    const locSet = new Set<string>();
-    allChildren.forEach((c) => locSet.add(c.location));
-    return Array.from(locSet).sort();
+  const filteredChildIds = useMemo(() => {
+    return new Set((allChildren || []).map((c) => c.id));
   }, [allChildren]);
 
-  const filteredChildren = useMemo(() => {
-    if (!allChildren) return [];
-    if (locationFilter === "all") return allChildren;
-    return allChildren.filter((c) => c.location === locationFilter);
-  }, [allChildren, locationFilter]);
-
-  const filteredChildIds = useMemo(() => {
-    return new Set(filteredChildren.map((c) => c.id));
-  }, [filteredChildren]);
-
   const filteredTimeline = useMemo(() => {
-    if (!recentTimeline || locationFilter === "all") return recentTimeline;
+    if (!recentTimeline || orgFilter === "all") return recentTimeline;
     return recentTimeline.filter((e) => filteredChildIds.has(e.childId));
-  }, [recentTimeline, locationFilter, filteredChildIds]);
+  }, [recentTimeline, orgFilter, filteredChildIds]);
 
-  const filteredStats = useMemo(() => {
-    if (locationFilter === "all") return stats;
-    return {
-      totalChildren: filteredChildren.length,
-      active: filteredChildren.filter((c) => c.status === "active").length,
-      paused: filteredChildren.filter((c) => c.status === "paused").length,
-      exited: filteredChildren.filter((c) => c.status === "exited").length,
-      totalDocuments: stats?.totalDocuments || 0,
-      sponsored: filteredChildren.filter((c) => c.isSponsored).length,
-      nonSponsored: filteredChildren.filter((c) => !c.isSponsored).length,
-    };
-  }, [stats, filteredChildren, locationFilter]);
-
-  const locationParam = locationFilter !== "all" ? `&location=${encodeURIComponent(locationFilter)}` : "";
+  const selectedOrgName = useMemo(() => {
+    if (orgFilter === "all" || !organizations) return null;
+    const org = organizations.find((o) => String(o.id) === orgFilter);
+    return org?.name || null;
+  }, [orgFilter, organizations]);
 
   function getTimelineIcon(entryType: string) {
     switch (entryType) {
@@ -182,20 +178,22 @@ export default function Dashboard() {
               </Button>
             )}
           </div>
-          <div className="flex items-center gap-2.5">
-            <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger className="w-full sm:w-[280px] h-10 rounded-lg border-border/60" data-testid="select-location-filter">
-                <SelectValue placeholder="All Locations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {isAdmin && organizations && organizations.length > 0 && (
+            <div className="flex items-center gap-2.5">
+              <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Select value={orgFilter} onValueChange={setOrgFilter}>
+                <SelectTrigger className="w-full sm:w-[280px] h-10 rounded-lg border-border/60" data-testid="select-org-filter">
+                  <SelectValue placeholder="All Organizations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Organizations</SelectItem>
+                  {organizations.map((org) => (
+                    <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {statsLoading ? (
@@ -210,40 +208,40 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
             <StatCard
               label="Total Children"
-              value={filteredStats?.totalChildren || 0}
+              value={stats?.totalChildren || 0}
               icon={Users}
               accentColor="bg-blue-500"
               iconBg="bg-blue-50 dark:bg-blue-500/10"
               iconColor="text-blue-600 dark:text-blue-400"
               valueTint="text-blue-700 dark:text-blue-300"
               testId="stat-total"
-              href={`/children?status=all${locationParam}`}
+              href="/children?status=all"
             />
             <StatCard
               label="Active"
-              value={filteredStats?.active || 0}
+              value={stats?.active || 0}
               icon={UserCheck}
               accentColor="bg-emerald-500"
               iconBg="bg-emerald-50 dark:bg-emerald-500/10"
               iconColor="text-emerald-600 dark:text-emerald-400"
               valueTint="text-emerald-700 dark:text-emerald-300"
               testId="stat-active"
-              href={`/children?status=active${locationParam}`}
+              href="/children?status=active"
             />
             <StatCard
               label="Paused"
-              value={filteredStats?.paused || 0}
+              value={stats?.paused || 0}
               icon={Pause}
               accentColor="bg-amber-500"
               iconBg="bg-amber-50 dark:bg-amber-500/10"
               iconColor="text-amber-600 dark:text-amber-400"
               valueTint="text-amber-700 dark:text-amber-300"
               testId="stat-paused"
-              href={`/children?status=paused${locationParam}`}
+              href="/children?status=paused"
             />
             <StatCard
               label="Sponsored"
-              value={filteredStats?.sponsored || 0}
+              value={stats?.sponsored || 0}
               icon={Heart}
               accentColor="bg-pink-500"
               iconBg="bg-pink-50 dark:bg-pink-500/10"
@@ -259,10 +257,10 @@ export default function Dashboard() {
             <div className="mb-5 flex items-center justify-between gap-4">
               <h2 className="text-[15px] font-semibold flex items-center gap-2.5" data-testid="text-recent-children">
                 <span className="inline-block w-1 h-5 rounded-full bg-primary" />
-                {locationFilter === "all" ? "Recent Children" : `Children in ${locationFilter}`}
+                {orgFilter === "all" ? "Recent Children" : `Children in ${selectedOrgName || "Organization"}`}
               </h2>
               <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">
-                <Link href={`/children${locationParam ? `?status=all${locationParam}` : ""}`} data-testid="link-view-all-children">
+                <Link href="/children" data-testid="link-view-all-children">
                   View All <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                 </Link>
               </Button>
@@ -273,13 +271,13 @@ export default function Dashboard() {
                   <Skeleton key={i} className="h-14 w-full rounded-lg" />
                 ))}
               </div>
-            ) : !filteredChildren?.length ? (
+            ) : !allChildren?.length ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
                 <Users className="mb-3 h-10 w-10 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">
-                  {locationFilter === "all" ? "No children added yet" : `No children in ${locationFilter}`}
+                  {orgFilter === "all" ? "No children added yet" : `No children in ${selectedOrgName || "this organization"}`}
                 </p>
-                {canEdit && locationFilter === "all" && (
+                {canEdit && orgFilter === "all" && (
                   <Button variant="outline" size="sm" className="mt-4 rounded-lg" asChild>
                     <Link href="/children/new">Add your first child</Link>
                   </Button>
@@ -287,7 +285,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="space-y-1">
-                {filteredChildren.slice(0, 5).map((child) => (
+                {allChildren.slice(0, 5).map((child) => (
                   <Link key={child.id} href={`/children/${child.id}`}>
                     <div className="flex items-center gap-3 rounded-xl p-3 transition-all duration-150 hover:bg-primary/[0.04] border border-transparent hover:border-primary/10" data-testid={`card-child-${child.id}`}>
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/8 text-sm font-semibold text-primary">
@@ -322,7 +320,7 @@ export default function Dashboard() {
               <div className="flex flex-col items-center justify-center py-10 text-center">
                 <Clock className="mb-3 h-10 w-10 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">
-                  {locationFilter === "all" ? "No activity recorded yet" : `No activity for ${locationFilter}`}
+                  {orgFilter === "all" ? "No activity recorded yet" : `No activity for ${selectedOrgName || "this organization"}`}
                 </p>
               </div>
             ) : (

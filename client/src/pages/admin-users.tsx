@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Pencil, Trash2, UserCog, AlertCircle } from "lucide-react";
+import { UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import type { Organization } from "@shared/schema";
 
 type SafeUser = {
   id: string;
@@ -19,6 +20,7 @@ type SafeUser = {
   lastName: string | null;
   email: string | null;
   role: string;
+  organizationId: number | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -49,6 +51,7 @@ export default function AdminUsers() {
     lastName: "",
     email: "",
     role: "case_worker",
+    organizationId: "",
   });
 
   const [editForm, setEditForm] = useState({
@@ -58,10 +61,15 @@ export default function AdminUsers() {
     email: "",
     role: "case_worker",
     password: "",
+    organizationId: "",
   });
 
   const { data: users, isLoading } = useQuery<SafeUser[]>({
     queryKey: ["/api/users"],
+  });
+
+  const { data: organizations } = useQuery<Organization[]>({
+    queryKey: ["/api/organizations"],
   });
 
   const createMutation = useMutation({
@@ -73,6 +81,7 @@ export default function AdminUsers() {
         lastName: form.lastName || null,
         email: form.username || null,
         role: form.role,
+        organizationId: form.organizationId ? parseInt(form.organizationId) : null,
       });
       return res.json();
     },
@@ -80,7 +89,7 @@ export default function AdminUsers() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "User created", description: `${form.username} has been added.` });
       setCreateOpen(false);
-      setForm({ username: "", password: "", firstName: "", lastName: "", email: "", role: "case_worker" });
+      setForm({ username: "", password: "", firstName: "", lastName: "", email: "", role: "case_worker", organizationId: "" });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -95,6 +104,7 @@ export default function AdminUsers() {
         lastName: editForm.lastName || null,
         email: editForm.username || null,
         role: editForm.role,
+        organizationId: editForm.organizationId ? parseInt(editForm.organizationId) : null,
       };
       if (editForm.password) body.password = editForm.password;
       const res = await apiRequest("PATCH", `/api/users/${editUser!.id}`, body);
@@ -133,6 +143,7 @@ export default function AdminUsers() {
       email: u.email || "",
       role: u.role,
       password: "",
+      organizationId: u.organizationId ? String(u.organizationId) : "",
     });
   };
 
@@ -173,11 +184,20 @@ export default function AdminUsers() {
             <Card key={u.id} className="border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`card-user-${u.id}`}>
               <CardContent className="flex items-center justify-between p-5">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <span className="font-medium" data-testid={`text-username-${u.id}`}>{u.username}</span>
                     <Badge variant="outline" className={`${roleBadgeColors[u.role] || ""} text-xs font-medium`} data-testid={`badge-role-${u.id}`}>
                       {roleLabels[u.role] || u.role}
                     </Badge>
+                    {u.organizationId && organizations && (() => {
+                      const org = organizations.find((o) => o.id === u.organizationId);
+                      return org ? (
+                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/25 text-xs font-medium" data-testid={`badge-org-${u.id}`}>
+                          <Building2 className="mr-1 h-3 w-3" />
+                          {org.name}
+                        </Badge>
+                      ) : null;
+                    })()}
                   </div>
                   <div className="mt-1.5 text-sm text-muted-foreground">
                     {u.firstName || u.lastName ? `${u.firstName || ""} ${u.lastName || ""}`.trim() : "—"}
@@ -269,6 +289,23 @@ export default function AdminUsers() {
                   </SelectContent>
                 </Select>
               </div>
+              {organizations && organizations.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Organization</Label>
+                  <Select value={form.organizationId} onValueChange={(v) => setForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}>
+                    <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-new-organization">
+                      <SelectValue placeholder="No organization assigned" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No organization assigned</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Non-admin users will only see children in their assigned organization</p>
+                </div>
+              )}
               <DialogFooter className="pt-2">
                 <Button type="button" variant="outline" className="rounded-lg" onClick={() => setCreateOpen(false)}>Cancel</Button>
                 <Button type="submit" className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white" disabled={createMutation.isPending} data-testid="button-confirm-create-user">
@@ -336,6 +373,23 @@ export default function AdminUsers() {
                   </SelectContent>
                 </Select>
               </div>
+              {organizations && organizations.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Organization</Label>
+                  <Select value={editForm.organizationId || "none"} onValueChange={(v) => setEditForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}>
+                    <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-edit-organization">
+                      <SelectValue placeholder="No organization assigned" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No organization assigned</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Non-admin users will only see children in their assigned organization</p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">New Password (leave blank to keep current)</Label>
                 <Input

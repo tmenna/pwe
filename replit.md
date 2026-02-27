@@ -30,10 +30,11 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - Progress Timeline (chronological feed of milestones and events)
 - Sponsor Messaging (send messages on behalf of sponsors, status tracking: pending/delivered/read)
 - Multi-Organization Management (create/manage organizations, assign children to organizations)
+- Organization-based access control (non-admin users assigned to an org only see that org's children)
 - Data Export to CSV/XLSX with selectable fields
-- Dashboard with statistics overview (total, active, paused, sponsored counts) and pending messages
+- Dashboard with statistics overview (total, active, paused, sponsored counts), org filter, and pending messages
 - Custom username/password login (no signup - admin creates users)
-- Admin user management panel (create, edit, delete users and assign roles)
+- Admin user management panel (create, edit, delete users, assign roles and organizations)
 - Role-based access control: admin, case_worker, read_only
 
 ## Auth System
@@ -62,7 +63,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - `documents` - id, childId (FK), documentType, description, fileName, fileUrl, uploadedBy, uploadedAt
 - `timeline_entries` - id, childId (FK), title, description, entryType, createdBy, createdAt
 - `messages` - id, childId (FK), senderName, senderRole, content, status, createdAt
-- `users` - id, username, hashedPassword, firstName, lastName, email, role, createdAt, updatedAt
+- `users` - id, username, hashedPassword, firstName, lastName, email, role, organizationId, createdAt, updatedAt
 - `sessions` - sid, sess, expire
 
 ## API Endpoints
