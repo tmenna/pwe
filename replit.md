@@ -51,7 +51,8 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - `server/storage.ts` - DatabaseStorage class with all CRUD operations
 - `server/seed.ts` - Seed data for initial database population (admin user + 5 sample children)
 - `server/db.ts` - Database connection
-- `server/replit_integrations/auth/` - Session setup, login/logout endpoints, auth middleware, user CRUD
+- `server/auth/` - Session setup, login/logout endpoints, auth middleware, user CRUD (platform-agnostic)
+- `server/uploads.ts` - Local disk file upload handling (platform-agnostic, replaces Replit object storage)
 - `client/src/App.tsx` - Main app with routing and auth gating
 - `client/src/pages/` - Page components (landing, dashboard, children-list, child-form, child-profile, admin-users, organizations)
 - `client/src/components/` - Reusable components (app-sidebar, theme-provider, theme-toggle)

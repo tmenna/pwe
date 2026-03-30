@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { authStorage } from "./storage";
-import { isAuthenticated } from "./replitAuth";
+import { isAuthenticated } from "./session";
 import { createUserSchema, updateUserSchema } from "@shared/models/auth";
 import bcrypt from "bcryptjs";
 
@@ -11,7 +11,7 @@ const isAdmin = async (req: any, res: any, next: any) => {
   next();
 };
 
-export function registerAuthRoutes(app: Express): void {
+export function registerUserRoutes(app: Express): void {
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
       const { hashedPassword, ...safeUser } = req.currentUser;

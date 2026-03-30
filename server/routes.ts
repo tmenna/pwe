@@ -1,10 +1,10 @@
 import express, { type Express, type RequestHandler } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth";
+import { setupAuth, isAuthenticated, registerUserRoutes } from "./auth";
 import { insertChildSchema } from "@shared/schema";
 import { z } from "zod";
-import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { registerUploadRoutes } from "./uploads";
 
 const documentTypes = ["education", "report_cards", "attendance", "case_notes", "social_worker_notes", "follow_up_reports", "photos"] as const;
 
@@ -69,8 +69,8 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   await setupAuth(app);
-  registerAuthRoutes(app);
-  registerObjectStorageRoutes(app, isAuthenticated);
+  registerUserRoutes(app);
+  registerUploadRoutes(app, isAuthenticated);
 
   // --- Organizations ---
   app.get("/api/organizations", isAuthenticated, async (_req, res) => {
