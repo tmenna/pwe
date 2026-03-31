@@ -12,7 +12,7 @@ services:
     runtime: node
     region: oregon
     branch: main
-    buildCommand: npm install && npm run build && npm run db:push
+    buildCommand: npm install --include=dev && npm run build && npm run db:push
     startCommand: npm start
     healthCheckPath: /api/config/recaptcha
     envVars:
