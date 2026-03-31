@@ -6,3 +6,9 @@ id = "SE_rJZ_42iMkhW92aHXKy"
 uri = "file://DEPLOYMENT.md"
 type = "text"
 title = "Linode Deployment Guide"
+
+[[outputs]]
+id = "Yz1YSR8FY_gyhW1eSBa1g"
+uri = "file://REPLIT_TO_RENDER_GUIDE.md"
+type = "text"
+title = "Replit → GitHub → Render Deployment Guide"
