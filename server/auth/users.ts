@@ -3,6 +3,8 @@ import { authStorage } from "./storage";
 import { isAuthenticated } from "./session";
 import { createUserSchema, updateUserSchema } from "@shared/models/auth";
 import bcrypt from "bcryptjs";
+import { sendUserWelcomeEmail } from "../services/email";
+import { jobQueue } from "../services/jobs";
 
 const isAdmin = async (req: any, res: any, next: any) => {
   if (req.currentUser?.role !== "admin") {
@@ -50,6 +52,23 @@ export function registerUserRoutes(app: Express): void {
         organizationId: parsed.organizationId || null,
       });
       const { hashedPassword: _, ...safeUser } = user;
+
+      // Send welcome email if the new user has an email address
+      if (user.email) {
+        jobQueue.add("email-welcome", () =>
+          sendUserWelcomeEmail({
+            recipientEmail: user.email!,
+            recipientName:
+              user.firstName && user.lastName
+                ? `${user.firstName} ${user.lastName}`
+                : user.username,
+            username: user.username,
+            temporaryPassword: parsed.password,
+            role: user.role,
+          })
+        );
+      }
+
       res.status(201).json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });

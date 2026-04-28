@@ -38,6 +38,12 @@ export const documents = pgTable("documents", {
   description: text("description"),
   fileName: text("file_name").notNull(),
   fileUrl: text("file_url").notNull(),
+  /** R2 object key — used to generate signed download URLs and delete from storage */
+  fileKey: text("file_key"),
+  /** Original MIME type recorded at upload time */
+  mimeType: varchar("mime_type", { length: 100 }),
+  /** File size in bytes */
+  fileSize: integer("file_size"),
   uploadedBy: text("uploaded_by").notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });

@@ -23,6 +23,7 @@ export interface IStorage {
   deleteChild(id: number): Promise<void>;
 
   getDocumentsByChild(childId: number): Promise<Document[]>;
+  getDocumentById(id: number): Promise<Document | undefined>;
   createDocument(doc: InsertDocument): Promise<Document>;
   updateDocument(id: number, data: { description: string }): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<void>;
@@ -93,6 +94,11 @@ export class DatabaseStorage implements IStorage {
 
   async getDocumentsByChild(childId: number): Promise<Document[]> {
     return db.select().from(documents).where(eq(documents.childId, childId)).orderBy(desc(documents.uploadedAt));
+  }
+
+  async getDocumentById(id: number): Promise<Document | undefined> {
+    const [doc] = await db.select().from(documents).where(eq(documents.id, id));
+    return doc || undefined;
   }
 
   async createDocument(doc: InsertDocument): Promise<Document> {

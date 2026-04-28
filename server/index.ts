@@ -3,9 +3,51 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { seedDatabase } from "./seed";
+import { isR2Configured } from "./services/storage";
+import { isEmailConfigured } from "./services/email";
+
+// ---------------------------------------------------------------------------
+// Startup configuration validation
+// ---------------------------------------------------------------------------
+
+function validateConfig(): void {
+  const required = ["DATABASE_URL", "SESSION_SECRET"];
+  const missing = required.filter((key) => !process.env[key]);
+
+  if (missing.length > 0) {
+    console.error(
+      `[config] FATAL: Missing required environment variables: ${missing.join(", ")}\n` +
+      `         Copy .env.example to .env and fill in the values.`
+    );
+    if (process.env.NODE_ENV === "production") {
+      process.exit(1);
+    }
+  }
+
+  if (isR2Configured()) {
+    console.log("[config] ✓ Cloudflare R2 storage configured");
+  } else {
+    console.log(
+      "[config] ⚠ R2 not configured — using local disk storage (files will be lost on Render restarts)"
+    );
+  }
+
+  if (isEmailConfigured()) {
+    console.log("[config] ✓ Resend email configured");
+  } else {
+    console.log("[config] ⚠ RESEND_API_KEY not set — email notifications disabled");
+  }
+}
+
+validateConfig();
 
 const app = express();
 const httpServer = createServer(app);
+
+// Trust the first proxy hop (required for secure cookies behind Render's load balancer)
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 declare module "http" {
   interface IncomingMessage {

@@ -1,0 +1,149 @@
+We want to keep the existing PWE Portal architecture and functionality intact (React + TypeScript frontend, Express + TypeScript backend, PostgreSQL/Drizzle) and enhance the infrastructure in three areas only:
+
+GOAL
+Refactor and extend the existing application to support:
+1. Cloudflare R2 for all file uploads and storage (replace local disk uploads)
+2. Resend for transactional email notifications
+3. Render-ready production configuration (environment variables, storage config, deployment readiness)
+
+IMPORTANT
+- Preserve all existing routes, data models, UI behavior, permissions, and current functionality.
+- This is an infrastructure enhancement, not a redesign.
+- Implement incrementally and cleanly without breaking existing features.
+- Use secure patterns and production-ready code.
+
+-----------------------------------
+PHASE 1 — CLOUDFLARE R2 STORAGE
+-----------------------------------
+
+Replace local disk uploads (/objects route) with Cloudflare R2.
+
+Implement:
+- Create reusable storage service abstraction:
+   /server/services/storage.ts
+
+Functions:
+- uploadFile()
+- deleteFile()
+- generateSignedDownloadUrl()
+- generateSignedUploadUrl() (optional future use)
+- getPublicFileUrl()
+
+Requirements:
+- Use S3-compatible R2 SDK
+- Store files in structured paths:
+  children/{childId}/documents/
+  children/{childId}/photos/
+  sponsors/{childId}/photos/
+
+Database:
+- Update document records to store:
+  file_key
+  original_filename
+  mime_type
+  size
+  uploaded_at
+
+Keep existing document categories intact.
+
+Uploads:
+- Refactor all existing child photo, sponsor photo, and document uploads to use R2.
+- Use private storage + signed URLs for downloads.
+- Add file validation:
+   - allowed mime types
+   - size limits
+- Preserve current upload UI.
+
+Bonus:
+- Add image optimization/compression for photos if practical.
+
+-----------------------------------
+PHASE 2 — RESEND EMAIL SYSTEM
+-----------------------------------
+
+Add transactional email system using Resend.
+
+Create:
+ /server/services/email.ts
+
+Functions:
+- sendNewMessageNotification()
+- sendPendingMessageAlert()
+- sendUserWelcomeEmail()
+- sendPasswordResetEmail() (scaffold only)
+- sendTestEmail()
+
+Use reusable templates.
+
+Initial notifications:
+1. Notify admin/case worker when new sponsor message arrives
+2. Notify users when assigned account is created
+3. Optional notification when child receives status update
+
+Use:
+- clean html email templates
+- branded simple styling
+- centralized email config
+
+Environment variables:
+RESEND_API_KEY
+FROM_EMAIL
+
+Add graceful fallback if email config missing.
+
+-----------------------------------
+PHASE 3 — RENDER DEPLOYMENT HARDENING
+-----------------------------------
+
+Prepare app for Render deployment.
+
+Implement:
+- environment-based config layer
+- production-safe file/storage configuration
+- trust proxy settings if needed
+- secure cookie/session settings for Render
+- validate all required env vars at startup
+
+Create:
+- .env.example
+- deployment notes
+- Render env variable checklist
+
+Required env vars:
+DATABASE_URL
+SESSION_SECRET
+R2_ENDPOINT
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_BUCKET
+R2_PUBLIC_URL
+RESEND_API_KEY
+FROM_EMAIL
+
+-----------------------------------
+PHASE 4 — OPTIONAL JOBS FOUNDATION
+-----------------------------------
+
+Add lightweight background job pattern (without overengineering)
+for:
+- email sending
+- future scheduled reminders
+- exports
+
+Simple queue abstraction is enough.
+
+-----------------------------------
+IMPLEMENTATION RULES
+-----------------------------------
+
+- Keep all current child management functionality unchanged.
+- Do not remove existing features.
+- Refactor uploads to use storage service abstraction rather than direct SDK calls everywhere.
+- Keep code modular and production-ready.
+- Use TypeScript types throughout.
+- Add comments where helpful.
+- If migrations are needed, generate them safely.
+- Show changes in small steps and explain each step before major refactors.
+
+Start with Phase 1:
+Audit current upload system and begin migrating local uploads to Cloudflare R2.

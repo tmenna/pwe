@@ -1,102 +1,181 @@
 /**
- * Local disk file storage — platform-agnostic replacement for cloud object storage.
+ * File Upload Routes
  *
- * Upload flow:
- *   1. Client: POST /api/uploads/request-url  → { uploadURL, objectPath }
- *   2. Client: PUT <uploadURL>   (raw binary body)
- *   3. Client: POST /api/children/:id/photo   with { objectPath }
+ * Supports two storage backends:
+ *   1. Cloudflare R2  — when R2_ENDPOINT / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET are set
+ *   2. Local disk     — fallback for development (files stored in UPLOADS_DIR)
  *
- * Files are stored under UPLOADS_DIR (default: ./uploads).
- * Objects are served at GET /objects/:token.
+ * Upload flow (same for both backends — client never touches R2 directly):
+ *   1. POST /api/uploads/request-url  → { uploadURL, objectPath, token }
+ *   2. PUT  /api/uploads/put/:token   (raw binary body sent to THIS server)
+ *      └─ server streams to R2 (or writes to disk in dev)
+ *   3. POST /api/children/:id/photo|documents  with { objectPath }
  *
- * To use S3/MinIO in the future, replace the PUT handler and GET handler
- * with signed URL generation and redirect/proxy logic respectively.
+ * File serving:
+ *   GET /objects/*  → generate R2 signed download URL + redirect  (or serve from disk in dev)
+ *
+ * The objectPath stored in the DB is always `/objects/<r2-key>` so the frontend
+ * needs no changes — img src and anchor href continue to work transparently.
  */
 
 import express, { type Express, type RequestHandler } from "express";
 import { randomUUID } from "crypto";
-import path from "path";
-import fs from "fs";
+import {
+  isR2Configured,
+  uploadFile,
+  generateDownloadUrl,
+  getLocalFilePath,
+  validateFile,
+  MAX_FILE_SIZE_BYTES,
+} from "./services/storage";
 
-const UPLOADS_DIR = process.env.UPLOADS_DIR
-  ? path.resolve(process.env.UPLOADS_DIR)
-  : path.join(process.cwd(), "uploads");
+// ---------------------------------------------------------------------------
+// In-memory token → r2Key map  (cleared after upload or after TTL)
+// ---------------------------------------------------------------------------
 
-const MAX_FILE_SIZE_BYTES = parseInt(process.env.MAX_UPLOAD_SIZE_MB || "20", 10) * 1024 * 1024;
+interface PendingUpload {
+  r2Key: string;
+  contentType: string;
+  size: number;
+  expiresAt: number;
+}
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const pendingUploads = new Map<string, PendingUpload>();
+const PENDING_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-function ensureUploadsDir() {
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+function cleanExpired(): void {
+  const now = Date.now();
+  for (const [token, slot] of pendingUploads) {
+    if (now > slot.expiresAt) pendingUploads.delete(token);
   }
 }
 
-export function registerUploadRoutes(app: Express, authMiddleware?: RequestHandler): void {
-  ensureUploadsDir();
+// ---------------------------------------------------------------------------
+// Route registration
+// ---------------------------------------------------------------------------
 
+export function registerUploadRoutes(app: Express, authMiddleware?: RequestHandler): void {
   const auth: RequestHandler[] = authMiddleware ? [authMiddleware] : [];
 
   /**
-   * Step 1 — request an upload slot.
-   * Returns a PUT URL pointing back at this server and an objectPath to store in the DB.
+   * Step 1 — Request an upload slot.
+   * Returns a PUT URL pointing back at this server plus an objectPath
+   * (the /objects/ path that will be stored in the DB).
    */
   app.post("/api/uploads/request-url", ...auth, (req: any, res: any) => {
-    const { name } = req.body ?? {};
+    cleanExpired();
+
+    const { name, size, contentType } = req.body ?? {};
     if (!name) {
       return res.status(400).json({ error: "Missing required field: name" });
     }
 
+    // Validate file before even accepting it
+    if (size && contentType) {
+      const validation = validateFile(contentType as string, size as number);
+      if (!validation.valid) {
+        return res.status(400).json({ error: validation.error });
+      }
+    }
+
     const token = randomUUID();
+    const ext = name.includes(".") ? "." + name.split(".").pop()!.replace(/[^a-z0-9]/gi, "").toLowerCase() : "";
+    const safeName = String(name)
+      .replace(/[^a-z0-9._-]/gi, "_")
+      .slice(0, 80);
+    const r2Key = `uploads/${token}-${safeName}`;
+
+    pendingUploads.set(token, {
+      r2Key,
+      contentType: contentType || "application/octet-stream",
+      size: size || 0,
+      expiresAt: Date.now() + PENDING_TTL_MS,
+    });
+
     const proto = req.headers["x-forwarded-proto"] || req.protocol;
     const host = req.headers["x-forwarded-host"] || req.get("host");
     const uploadURL = `${proto}://${host}/api/uploads/put/${token}`;
-    const objectPath = `/objects/${token}`;
+    const objectPath = `/objects/${r2Key}`;
 
-    res.json({ uploadURL, objectPath, metadata: { name } });
+    res.json({ uploadURL, objectPath, token, metadata: { name, r2Key } });
   });
 
   /**
-   * Step 2 — receive the file.
-   * The client PUTs the raw binary (matching the GCS presigned-URL contract).
-   * We save it to UPLOADS_DIR under the token name.
+   * Step 2 — Receive the file binary.
+   * Client PUTs the raw file body here. We forward to R2 (or write to disk).
    */
   app.put(
     "/api/uploads/put/:token",
     express.raw({ type: "*/*", limit: `${MAX_FILE_SIZE_BYTES}b` }),
-    (req: any, res: any) => {
+    async (req: any, res: any) => {
       const { token } = req.params;
-      if (!UUID_RE.test(token)) {
-        return res.status(400).json({ error: "Invalid upload token" });
+      const slot = pendingUploads.get(token);
+
+      if (!slot) {
+        return res.status(400).json({ error: "Unknown or expired upload token" });
       }
 
-      ensureUploadsDir();
-      const filePath = path.join(UPLOADS_DIR, token);
+      const body = req.body as Buffer;
+      if (!Buffer.isBuffer(body) || body.length === 0) {
+        return res.status(400).json({ error: "Empty body" });
+      }
+
+      // Validate size
+      const validation = validateFile(slot.contentType, body.length);
+      if (!validation.valid) {
+        pendingUploads.delete(token);
+        return res.status(413).json({ error: validation.error });
+      }
+
       try {
-        fs.writeFileSync(filePath, req.body as Buffer);
-        res.status(200).end();
-      } catch (err) {
-        console.error("File write error:", err);
-        res.status(500).json({ error: "Upload failed" });
+        await uploadFile(slot.r2Key, body, slot.contentType);
+        pendingUploads.delete(token);
+        res.status(200).json({ ok: true });
+      } catch (err: any) {
+        console.error("[uploads] Upload failed:", err);
+        res.status(500).json({ error: "Upload failed: " + err.message });
       }
     }
   );
 
   /**
-   * Serve uploaded files — requires auth so only logged-in users can access.
-   * Strip the leading /objects/ prefix to get the token, then serve from disk.
+   * Serve / redirect to uploaded files.
+   *
+   * R2 mode:  generate a short-lived signed URL and 302 redirect
+   * Dev mode: serve the file from local disk
+   *
+   * Uses app.use (middleware) so the path can contain slashes.
+   * The key is req.path without a leading slash.
    */
-  app.get("/objects/:token", ...auth, (req: any, res: any) => {
-    const { token } = req.params;
-    if (!UUID_RE.test(token)) {
-      return res.status(400).json({ error: "Invalid token" });
-    }
+  const serveHandler: RequestHandler[] = [
+    ...auth,
+    async (req: any, res: any, next: any) => {
+      // req.path is relative to the mount point e.g. "/uuid" or "/uploads/uuid-file.pdf"
+      const key = req.path.replace(/^\//, "");
+      if (!key) {
+        return res.status(400).json({ error: "Missing object key" });
+      }
 
-    const filePath = path.join(UPLOADS_DIR, token);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: "File not found" });
-    }
+      if (isR2Configured()) {
+        try {
+          const signedUrl = await generateDownloadUrl(key);
+          if (signedUrl) {
+            return res.redirect(302, signedUrl);
+          }
+        } catch (err: any) {
+          console.error("[uploads] Failed to generate signed URL:", err);
+          return res.status(500).json({ error: "Could not generate download URL" });
+        }
+      }
 
-    res.sendFile(filePath);
-  });
+      // Local disk fallback (dev without R2)
+      const filePath = getLocalFilePath(key);
+      if (!filePath) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      res.sendFile(filePath);
+    },
+  ];
+
+  app.use("/objects", ...serveHandler);
 }

@@ -1,6 +1,6 @@
 import { users, type User, type UpsertUser } from "@shared/models/auth";
 import { db } from "../db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -9,6 +9,7 @@ export interface IAuthStorage {
   updateUser(id: string, data: Partial<UpsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
   getAllUsers(): Promise<User[]>;
+  getUsersByRoles(roles: string[]): Promise<User[]>;
 }
 
 class AuthStorage implements IAuthStorage {
@@ -42,6 +43,11 @@ class AuthStorage implements IAuthStorage {
 
   async getAllUsers(): Promise<User[]> {
     return db.select().from(users);
+  }
+
+  async getUsersByRoles(roles: string[]): Promise<User[]> {
+    if (roles.length === 0) return [];
+    return db.select().from(users).where(inArray(users.role, roles));
   }
 }
 

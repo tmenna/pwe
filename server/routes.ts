@@ -5,6 +5,10 @@ import { setupAuth, isAuthenticated, registerUserRoutes } from "./auth";
 import { insertChildSchema } from "@shared/schema";
 import { z } from "zod";
 import { registerUploadRoutes } from "./uploads";
+import { sendNewMessageNotification, isEmailConfigured } from "./services/email";
+import { jobQueue } from "./services/jobs";
+import { deleteFile } from "./services/storage";
+import { authStorage } from "./auth/storage";
 
 const documentTypes = ["education", "report_cards", "attendance", "case_notes", "social_worker_notes", "follow_up_reports", "photos"] as const;
 
@@ -269,13 +273,18 @@ export async function registerRoutes(
       if (!child) return res.status(404).json({ message: "Child not found" });
       if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
 
-      const { objectPath, fileName, documentType, description } = req.body;
+      const { objectPath, fileName, documentType, description, contentType, fileSize } = req.body;
       if (!objectPath || !fileName) return res.status(400).json({ message: "objectPath and fileName are required" });
 
       const docType = documentType;
       if (!documentTypes.includes(docType)) {
         return res.status(400).json({ message: `Invalid document type. Must be one of: ${documentTypes.join(", ")}` });
       }
+
+      // Extract the R2 key from the objectPath (/objects/<key>)
+      const fileKey = objectPath.startsWith("/objects/")
+        ? objectPath.slice("/objects/".length)
+        : null;
 
       const uploaderName = getUserName(req);
       const doc = await storage.createDocument({
@@ -284,6 +293,9 @@ export async function registerRoutes(
         description: description || null,
         fileName,
         fileUrl: objectPath,
+        fileKey: fileKey || null,
+        mimeType: contentType || null,
+        fileSize: fileSize ? parseInt(fileSize) : null,
         uploadedBy: uploaderName,
       });
 
@@ -324,7 +336,13 @@ export async function registerRoutes(
 
   app.delete("/api/documents/:id", isAuthenticated, isNotReadOnly, async (req, res) => {
     try {
-      await storage.deleteDocument(parseInt(req.params.id));
+      const docId = parseInt(req.params.id);
+      // Fetch document first so we can clean up R2 storage
+      const doc = await storage.getDocumentById(docId);
+      if (doc?.fileKey) {
+        jobQueue.add("delete-file", () => deleteFile(doc.fileKey!));
+      }
+      await storage.deleteDocument(docId);
       res.json({ message: "Deleted" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -427,6 +445,34 @@ export async function registerRoutes(
         content,
         status: "pending",
       });
+
+      // Email notification: alert admins and case workers about the new message
+      if (isEmailConfigured()) {
+        jobQueue.add("email-new-message", async () => {
+          try {
+            const admins = await authStorage.getUsersByRoles(["admin", "case_worker"]);
+            for (const admin of admins) {
+              if (admin.email) {
+                await sendNewMessageNotification({
+                  recipientEmail: admin.email,
+                  recipientName:
+                    admin.firstName && admin.lastName
+                      ? `${admin.firstName} ${admin.lastName}`
+                      : admin.username,
+                  childName: child.fullName,
+                  childId: child.childId,
+                  senderName,
+                  messagePreview: content,
+                  dbChildId: childId,
+                });
+              }
+            }
+          } catch (err) {
+            console.error("[email] Failed to notify about new message:", err);
+          }
+        });
+      }
+
       res.status(201).json(msg);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -525,6 +571,25 @@ export async function registerRoutes(
         res.setHeader("Content-Disposition", "attachment; filename=children-export.xlsx");
         res.send(buffer);
       }
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Admin: test email endpoint ---
+  app.post("/api/admin/test-email", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.currentUser;
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const { sendTestEmail } = await import("./services/email");
+      const toEmail = req.body?.email || user.email;
+      if (!toEmail) {
+        return res.status(400).json({ message: "No email address provided and current user has no email set" });
+      }
+      const result = await sendTestEmail(toEmail);
+      res.json({ success: result.success, id: result.id, error: result.error });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
