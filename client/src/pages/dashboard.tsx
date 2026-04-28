@@ -1,17 +1,14 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Users, FileText, Clock, UserCheck, UserX, Pause, Plus, ArrowRight, Building2, Milestone, MessageSquare, RefreshCw, Heart, Trash2, AlertCircle } from "lucide-react";
+import { Users, UserCheck, Pause, Plus, Building2, MessageSquare, Heart } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import type { Child, Organization, TimelineEntry, Message } from "@shared/schema";
+import type { Organization, Message } from "@shared/schema";
 
 interface Stats {
   totalChildren: number;
@@ -82,46 +79,12 @@ function StatusBadge({ status }: { status: string }) {
 
 export { StatusBadge };
 
-const timelineDotColors: Record<string, string> = {
-  milestone: "bg-emerald-500/12",
-  document: "bg-blue-500/12",
-  status_change: "bg-amber-500/12",
-  note: "bg-violet-500/12",
-  manual: "bg-slate-500/12",
-};
-
-const timelineIconColors: Record<string, string> = {
-  milestone: "text-emerald-600",
-  document: "text-blue-500",
-  status_change: "text-amber-500",
-  note: "text-violet-500",
-  manual: "text-slate-500",
-};
-
 export default function Dashboard() {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const qClient = useQueryClient();
   const canEdit = user?.role !== "read_only";
   const isAdmin = user?.role === "admin";
   const userOrgId = user?.organizationId;
   const [orgFilter, setOrgFilter] = useState<string>(userOrgId ? String(userOrgId) : "all");
-  const [deleteChild, setDeleteChild] = useState<Child | null>(null);
-
-  const deleteChildMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return apiRequest("DELETE", `/api/children/${id}`);
-    },
-    onSuccess: () => {
-      qClient.invalidateQueries({ queryKey: ["/api/children"] });
-      qClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      toast({ title: "Child removed", description: "The child record has been deleted." });
-      setDeleteChild(null);
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
 
   const { data: organizations } = useQuery<Organization[]>({
     queryKey: ["/api/organizations"],
@@ -138,48 +101,10 @@ export default function Dashboard() {
     },
   });
 
-  const { data: allChildren, isLoading: childrenLoading } = useQuery<Child[]>({
-    queryKey: ["/api/children", orgFilter],
-    queryFn: async () => {
-      const res = await fetch(`/api/children${orgQueryParam}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch children");
-      return res.json();
-    },
-  });
-
-  const { data: recentTimeline, isLoading: timelineLoading } = useQuery<TimelineEntry[]>({
-    queryKey: ["/api/timeline/recent"],
-  });
-
   const { data: pendingMessages } = useQuery<Message[]>({
     queryKey: ["/api/messages/pending"],
     enabled: user?.role === "admin" || user?.role === "case_worker",
   });
-
-  const filteredChildIds = useMemo(() => {
-    return new Set((allChildren || []).map((c) => c.id));
-  }, [allChildren]);
-
-  const filteredTimeline = useMemo(() => {
-    if (!recentTimeline || orgFilter === "all") return recentTimeline;
-    return recentTimeline.filter((e) => filteredChildIds.has(e.childId));
-  }, [recentTimeline, orgFilter, filteredChildIds]);
-
-  const selectedOrgName = useMemo(() => {
-    if (orgFilter === "all" || !organizations) return null;
-    const org = organizations.find((o) => String(o.id) === orgFilter);
-    return org?.name || null;
-  }, [orgFilter, organizations]);
-
-  function getTimelineIcon(entryType: string) {
-    switch (entryType) {
-      case "milestone": return Milestone;
-      case "document": return FileText;
-      case "status_change": return RefreshCw;
-      case "note": return MessageSquare;
-      default: return Clock;
-    }
-  }
 
   return (
     <div className="flex-1 overflow-auto p-5 sm:p-8">
@@ -274,119 +199,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <Card className="border-border/50 p-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h2 className="text-[15px] font-semibold flex items-center gap-2.5" data-testid="text-recent-children">
-                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
-                {orgFilter === "all" ? "Recent Children" : `Children in ${selectedOrgName || "Organization"}`}
-              </h2>
-              <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">
-                <Link href="/children" data-testid="link-view-all-children">
-                  View All <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            </div>
-            {childrenLoading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
-                ))}
-              </div>
-            ) : !allChildren?.length ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <Users className="mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">
-                  {orgFilter === "all" ? "No children added yet" : `No children in ${selectedOrgName || "this organization"}`}
-                </p>
-                {canEdit && orgFilter === "all" && (
-                  <Button variant="outline" size="sm" className="mt-4 rounded-lg" asChild>
-                    <Link href="/children/new">Add your first child</Link>
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {allChildren.slice(0, 5).map((child) => (
-                  <div key={child.id} className="flex items-center gap-3 rounded-xl p-3 transition-all duration-150 hover:bg-primary/[0.04] border border-transparent hover:border-primary/10" data-testid={`card-child-${child.id}`}>
-                    <Link href={`/children/${child.id}`} className="flex flex-1 items-center gap-3 min-w-0">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/8 text-sm font-semibold text-primary">
-                        {child.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                        <p className="truncate text-sm font-medium">{child.fullName}</p>
-                        <p className="truncate text-xs text-muted-foreground mt-0.5">{child.childId} · {child.location}</p>
-                      </div>
-                      <StatusBadge status={child.status} />
-                    </Link>
-                    {canEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/8 hover:text-destructive transition-opacity [div:hover>&]:opacity-100"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteChild(child); }}
-                        data-testid={`button-delete-child-${child.id}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <Card className="border-border/50 p-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h2 className="text-[15px] font-semibold flex items-center gap-2.5" data-testid="text-recent-activity">
-                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
-                Recent Activity
-              </h2>
-            </div>
-            {timelineLoading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
-                ))}
-              </div>
-            ) : !filteredTimeline?.length ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <Clock className="mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">
-                  {orgFilter === "all" ? "No activity recorded yet" : `No activity for ${selectedOrgName || "this organization"}`}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {filteredTimeline.slice(0, 6).map((entry) => {
-                  const EntryIcon = getTimelineIcon(entry.entryType);
-                  const dotBg = timelineDotColors[entry.entryType] || "bg-slate-500/12";
-                  const iconColor = timelineIconColors[entry.entryType] || "text-slate-400";
-                  return (
-                    <div key={entry.id} className="flex gap-3 py-1" data-testid={`timeline-entry-${entry.id}`}>
-                      <div className="mt-0.5 flex flex-col items-center">
-                        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${dotBg}`}>
-                          <EntryIcon className={`h-3.5 w-3.5 ${iconColor}`} />
-                        </div>
-                        <div className="mt-1.5 w-px flex-1 bg-border/60" />
-                      </div>
-                      <div className="flex-1 pb-3">
-                        <p className="text-sm font-medium">{entry.title}</p>
-                        {entry.description && (
-                          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{entry.description}</p>
-                        )}
-                        <p className="mt-1 text-xs text-muted-foreground/70">
-                          {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-        </div>
-
         {(user?.role === "admin" || user?.role === "case_worker") && pendingMessages && pendingMessages.length > 0 && (
           <Card className="mt-6 border-border/50 p-6">
             <div className="mb-5 flex items-center justify-between gap-4">
@@ -415,33 +227,6 @@ export default function Dashboard() {
             </div>
           </Card>
         )}
-        <Dialog open={!!deleteChild} onOpenChange={(open) => !open && setDeleteChild(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Remove Child</DialogTitle>
-            </DialogHeader>
-            <div className="flex items-start gap-3 py-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-                <AlertCircle className="h-4.5 w-4.5 text-destructive" />
-              </div>
-              <p className="text-sm leading-relaxed">
-                Are you sure you want to remove <strong>{deleteChild?.fullName}</strong> ({deleteChild?.childId})? This will permanently delete all associated documents, timeline entries, and messages. This action cannot be undone.
-              </p>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" className="rounded-lg" onClick={() => setDeleteChild(null)} data-testid="button-cancel-delete-child">Cancel</Button>
-              <Button
-                variant="destructive"
-                className="rounded-lg shadow-sm"
-                onClick={() => deleteChild && deleteChildMutation.mutate(deleteChild.id)}
-                disabled={deleteChildMutation.isPending}
-                data-testid="button-confirm-delete-child"
-              >
-                {deleteChildMutation.isPending ? "Removing..." : "Remove"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
