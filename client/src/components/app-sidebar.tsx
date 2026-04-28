@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Users, LogOut, UserCog, Shield, Building2 } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, UserCog, Building2, Heart } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -78,9 +78,22 @@ export function AppSidebar() {
     ? `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || user.username?.[0]?.toUpperCase() || "U"
     : "U";
 
-  const allNavItems = user?.role === "admin"
-    ? [...navItems, ...adminNavItems]
-    : navItems;
+  const sponsorNavItems = [
+    {
+      title: "My Portal",
+      url: "/",
+      icon: Heart,
+      activeIconBg: "bg-pink-50 dark:bg-pink-500/10",
+      activeIconColor: "text-pink-600 dark:text-pink-400",
+      inactiveIconColor: "text-slate-400 dark:text-slate-500",
+    },
+  ];
+
+  const allNavItems = user?.role === "sponsor"
+    ? sponsorNavItems
+    : user?.role === "admin"
+      ? [...navItems, ...adminNavItems]
+      : navItems;
 
   return (
     <Sidebar>

@@ -36,6 +36,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - Custom username/password login (no signup - admin creates users)
 - Admin user management panel (create, edit, delete users, assign roles and organizations)
 - Role-based access control: admin, case_worker, read_only, sponsor
+- **Sponsor Portal**: Dedicated read-only portal for sponsors — warm welcome, child profile card, progress/documents/messages tabs, send-message capability; completely isolated from admin UI
 
 ## Auth System
 - Login via username/password (POST /api/login), no signup form
@@ -54,7 +55,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - `server/auth/` - Session setup, login/logout endpoints, auth middleware, user CRUD (platform-agnostic)
 - `server/uploads.ts` - Local disk file upload handling (platform-agnostic, replaces Replit object storage)
 - `client/src/App.tsx` - Main app with routing and auth gating
-- `client/src/pages/` - Page components (landing, dashboard, children-list, child-form, child-profile, admin-users, organizations)
+- `client/src/pages/` - Page components (landing, dashboard, children-list, child-form, child-profile, admin-users, organizations, sponsor-portal)
 - `client/src/components/` - Reusable components (app-sidebar, theme-provider, theme-toggle)
 - `client/src/hooks/use-auth.ts` - Auth hook for frontend session management
 

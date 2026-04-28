@@ -1,0 +1,80 @@
+Extend the existing portal by adding a Child Sponsorship Sponsor Portal module within the current architecture (do not rebuild or replace existing admin functionality).
+
+Goal:
+Add a new sponsor-facing user role and portal experience so individual sponsors can securely log in and view only the child/children they sponsor, while using the existing child profiles, documents, progress reporting, and user system already in the platform.
+
+Important:
+This is an expansion of the current system. Reuse existing authentication, role permissions, child profile structures, document modules, and reporting features wherever possible.
+
+Feature to add:
+Create a new user role:
+- Sponsor (read-only, highly restricted access)
+
+Sponsor Access Behavior:
+When a Sponsor logs in:
+- Do not show the standard admin/staff dashboard
+- Do not show existing admin menus/modules
+- Redirect them into a simplified sponsor dashboard experience
+
+Create a sponsor-only navigation:
+- My Sponsored Child
+- Progress
+- Updates
+- Documents
+- Messages (placeholder for future use)
+
+Reuse Existing Data:
+Leverage existing child records and modules already in the system to display:
+1. Child profile
+- Assigned sponsored child profile
+- Photo
+- Grade
+- Background summary
+
+2. Academic Progress
+Pull from existing progress/academic reporting already in platform:
+- milestones
+- attendance
+- achievements
+- challenges
+
+3. Updates Feed
+Reuse or extend current post/update functionality so updates can be marked visible to sponsors and displayed in sponsor portal.
+
+4. Documents
+Reuse existing document repository but filter to show only documents tied to sponsor’s assigned child.
+
+Data/Permissions:
+Add sponsor-child assignment relationship:
+- Sponsors can be linked to one or multiple children
+- Sponsors can only see records associated with assigned child(ren)
+
+Implement strict access controls:
+- Hide all admin modules from sponsor users
+- Prevent URL/direct route access to unauthorized data
+- Read-only sponsor permissions
+- Enforce row-level filtering on all sponsor queries
+
+UI additions:
+Create sponsor landing page:
+“Welcome [Sponsor Name], here is the latest update from [Child Name]”
+
+Show summary cards:
+- Latest progress update
+- Recent achievement
+- Current challenge
+- Latest report available
+
+Important Implementation Notes:
+- Preserve current portal architecture
+- Add this as a modular extension
+- Reuse existing components where possible instead of duplicating features
+- Follow current platform design system and navigation patterns
+- Keep sponsor experience simple, warm, and relational rather than administrative
+
+Optional enhancements if architecture supports:
+- notifications when new child updates are posted
+- sponsor progress timeline
+- future sponsor-child messaging scaffold
+
+Approach this as adding a secure sponsor-facing layer on top of what already exists, not a separate standalone application.
