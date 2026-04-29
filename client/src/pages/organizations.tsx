@@ -8,17 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Plus, Pencil, Trash2, AlertCircle } from "lucide-react";
+import { Building2, Plus, Pencil, Trash2, AlertCircle, ShieldAlert } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
-
-type Organization = {
-  id: number;
-  name: string;
-  description: string | null;
-  createdAt: string;
-};
+import { useAuth } from "@/hooks/use-auth";
+import type { Organization } from "@shared/schema";
 
 export default function Organizations() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
@@ -91,6 +88,18 @@ export default function Organizations() {
     });
   };
 
+  if (user?.role !== "admin") {
+    return (
+      <div className="flex flex-1 items-center justify-center p-6">
+        <Card className="max-w-md p-8 text-center border-border/50">
+          <ShieldAlert className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
+          <h2 className="mb-2 text-lg font-semibold">Admin Access Required</h2>
+          <p className="text-sm text-muted-foreground">Only administrators can manage organizations.</p>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex-1 overflow-auto p-5 sm:p-8">
@@ -109,12 +118,12 @@ export default function Organizations() {
       <div className="mx-auto max-w-4xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10">
-              <Building2 className="h-5 w-5 text-orange-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 dark:bg-orange-500/10">
+              <Building2 className="h-5 w-5 text-orange-500 dark:text-orange-400" />
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight" data-testid="text-organizations-title">Organizations</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Manage partner organizations</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Manage partner organizations and group assignments</p>
             </div>
           </div>
           <Button size="sm" className="rounded-lg shadow-sm h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setCreateOpen(true)} data-testid="button-add-organization">
@@ -127,19 +136,30 @@ export default function Organizations() {
           {organizations?.map((org) => (
             <Card key={org.id} className="border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`card-organization-${org.id}`}>
               <CardContent className="flex items-center justify-between p-5">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium" data-testid={`text-org-name-${org.id}`}>{org.name}</span>
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 dark:bg-orange-500/10">
+                    <Building2 className="h-5 w-5 text-orange-500 dark:text-orange-400" />
                   </div>
-                  <div className="mt-1.5 text-sm text-muted-foreground" data-testid={`text-org-description-${org.id}`}>
-                    {org.description || "No description"}
+                  <div className="overflow-hidden">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium" data-testid={`text-org-name-${org.id}`}>{org.name}</span>
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/25 text-xs font-medium">
+                        ID: {org.id}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground truncate" data-testid={`text-org-description-${org.id}`}>
+                      {org.description || <span className="italic">No description</span>}
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Created {org.createdAt ? new Date(org.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="ghost" size="icon" className="rounded-lg" onClick={() => openEdit(org)} data-testid={`button-edit-org-${org.id}`}>
+                <div className="flex items-center gap-1.5 shrink-0 ml-4">
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => openEdit(org)} data-testid={`button-edit-org-${org.id}`}>
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-destructive/8 hover:text-destructive" onClick={() => setDeleteOrg(org)} data-testid={`button-delete-org-${org.id}`}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-destructive/8 hover:text-destructive" onClick={() => setDeleteOrg(org)} data-testid={`button-delete-org-${org.id}`}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -147,7 +167,15 @@ export default function Organizations() {
             </Card>
           ))}
           {organizations?.length === 0 && (
-            <p className="py-12 text-center text-muted-foreground" data-testid="text-no-organizations">No organizations found.</p>
+            <Card className="flex flex-col items-center justify-center p-16 text-center border-border/50" data-testid="text-no-organizations">
+              <Building2 className="mb-4 h-12 w-12 text-muted-foreground/30" />
+              <h3 className="mb-1.5 text-base font-semibold">No organizations yet</h3>
+              <p className="text-sm text-muted-foreground mb-5">Create your first organization to group children and assign staff.</p>
+              <Button size="sm" className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Organization
+              </Button>
+            </Card>
           )}
         </div>
 
@@ -247,7 +275,7 @@ export default function Organizations() {
                 <AlertCircle className="h-4.5 w-4.5 text-destructive" />
               </div>
               <p className="text-sm leading-relaxed">
-                Are you sure you want to delete <strong>{deleteOrg?.name}</strong>? This action cannot be undone.
+                Are you sure you want to delete <strong>{deleteOrg?.name}</strong>? Children assigned to this organization will become unassigned. This action cannot be undone.
               </p>
             </div>
             <DialogFooter>
