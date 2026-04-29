@@ -4,7 +4,7 @@ import { useRoute, useLocation, Link } from "wouter";
 import {
   ArrowLeft, Edit, Upload, Plus, FileText, Image, StickyNote,
   GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2, Camera, Check, X, Pencil,
-  Milestone, MessageSquare, RefreshCw, Heart, Mail, Send, MoreHorizontal, Building2,
+  Milestone, MessageSquare, RefreshCw, Heart, Mail, Send, MoreHorizontal, Building2, MessageCircle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +31,14 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Child, Document, TimelineEntry, Message, Organization } from "@shared/schema";
+
+type SafeUser = {
+  id: string;
+  username: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+};
 
 function DocumentIcon({ type }: { type: string }) {
   switch (type) {
@@ -446,6 +455,24 @@ export default function ChildProfile() {
     queryKey: ["/api/organizations"],
   });
 
+  const { data: allUsers } = useQuery<SafeUser[]>({
+    queryKey: ["/api/users"],
+    enabled: user?.role === "admin",
+  });
+
+  const toggleSponsorCommentMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return apiRequest("PATCH", `/api/children/${childId}`, { sponsorCanComment: enabled });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId] });
+      toast({ title: "Sponsor commenting updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (docId: number) => {
       return apiRequest("DELETE", `/api/documents/${docId}`);
@@ -601,6 +628,15 @@ export default function ChildProfile() {
     ? organizations.find((o) => o.id === child.organizationId)?.name || "Unknown"
     : "Not assigned";
 
+  const assignedSponsorUser = child.sponsorUserId && allUsers
+    ? allUsers.find((u) => u.id === child.sponsorUserId)
+    : null;
+  const assignedSponsorName = assignedSponsorUser
+    ? (assignedSponsorUser.firstName && assignedSponsorUser.lastName
+        ? `${assignedSponsorUser.firstName} ${assignedSponsorUser.lastName}`
+        : assignedSponsorUser.username)
+    : (child.sponsorUserId ? "Assigned" : "Not linked");
+
   const infoItems = [
     { icon: Calendar, label: "Age", value: `${child.age} years old` },
     { icon: User, label: "Gender", value: child.gender },
@@ -608,6 +644,7 @@ export default function ChildProfile() {
     { icon: BookOpen, label: "Program", value: child.programEnrollment },
     { icon: User, label: "Case Worker", value: child.assignedCaseWorker },
     { icon: User, label: "Sponsor(s)", value: child.assignedSponsors || "None assigned" },
+    { icon: Heart, label: "Sponsor Account", value: assignedSponsorName, color: child.sponsorUserId ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground" },
     { icon: Heart, label: "Sponsored", value: child.isSponsored ? "Yes" : "No", color: child.isSponsored ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground" },
     { icon: Building2, label: "Organization", value: orgName, color: child.organizationId ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground" },
   ];
@@ -934,11 +971,30 @@ export default function ChildProfile() {
           </TabsContent>
 
           <TabsContent value="messages" className="mt-5">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
-                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
-                Messages
-              </h2>
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
+                  <span className="inline-block w-1 h-5 rounded-full bg-primary" />
+                  Messages
+                </h2>
+                {user?.role === "admin" && (
+                  <div className="flex items-center gap-2.5 ml-3.5 mt-1">
+                    <Switch
+                      id="sponsor-comment-toggle"
+                      checked={!!child.sponsorCanComment}
+                      onCheckedChange={(val) => toggleSponsorCommentMutation.mutate(val)}
+                      disabled={toggleSponsorCommentMutation.isPending}
+                      data-testid="switch-sponsor-can-comment"
+                    />
+                    <label htmlFor="sponsor-comment-toggle" className="flex items-center gap-1.5 cursor-pointer">
+                      <MessageCircle className={`h-3.5 w-3.5 ${child.sponsorCanComment ? "text-emerald-600" : "text-muted-foreground"}`} />
+                      <span className={`text-xs font-medium ${child.sponsorCanComment ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                        Sponsor commenting {child.sponsorCanComment ? "enabled" : "disabled"}
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
               {canEdit && (
                 <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
                   <DialogTrigger asChild>

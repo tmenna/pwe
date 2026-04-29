@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Heart, FileText, Image, StickyNote, GraduationCap, Clock, MessageSquare,
   Milestone, RefreshCw, MapPin, BookOpen, User, Calendar, Send, Mail,
-  CheckCheck, Eye, Inbox,
+  CheckCheck, Eye, Inbox, MessageCircleOff,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -202,7 +202,14 @@ function ChildPortal({ child }: { child: Child }) {
               Here is the latest update from <span className="font-medium text-foreground">{child.fullName}</span>
             </p>
           </div>
-          <SendMessageDialog childId={childId} sponsorName={sponsorName} onClose={() => {}} />
+          {child.sponsorCanComment ? (
+            <SendMessageDialog childId={childId} sponsorName={sponsorName} onClose={() => {}} />
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/40 px-4 py-2.5 text-sm text-muted-foreground" data-testid="text-commenting-disabled">
+              <Mail className="h-4 w-4 shrink-0" />
+              Commenting not currently enabled
+            </div>
+          )}
         </div>
 
         {/* Child Hero Card */}
@@ -454,7 +461,13 @@ function ChildPortal({ child }: { child: Child }) {
                     <span className="inline-block w-1 h-5 rounded-full bg-pink-500" />
                     Messages
                   </h3>
-                  <SendMessageDialog childId={childId} sponsorName={sponsorName} onClose={() => {}} />
+                  {child.sponsorCanComment ? (
+                    <SendMessageDialog childId={childId} sponsorName={sponsorName} onClose={() => {}} />
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic" data-testid="text-tab-commenting-disabled">
+                      Commenting not enabled
+                    </span>
+                  )}
                 </div>
                 {messagesLoading ? (
                   <div className="space-y-3">

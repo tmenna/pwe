@@ -430,6 +430,11 @@ export async function registerRoutes(
       if (!child) return res.status(404).json({ message: "Child not found" });
       if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
 
+      // Sponsors can only comment when admin has explicitly enabled it
+      if (user.role === "sponsor" && !child.sponsorCanComment) {
+        return res.status(403).json({ message: "Commenting is not currently enabled for this child." });
+      }
+
       let { senderName, senderRole, content } = req.body;
       if (user.role === "sponsor") {
         senderName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username;

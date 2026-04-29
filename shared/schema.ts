@@ -29,6 +29,7 @@ export const children = pgTable("children", {
   sponsorPhotoUrl: text("sponsor_photo_url"),
   organizationId: integer("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   sponsorUserId: varchar("sponsor_user_id"),
+  sponsorCanComment: boolean("sponsor_can_comment").notNull().default(false),
 });
 
 export const documents = pgTable("documents", {
