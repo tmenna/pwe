@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -15,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2,
-  Shield, Eye, Heart, Users, Baby, MessageSquare,
+  Shield, Eye, Heart, Users, Baby, MessageSquare, Search, X, Check,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
@@ -695,7 +694,7 @@ export default function AdminUsers() {
   );
 }
 
-// ── Reusable sponsor child picker component ──────────────────────────────────
+// ── Reusable sponsor child picker with search ────────────────────────────────
 function SponsorChildPicker({
   children_,
   selectedIds,
@@ -711,68 +710,172 @@ function SponsorChildPicker({
   onToggleCommenting?: (id: number, value: boolean) => void;
   showCommentingToggles?: boolean;
 }) {
+  const [query, setQuery] = useState("");
+
+  const normalise = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const q = normalise(query);
+
+  // Selected children always shown first, then alphabetical
+  const sorted = [...children_].sort((a, b) => {
+    const aSelected = selectedIds.includes(a.id);
+    const bSelected = selectedIds.includes(b.id);
+    if (aSelected && !bSelected) return -1;
+    if (!aSelected && bSelected) return 1;
+    return a.fullName.localeCompare(b.fullName);
+  });
+
+  const visible = q
+    ? sorted.filter(
+        (c) =>
+          normalise(c.fullName).includes(q) ||
+          normalise(c.childId).includes(q) ||
+          normalise(c.status).includes(q)
+      )
+    : sorted;
+
   return (
     <div className="space-y-2">
-      <Label className="text-sm font-medium flex items-center gap-1.5">
-        <Baby className="h-3.5 w-3.5 text-pink-500" />
-        Assigned Child Profiles
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <Label className="text-sm font-medium flex items-center gap-1.5">
+          <Baby className="h-3.5 w-3.5 text-pink-500" />
+          Assigned Child Profiles
+          {selectedIds.length > 0 && (
+            <Badge
+              variant="outline"
+              className="ml-1 bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/25 text-xs"
+            >
+              {selectedIds.length} selected
+            </Badge>
+          )}
+        </Label>
         {selectedIds.length > 0 && (
-          <Badge variant="outline" className="ml-1 bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/25 text-xs">
-            {selectedIds.length} selected
-          </Badge>
+          <button
+            type="button"
+            onClick={() => selectedIds.forEach((id) => onToggle(id, false))}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+            data-testid="button-clear-children"
+          >
+            <X className="h-3 w-3" />
+            Clear all
+          </button>
         )}
-      </Label>
+      </div>
+
       <p className="text-xs text-muted-foreground -mt-0.5">
-        The sponsor will only be able to view the profiles of selected children.
+        Sponsor can only view selected children's profiles. Type to search, then click to select.
       </p>
+
+      {/* Search input */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name or child ID…"
+          className="h-9 pl-8 pr-8 rounded-lg border-border/60 text-sm"
+          data-testid="input-child-search"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* List */}
       <ScrollArea className="h-52 rounded-lg border border-border/60 bg-muted/20">
-        <div className="p-2 space-y-1">
+        <div className="p-2 space-y-0.5">
           {children_.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8 italic">No child profiles exist yet</p>
-          ) : children_.map((c) => {
-            const isSelected = selectedIds.includes(c.id);
-            const canComment = commentingMap[c.id] ?? false;
-            return (
-              <div
-                key={c.id}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${isSelected ? "bg-pink-50 dark:bg-pink-500/10" : "hover:bg-muted/50"}`}
+            <p className="text-xs text-muted-foreground text-center py-8 italic">
+              No child profiles exist yet
+            </p>
+          ) : visible.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
+              <Search className="h-5 w-5 text-muted-foreground/40" />
+              <p className="text-xs text-muted-foreground">
+                No children match <strong>"{query}"</strong>
+              </p>
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="text-xs text-primary hover:underline"
               >
-                <Checkbox
-                  id={`child-${c.id}`}
-                  checked={isSelected}
-                  onCheckedChange={(v) => onToggle(c.id, !!v)}
-                  className="border-border/60 data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
-                  data-testid={`checkbox-child-${c.id}`}
-                />
-                <label
-                  htmlFor={`child-${c.id}`}
-                  className="flex-1 min-w-0 cursor-pointer select-none"
+                Clear search
+              </button>
+            </div>
+          ) : (
+            visible.map((c) => {
+              const isSelected = selectedIds.includes(c.id);
+              const canComment = commentingMap[c.id] ?? false;
+              return (
+                <div
+                  key={c.id}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors cursor-pointer ${
+                    isSelected
+                      ? "bg-pink-50 dark:bg-pink-500/10"
+                      : "hover:bg-muted/50"
+                  }`}
+                  onClick={() => onToggle(c.id, !isSelected)}
                 >
-                  <p className="text-sm font-medium leading-none truncate">{c.fullName}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{c.childId} · <span className="capitalize">{c.status}</span></p>
-                </label>
-                {showCommentingToggles && isSelected && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <MessageSquare className={`h-3.5 w-3.5 ${canComment ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-                    <Switch
-                      checked={canComment}
-                      onCheckedChange={(v) => onToggleCommenting?.(c.id, v)}
-                      className="scale-90"
-                      data-testid={`switch-commenting-${c.id}`}
-                    />
+                  {/* Custom checkbox indicator — no internal Radix state */}
+                  <div
+                    className={`h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${
+                      isSelected
+                        ? "bg-pink-500 border-pink-500"
+                        : "border-border/70 bg-background"
+                    }`}
+                    data-testid={`checkbox-child-${c.id}`}
+                  >
+                    {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                  <div className="flex-1 min-w-0 select-none">
+                    <p className="text-sm font-medium leading-none truncate">{c.fullName}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {c.childId} · <span className="capitalize">{c.status}</span>
+                    </p>
+                  </div>
+                  {showCommentingToggles && isSelected && (
+                    <div
+                      className="flex items-center gap-1.5 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MessageSquare
+                        className={`h-3.5 w-3.5 ${canComment ? "text-emerald-500" : "text-muted-foreground/40"}`}
+                      />
+                      <Switch
+                        checked={canComment}
+                        onCheckedChange={(v) => onToggleCommenting?.(c.id, v)}
+                        className="scale-90"
+                        data-testid={`switch-commenting-${c.id}`}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </ScrollArea>
-      {showCommentingToggles && selectedIds.length > 0 && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <MessageSquare className="h-3 w-3" />
-          Toggle the message icon to allow or block commenting per child.
+
+      {/* Footer hints */}
+      <div className="flex items-center justify-between">
+        {showCommentingToggles && selectedIds.length > 0 ? (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" />
+            Use the toggle to allow or block messaging per child.
+          </p>
+        ) : (
+          <span />
+        )}
+        <p className="text-xs text-muted-foreground">
+          {visible.length} of {children_.length} shown
         </p>
-      )}
+      </div>
     </div>
   );
 }
