@@ -1,0 +1,108 @@
+Enhance the existing PWE Child Sponsorship Portal dashboard (do not rebuild the app) by redesigning the current dashboard into a cleaner modern minimalist interface based on this concept:
+
+Goal:
+Keep the dashboard intentionally simple and elegant, focused only on:
+1. Children Overview
+2. Sponsorship Overview
+
+This is a refinement of the existing system, not a new module. Reuse current data, routes, authentication, and components.
+
+Design Direction:
+- Modern, airy, minimal dashboard
+- Smooth spacing and strong visual hierarchy
+- Clean typography with better readability
+- Soft card shadows, subtle borders, rounded-xl cards
+- Light neutral background (#F8FAFC style)
+- Minimal but meaningful color accents
+- Professional NGO/mission-friendly aesthetic (not corporate-heavy)
+
+Dashboard Layout:
+Keep current sidebar structure, but improve polish.
+
+Top Header:
+- Welcome line:
+  “Welcome back, System Admin”
+- Large Dashboard heading
+- Short subtitle:
+  “Overview of child sponsorship records”
+- Keep Add Child button top right with modern pill button styling
+
+Section 1:
+Children Overview Card (large feature card)
+
+Include:
+- Section title with icon
+- Donut/ring chart centered
+- Total children count prominently displayed
+- Right-side summary metrics:
+   Active
+   Sponsored
+   Paused
+   Inactive
+
+Use colored indicators:
+- Active (soft green)
+- Sponsored (rose/pink)
+- Paused (amber)
+- Inactive (gray)
+
+Bottom info strip:
+- “2 new children added this month”
+- View all children link
+
+Section 2:
+Sponsorship Overview Card
+
+Include:
+- Sponsored children count
+- Sponsorship percentage circular progress indicator
+- Small encouragement insight card:
+  “Great progress — 2 more children can be sponsored”
+
+Bottom info strip:
+- “1 new sponsorship this month”
+- View all sponsorships link
+
+UI Improvements:
+Typography:
+Use more visible modern fonts:
+- Inter
+- Manrope
+- or Geist
+
+Font sizing:
+- Page title: bold 42-48px
+- Section titles: 28-30px
+- Metric numbers: large 40-56px
+- Labels: 15-16px medium weight
+- Improve contrast for all muted text
+
+Spacing:
+- Increase white space significantly
+- Larger padding in cards
+- More breathing room between sections
+
+Cards:
+- rounded-2xl corners
+- soft shadow
+- subtle hover lift
+- light border for depth
+
+Optional Micro-interactions:
+- animate donut chart on load
+- count-up animation on metrics
+- smooth hover states
+- progress ring animation
+
+Important:
+Replace current top metric tiles with this simplified two-panel dashboard structure.
+Remove unnecessary dashboard clutter.
+Prioritize clarity, elegance, and at-a-glance usefulness.
+
+Technical:
+- Reuse existing child and sponsorship data sources
+- Keep existing backend logic
+- This is a frontend dashboard enhancement within the current system
+- Follow current stack and component architecture already in project
+
+Aim for a polished “modern nonprofit SaaS dashboard” look — simple, calm, slick, and highly readable.
