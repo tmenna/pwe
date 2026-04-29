@@ -31,6 +31,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - Sponsor Messaging (send messages on behalf of sponsors, status tracking: pending/delivered/read)
 - Multi-Organization Management (create/manage organizations, assign children to organizations)
 - Organization-based access control (non-admin users assigned to an org only see that org's children)
+- Multi-child sponsor assignment: sponsors can be linked to one or more children; per-child commenting toggle directly in User Management
 - Data Export to CSV/XLSX with selectable fields
 - Dashboard with statistics overview (total, active, paused, sponsored counts), org filter, and pending messages
 - Custom username/password login (no signup - admin creates users)

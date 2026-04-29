@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,16 +66,38 @@ const rolePermissionDesc: Record<string, string> = {
   admin: "Full access — all children, settings, and user management",
   case_worker: "Can create and edit children, documents, and messages",
   read_only: "View-only access to assigned children",
-  sponsor: "View-only portal for their assigned child",
+  sponsor: "View-only portal for their assigned children",
 };
 
-const emptyCreate = {
-  username: "", password: "", firstName: "", lastName: "",
-  role: "case_worker", organizationId: "", sponsorChildId: "",
+type EditForm = {
+  username: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  password: string;
+  organizationId: string;
+  sponsorChildIds: number[];
+  sponsorCommentingMap: Record<number, boolean>;
 };
-const emptyEdit = {
+
+type CreateForm = {
+  username: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  organizationId: string;
+  sponsorChildIds: number[];
+};
+
+const emptyCreate: CreateForm = {
+  username: "", password: "", firstName: "", lastName: "",
+  role: "case_worker", organizationId: "", sponsorChildIds: [],
+};
+
+const emptyEdit: EditForm = {
   username: "", firstName: "", lastName: "", role: "case_worker",
-  password: "", organizationId: "", sponsorChildId: "", sponsorCanComment: false,
+  password: "", organizationId: "", sponsorChildIds: [], sponsorCommentingMap: {},
 };
 
 export default function AdminUsers() {
@@ -82,17 +106,30 @@ export default function AdminUsers() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<SafeUser | null>(null);
   const [deleteUser, setDeleteUser] = useState<SafeUser | null>(null);
-  const [form, setForm] = useState(emptyCreate);
-  const [editForm, setEditForm] = useState(emptyEdit);
+  const [form, setForm] = useState<CreateForm>(emptyCreate);
+  const [editForm, setEditForm] = useState<EditForm>(emptyEdit);
 
   const { data: users, isLoading } = useQuery<SafeUser[]>({ queryKey: ["/api/users"] });
-
   const { data: organizations } = useQuery<Organization[]>({ queryKey: ["/api/organizations"] });
-
   const { data: children } = useQuery<ChildSummary[]>({ queryKey: ["/api/children"] });
 
-  const getAssignedChild = (userId: string) =>
-    children?.find((c) => c.sponsorUserId === userId) ?? null;
+  const getAssignedChildren = (userId: string): ChildSummary[] =>
+    children?.filter((c) => c.sponsorUserId === userId) ?? [];
+
+  const toggleSponsorChild = (childId: number, checked: boolean, setter: (fn: (prev: EditForm) => EditForm) => void) => {
+    setter((f) => {
+      const ids = checked
+        ? [...f.sponsorChildIds.filter((id) => id !== childId), childId]
+        : f.sponsorChildIds.filter((id) => id !== childId);
+      const map = { ...f.sponsorCommentingMap };
+      if (!checked) delete map[childId];
+      return { ...f, sponsorChildIds: ids, sponsorCommentingMap: map };
+    });
+  };
+
+  const toggleCommenting = (childId: number, value: boolean, setter: (fn: (prev: EditForm) => EditForm) => void) => {
+    setter((f) => ({ ...f, sponsorCommentingMap: { ...f.sponsorCommentingMap, [childId]: value } }));
+  };
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -106,9 +143,10 @@ export default function AdminUsers() {
         organizationId: form.organizationId ? parseInt(form.organizationId) : null,
       });
       const newUser = await res.json();
-      if (form.role === "sponsor" && form.sponsorChildId) {
+
+      if (form.role === "sponsor" && form.sponsorChildIds.length > 0) {
         await apiRequest("POST", `/api/users/${newUser.id}/assign-child`, {
-          childId: parseInt(form.sponsorChildId),
+          childIds: form.sponsorChildIds,
         });
       }
       return newUser;
@@ -137,26 +175,24 @@ export default function AdminUsers() {
       await apiRequest("PATCH", `/api/users/${editUser!.id}`, body);
 
       if (editForm.role === "sponsor") {
-        const currentChild = getAssignedChild(editUser!.id);
-        const newChildId = editForm.sponsorChildId ? parseInt(editForm.sponsorChildId) : null;
-        const currentChildId = currentChild?.id ?? null;
-        if (newChildId !== currentChildId) {
-          await apiRequest("POST", `/api/users/${editUser!.id}/assign-child`, { childId: newChildId });
-        }
-        // Update sponsorCanComment on the assigned child (current or new)
-        const targetChildId = newChildId ?? currentChildId;
-        if (targetChildId !== null) {
-          const prevCanComment = currentChild?.sponsorCanComment ?? false;
-          if (editForm.sponsorCanComment !== prevCanComment || newChildId !== currentChildId) {
-            await apiRequest("PATCH", `/api/children/${targetChildId}`, {
-              sponsorCanComment: editForm.sponsorCanComment,
-            });
+        // Reconcile child assignments
+        await apiRequest("POST", `/api/users/${editUser!.id}/assign-child`, {
+          childIds: editForm.sponsorChildIds,
+        });
+        // Update sponsorCanComment for each assigned child
+        const prevChildren = getAssignedChildren(editUser!.id);
+        for (const childId of editForm.sponsorChildIds) {
+          const prev = prevChildren.find((c) => c.id === childId);
+          const newCanComment = editForm.sponsorCommentingMap[childId] ?? false;
+          if (newCanComment !== (prev?.sponsorCanComment ?? false) || !prev) {
+            await apiRequest("PATCH", `/api/children/${childId}`, { sponsorCanComment: newCanComment });
           }
         }
       } else {
-        const currentChild = getAssignedChild(editUser!.id);
-        if (currentChild) {
-          await apiRequest("POST", `/api/users/${editUser!.id}/assign-child`, { childId: null });
+        // Switching away from sponsor — remove all child assignments
+        const prevChildren = getAssignedChildren(editUser!.id);
+        if (prevChildren.length > 0) {
+          await apiRequest("POST", `/api/users/${editUser!.id}/assign-child`, { childIds: [] });
         }
       }
     },
@@ -183,7 +219,11 @@ export default function AdminUsers() {
   });
 
   const openEdit = (u: SafeUser) => {
-    const assignedChild = children?.find((c) => c.sponsorUserId === u.id);
+    const assignedChildren = getAssignedChildren(u.id);
+    const commentingMap: Record<number, boolean> = {};
+    for (const c of assignedChildren) {
+      commentingMap[c.id] = c.sponsorCanComment ?? false;
+    }
     setEditUser(u);
     setEditForm({
       username: u.username,
@@ -192,8 +232,8 @@ export default function AdminUsers() {
       role: u.role,
       password: "",
       organizationId: u.organizationId ? String(u.organizationId) : "",
-      sponsorChildId: assignedChild ? String(assignedChild.id) : "",
-      sponsorCanComment: assignedChild?.sponsorCanComment ?? false,
+      sponsorChildIds: assignedChildren.map((c) => c.id),
+      sponsorCommentingMap: commentingMap,
     });
   };
 
@@ -238,7 +278,7 @@ export default function AdminUsers() {
         <div className="space-y-3">
           {users?.map((u) => {
             const RoleIcon = roleIcons[u.role] || Shield;
-            const assignedChild = getAssignedChild(u.id);
+            const assignedChildren = getAssignedChildren(u.id);
             const assignedOrg = u.organizationId ? organizations?.find((o) => o.id === u.organizationId) : null;
             const displayName = u.firstName || u.lastName
               ? `${u.firstName || ""} ${u.lastName || ""}`.trim()
@@ -249,7 +289,6 @@ export default function AdminUsers() {
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                      {/* Avatar initials */}
                       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${roleBadgeColors[u.role]?.split(" ").slice(0, 2).join(" ") || "bg-muted text-muted-foreground"}`}>
                         {(u.firstName?.[0] || u.username?.[0] || "?").toUpperCase()}
                       </div>
@@ -273,33 +312,33 @@ export default function AdminUsers() {
                           {u.username}
                         </p>
 
-                        {/* Access/permissions summary */}
+                        {/* Access summary */}
                         <div className="mt-2.5 flex flex-wrap items-center gap-2">
                           {u.role === "sponsor" && (
-                            assignedChild ? (
+                            assignedChildren.length > 0 ? (
                               <>
-                                <div className="flex items-center gap-1.5 rounded-md bg-pink-50 dark:bg-pink-500/10 border border-pink-200/60 dark:border-pink-500/20 px-2.5 py-1" data-testid={`badge-assigned-child-${u.id}`}>
-                                  <Baby className="h-3.5 w-3.5 text-pink-500 shrink-0" />
-                                  <span className="text-xs font-medium text-pink-700 dark:text-pink-300">
-                                    {assignedChild.fullName}
-                                  </span>
-                                  <Badge variant="outline" className="text-[10px] px-1 h-4 capitalize border-pink-200/60 text-pink-600">
-                                    {assignedChild.status}
-                                  </Badge>
-                                </div>
-                                <div
-                                  className={`flex items-center gap-1 rounded-md border px-2 py-1 ${assignedChild.sponsorCanComment ? "bg-emerald-50 border-emerald-200/60 dark:bg-emerald-500/10 dark:border-emerald-500/20" : "bg-muted/40 border-border/40"}`}
-                                  data-testid={`badge-commenting-${u.id}`}
-                                >
-                                  <MessageSquare className={`h-3 w-3 ${assignedChild.sponsorCanComment ? "text-emerald-600" : "text-muted-foreground/50"}`} />
-                                  <span className={`text-[11px] font-medium ${assignedChild.sponsorCanComment ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/60"}`}>
-                                    {assignedChild.sponsorCanComment ? "Commenting on" : "Commenting off"}
-                                  </span>
-                                </div>
+                                {assignedChildren.map((ac) => (
+                                  <div
+                                    key={ac.id}
+                                    className="flex items-center gap-1.5 rounded-md bg-pink-50 dark:bg-pink-500/10 border border-pink-200/60 dark:border-pink-500/20 px-2.5 py-1"
+                                    data-testid={`badge-assigned-child-${u.id}-${ac.id}`}
+                                  >
+                                    <Baby className="h-3.5 w-3.5 text-pink-500 shrink-0" />
+                                    <span className="text-xs font-medium text-pink-700 dark:text-pink-300">
+                                      {ac.fullName}
+                                    </span>
+                                    <div
+                                      className={`flex items-center gap-0.5 ${ac.sponsorCanComment ? "text-emerald-600" : "text-muted-foreground/40"}`}
+                                      title={ac.sponsorCanComment ? "Commenting enabled" : "Commenting disabled"}
+                                    >
+                                      <MessageSquare className="h-3 w-3" />
+                                    </div>
+                                  </div>
+                                ))}
                               </>
                             ) : (
                               <span className="text-xs text-muted-foreground/60 italic" data-testid={`text-no-child-${u.id}`}>
-                                No child assigned yet
+                                No children assigned yet
                               </span>
                             )
                           )}
@@ -310,8 +349,8 @@ export default function AdminUsers() {
                             </Badge>
                           )}
                           <span className="text-xs text-muted-foreground/60">
-                            {u.role === "sponsor" && assignedChild
-                              ? "View-only access to assigned child's profile"
+                            {u.role === "sponsor" && assignedChildren.length > 0
+                              ? `View-only access to ${assignedChildren.length} child profile${assignedChildren.length > 1 ? "s" : ""}`
                               : rolePermissionDesc[u.role]}
                           </span>
                         </div>
@@ -355,7 +394,7 @@ export default function AdminUsers() {
 
         {/* ── Create dialog ─────────────────────────── */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[520px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <UserPlus className="h-4 w-4 text-emerald-600" />
@@ -413,12 +452,11 @@ export default function AdminUsers() {
 
               <Separator className="opacity-50" />
 
-              {/* Role */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Role</Label>
                 <Select
                   value={form.role}
-                  onValueChange={(v) => setForm((f) => ({ ...f, role: v, organizationId: v === "sponsor" ? "" : f.organizationId, sponsorChildId: v !== "sponsor" ? "" : f.sponsorChildId }))}
+                  onValueChange={(v) => setForm((f) => ({ ...f, role: v, organizationId: v === "sponsor" ? "" : f.organizationId, sponsorChildIds: v !== "sponsor" ? [] : f.sponsorChildIds }))}
                 >
                   <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-new-role">
                     <SelectValue />
@@ -433,7 +471,6 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">{rolePermissionDesc[form.role]}</p>
               </div>
 
-              {/* Organization — for non-sponsor, non-admin */}
               {form.role !== "sponsor" && form.role !== "admin" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
@@ -454,33 +491,17 @@ export default function AdminUsers() {
                 </div>
               )}
 
-              {/* Child assignment — for sponsor */}
               {form.role === "sponsor" && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-1.5">
-                    <Baby className="h-3.5 w-3.5 text-pink-500" />
-                    Assigned Child Profile
-                  </Label>
-                  <Select
-                    value={form.sponsorChildId || "none"}
-                    onValueChange={(v) => setForm((f) => ({ ...f, sponsorChildId: v === "none" ? "" : v }))}
-                  >
-                    <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-new-sponsor-child">
-                      <SelectValue placeholder="No child assigned" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No child assigned yet</SelectItem>
-                      {children?.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.fullName} — {c.childId}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    The sponsor will only be able to view this child's profile and progress.
-                  </p>
-                </div>
+                <SponsorChildPicker
+                  children_={children || []}
+                  selectedIds={form.sponsorChildIds}
+                  onToggle={(id, checked) => setForm((f) => ({
+                    ...f,
+                    sponsorChildIds: checked
+                      ? [...f.sponsorChildIds.filter((x) => x !== id), id]
+                      : f.sponsorChildIds.filter((x) => x !== id),
+                  }))}
+                />
               )}
 
               <DialogFooter className="pt-2">
@@ -500,7 +521,7 @@ export default function AdminUsers() {
 
         {/* ── Edit dialog ───────────────────────────── */}
         <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[520px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Pencil className="h-4 w-4 text-primary" />
@@ -548,7 +569,6 @@ export default function AdminUsers() {
 
               <Separator className="opacity-50" />
 
-              {/* Role */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Role</Label>
                 <Select
@@ -557,7 +577,8 @@ export default function AdminUsers() {
                     ...f,
                     role: v,
                     organizationId: v === "sponsor" || v === "admin" ? "" : f.organizationId,
-                    sponsorChildId: v !== "sponsor" ? "" : f.sponsorChildId,
+                    sponsorChildIds: v !== "sponsor" ? [] : f.sponsorChildIds,
+                    sponsorCommentingMap: v !== "sponsor" ? {} : f.sponsorCommentingMap,
                   }))}
                 >
                   <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-edit-role">
@@ -573,7 +594,6 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">{rolePermissionDesc[editForm.role]}</p>
               </div>
 
-              {/* Organization — for non-sponsor, non-admin */}
               {editForm.role !== "sponsor" && editForm.role !== "admin" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
@@ -594,60 +614,19 @@ export default function AdminUsers() {
                 </div>
               )}
 
-              {/* Child assignment — for sponsor */}
               {editForm.role === "sponsor" && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-1.5">
-                    <Baby className="h-3.5 w-3.5 text-pink-500" />
-                    Assigned Child Profile
-                  </Label>
-                  <Select
-                    value={editForm.sponsorChildId || "none"}
-                    onValueChange={(v) => setEditForm((f) => ({ ...f, sponsorChildId: v === "none" ? "" : v }))}
-                  >
-                    <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-edit-sponsor-child">
-                      <SelectValue placeholder="No child assigned" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Remove child assignment</SelectItem>
-                      {children?.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.fullName} — {c.childId}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    The sponsor will only be able to view this child's profile and progress.
-                  </p>
-
-                  {/* Sponsor commenting toggle */}
-                  {editForm.sponsorChildId && (
-                    <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-4 py-3 mt-1">
-                      <div className="flex items-center gap-2.5">
-                        <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium leading-none">Allow sponsor commenting</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {editForm.sponsorCanComment
-                              ? "Sponsor can send messages from their portal"
-                              : "Sponsor cannot send messages right now"}
-                          </p>
-                        </div>
-                      </div>
-                      <Switch
-                        checked={editForm.sponsorCanComment}
-                        onCheckedChange={(v) => setEditForm((f) => ({ ...f, sponsorCanComment: v }))}
-                        data-testid="switch-sponsor-can-comment"
-                      />
-                    </div>
-                  )}
-                </div>
+                <SponsorChildPicker
+                  children_={children || []}
+                  selectedIds={editForm.sponsorChildIds}
+                  commentingMap={editForm.sponsorCommentingMap}
+                  onToggle={(id, checked) => toggleSponsorChild(id, checked, setEditForm)}
+                  onToggleCommenting={(id, v) => toggleCommenting(id, v, setEditForm)}
+                  showCommentingToggles
+                />
               )}
 
               <Separator className="opacity-50" />
 
-              {/* Password reset */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">New Password <span className="text-muted-foreground font-normal">(leave blank to keep current)</span></Label>
                 <Input
@@ -689,9 +668,9 @@ export default function AdminUsers() {
                 <p className="text-sm leading-relaxed">
                   Are you sure you want to delete <strong>{deleteUser?.username}</strong>? This action cannot be undone.
                 </p>
-                {deleteUser?.role === "sponsor" && getAssignedChild(deleteUser.id) && (
+                {deleteUser && getAssignedChildren(deleteUser.id).length > 0 && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Their child assignment ({getAssignedChild(deleteUser.id)?.fullName}) will also be cleared.
+                    Their child assignment{getAssignedChildren(deleteUser.id).length > 1 ? "s" : ""} ({getAssignedChildren(deleteUser.id).map((c) => c.fullName).join(", ")}) will also be cleared.
                   </p>
                 )}
               </div>
@@ -712,6 +691,88 @@ export default function AdminUsers() {
         </Dialog>
 
       </div>
+    </div>
+  );
+}
+
+// ── Reusable sponsor child picker component ──────────────────────────────────
+function SponsorChildPicker({
+  children_,
+  selectedIds,
+  commentingMap = {},
+  onToggle,
+  onToggleCommenting,
+  showCommentingToggles = false,
+}: {
+  children_: ChildSummary[];
+  selectedIds: number[];
+  commentingMap?: Record<number, boolean>;
+  onToggle: (id: number, checked: boolean) => void;
+  onToggleCommenting?: (id: number, value: boolean) => void;
+  showCommentingToggles?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium flex items-center gap-1.5">
+        <Baby className="h-3.5 w-3.5 text-pink-500" />
+        Assigned Child Profiles
+        {selectedIds.length > 0 && (
+          <Badge variant="outline" className="ml-1 bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/25 text-xs">
+            {selectedIds.length} selected
+          </Badge>
+        )}
+      </Label>
+      <p className="text-xs text-muted-foreground -mt-0.5">
+        The sponsor will only be able to view the profiles of selected children.
+      </p>
+      <ScrollArea className="h-52 rounded-lg border border-border/60 bg-muted/20">
+        <div className="p-2 space-y-1">
+          {children_.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8 italic">No child profiles exist yet</p>
+          ) : children_.map((c) => {
+            const isSelected = selectedIds.includes(c.id);
+            const canComment = commentingMap[c.id] ?? false;
+            return (
+              <div
+                key={c.id}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${isSelected ? "bg-pink-50 dark:bg-pink-500/10" : "hover:bg-muted/50"}`}
+              >
+                <Checkbox
+                  id={`child-${c.id}`}
+                  checked={isSelected}
+                  onCheckedChange={(v) => onToggle(c.id, !!v)}
+                  className="border-border/60 data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
+                  data-testid={`checkbox-child-${c.id}`}
+                />
+                <label
+                  htmlFor={`child-${c.id}`}
+                  className="flex-1 min-w-0 cursor-pointer select-none"
+                >
+                  <p className="text-sm font-medium leading-none truncate">{c.fullName}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{c.childId} · <span className="capitalize">{c.status}</span></p>
+                </label>
+                {showCommentingToggles && isSelected && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <MessageSquare className={`h-3.5 w-3.5 ${canComment ? "text-emerald-500" : "text-muted-foreground/40"}`} />
+                    <Switch
+                      checked={canComment}
+                      onCheckedChange={(v) => onToggleCommenting?.(c.id, v)}
+                      className="scale-90"
+                      data-testid={`switch-commenting-${c.id}`}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+      {showCommentingToggles && selectedIds.length > 0 && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <MessageSquare className="h-3 w-3" />
+          Toggle the message icon to allow or block commenting per child.
+        </p>
+      )}
     </div>
   );
 }
