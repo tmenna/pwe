@@ -763,7 +763,7 @@ function SponsorChildPicker({
       </div>
 
       <p className="text-xs text-muted-foreground -mt-0.5">
-        Sponsor can only view selected children's profiles. Type to search, then click to select.
+        Search to filter, then click a row or use <strong>Select all</strong> to assign in bulk.
       </p>
 
       {/* Search input */}
@@ -786,6 +786,47 @@ function SponsorChildPicker({
           </button>
         )}
       </div>
+
+      {/* Bulk-select bar — shown whenever there are visible results */}
+      {visible.length > 0 && (() => {
+        const allVisibleSelected = visible.every((c) => selectedIds.includes(c.id));
+        const someVisibleSelected = !allVisibleSelected && visible.some((c) => selectedIds.includes(c.id));
+        return (
+          <div className="flex items-center justify-between px-1 -mt-0.5">
+            <button
+              type="button"
+              onClick={() => {
+                if (allVisibleSelected) {
+                  visible.forEach((c) => onToggle(c.id, false));
+                } else {
+                  visible.forEach((c) => {
+                    if (!selectedIds.includes(c.id)) onToggle(c.id, true);
+                  });
+                }
+              }}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+              data-testid="button-select-all-visible"
+            >
+              {allVisibleSelected ? (
+                <>
+                  <X className="h-3 w-3" />
+                  Deselect {query.trim() ? `${visible.length} shown` : "all"}
+                </>
+              ) : (
+                <>
+                  <Check className="h-3 w-3" />
+                  Select {query.trim() ? `all ${visible.length} shown` : "all"}
+                </>
+              )}
+            </button>
+            {someVisibleSelected && (
+              <span className="text-[11px] text-muted-foreground">
+                {visible.filter((c) => selectedIds.includes(c.id)).length} of {visible.length} shown selected
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
       {/* List */}
       <ScrollArea className="h-52 rounded-lg border border-border/60 bg-muted/20">
