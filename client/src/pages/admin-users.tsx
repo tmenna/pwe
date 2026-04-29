@@ -828,6 +828,33 @@ function SponsorChildPicker({
         );
       })()}
 
+      {/* Commenting: all-toggle bar — shown when editing and children are selected */}
+      {showCommentingToggles && selectedIds.length > 0 && (() => {
+        const allOn = selectedIds.every((id) => commentingMap[id] === true);
+        const someOn = !allOn && selectedIds.some((id) => commentingMap[id] === true);
+        return (
+          <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${allOn ? "text-emerald-500" : someOn ? "text-amber-500" : "text-muted-foreground/50"}`} />
+              <div>
+                <p className="text-xs font-medium leading-none">
+                  Allow commenting — all selected
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {allOn ? "On for all" : someOn ? "Mixed — use individual toggles below" : "Off for all"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={allOn}
+              onCheckedChange={(v) => selectedIds.forEach((id) => onToggleCommenting?.(id, v))}
+              className="scale-90"
+              data-testid="switch-commenting-all"
+            />
+          </div>
+        );
+      })()}
+
       {/* List */}
       <ScrollArea className="h-52 rounded-lg border border-border/60 bg-muted/20">
         <div className="p-2 space-y-0.5">
@@ -904,15 +931,7 @@ function SponsorChildPicker({
       </ScrollArea>
 
       {/* Footer hints */}
-      <div className="flex items-center justify-between">
-        {showCommentingToggles && selectedIds.length > 0 ? (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />
-            Use the toggle to allow or block messaging per child.
-          </p>
-        ) : (
-          <span />
-        )}
+      <div className="flex items-center justify-end">
         <p className="text-xs text-muted-foreground">
           {visible.length} of {children_.length} shown
         </p>
