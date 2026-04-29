@@ -1,0 +1,104 @@
+Enhance the existing PWE Portal sidebar/navigation (do not rebuild the app) by redesigning the left sidebar into a cleaner, bolder, modern navigation based on this mockup concept.
+
+Goal:
+Make the sidebar feel more premium, highly readable, spacious, and smooth while keeping the current menu structure and functionality.
+
+Design Direction:
+- Modern minimalist SaaS-style sidebar
+- Bigger typography, stronger visual hierarchy
+- More breathing room / spacing between items
+- Smooth rounded components
+- Soft shadows and subtle borders
+- Clean NGO/mission-friendly aesthetic
+- Make navigation labels more visible and bold
+
+Sidebar Width:
+Slightly increase sidebar width for better readability.
+
+Brand Header:
+Top section should include:
+- Existing PWE logo in soft rounded card with subtle shadow
+- “PWE Portal” title larger and bolder
+- “CHILD SPONSORSHIP” subtitle in green accent
+- Improve spacing around logo and text
+- Add polished collapse/menu icon in rounded square top right
+
+Menu Label:
+Style MENU section like mockup:
+- Center “MENU” label horizontally
+- Add thin divider line on both left and right of MENU text
+- Increase letter spacing
+- Medium bold uppercase
+
+Navigation Items:
+Keep existing items:
+- Dashboard
+- Children
+- Organizations
+- User Management
+
+Style each menu item as:
+- Larger row height
+- Larger icons inside soft rounded icon containers
+- Bigger labels (bold / semibold)
+- Add right chevron indicator on each item
+- More padding left/right
+- Better hover state
+
+Active Menu Item:
+For selected item:
+- Soft lavender/purple background
+- Rounded pill-like container
+- Thin vertical accent bar on far left
+- Active label in purple and bold
+- Active icon highlighted
+- Smooth hover/transition animations
+
+Typography:
+Use modern readable font:
+- Inter or Manrope preferred
+
+Sizing:
+- Menu labels: 20-22px semibold
+- Section label MENU: 15-16px medium
+- Portal title larger and bold
+- Improve contrast for all nav text
+
+Colors:
+Use subtle palette:
+- Neutral background
+- Purple accent for active state
+- Soft green for child sponsorship branding
+- Light icon tile backgrounds per section
+- Keep colors calm and refined
+
+Spacing:
+Increase vertical spacing between nav items.
+Make layout airy and uncluttered.
+
+Bottom User Profile Card:
+Redesign footer user block like mockup:
+- Turn into rounded profile card
+- Circular avatar initials
+- “System Admin” bold
+- Role badge (“Admin”) styled pill
+- Logout icon aligned right
+- Subtle card border/shadow
+
+Micro-interactions:
+Add:
+- smooth hover transitions
+- subtle active animation
+- icon hover polish
+- sidebar should feel soft and responsive
+
+Important:
+This is a visual refinement of the existing sidebar only.
+Do not change routing or functionality.
+Reuse existing navigation logic.
+Keep current pages/modules intact.
+Only modernize the sidebar UI and typography.
+
+Target feel:
+Modern, clean, bold, visible, smooth, premium nonprofit SaaS navigation.
+Think Linear / Notion / modern dashboard polish, but warm and approachable.

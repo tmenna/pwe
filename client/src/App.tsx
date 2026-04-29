@@ -21,7 +21,7 @@ import Organizations from "@/pages/organizations";
 import SponsorPortal from "@/pages/sponsor-portal";
 
 const sidebarStyle = {
-  "--sidebar-width": "16rem",
+  "--sidebar-width": "17.5rem",
   "--sidebar-width-icon": "3rem",
 } as React.CSSProperties;
 

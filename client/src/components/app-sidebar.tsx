@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Users, LogOut, UserCog, Building2, Heart } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, UserCog, Building2, Heart, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -7,7 +7,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -18,49 +17,53 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import pweLogo from "@assets/pwe-large-logo_1772038246752.jpg";
 
-const navItems = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+}
+
+const navItems: NavItem[] = [
   {
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
-    activeIconBg: "bg-blue-50 dark:bg-blue-500/10",
-    activeIconColor: "text-blue-600 dark:text-blue-400",
-    inactiveIconColor: "text-slate-400 dark:text-slate-500",
+    iconBg: "bg-violet-50 dark:bg-violet-500/12",
+    iconColor: "text-violet-600 dark:text-violet-400",
   },
   {
     title: "Children",
     url: "/children",
     icon: Users,
-    activeIconBg: "bg-emerald-50 dark:bg-emerald-500/10",
-    activeIconColor: "text-emerald-600 dark:text-emerald-400",
-    inactiveIconColor: "text-slate-400 dark:text-slate-500",
+    iconBg: "bg-emerald-50 dark:bg-emerald-500/12",
+    iconColor: "text-emerald-600 dark:text-emerald-400",
   },
 ];
 
-const adminNavItems = [
+const adminNavItems: NavItem[] = [
   {
     title: "Organizations",
     url: "/organizations",
     icon: Building2,
-    activeIconBg: "bg-orange-50 dark:bg-orange-500/10",
-    activeIconColor: "text-orange-500 dark:text-orange-400",
-    inactiveIconColor: "text-slate-400 dark:text-slate-500",
+    iconBg: "bg-orange-50 dark:bg-orange-500/12",
+    iconColor: "text-orange-500 dark:text-orange-400",
   },
   {
     title: "User Management",
     url: "/admin/users",
     icon: UserCog,
-    activeIconBg: "bg-violet-50 dark:bg-violet-500/10",
-    activeIconColor: "text-violet-600 dark:text-violet-400",
-    inactiveIconColor: "text-slate-400 dark:text-slate-500",
+    iconBg: "bg-violet-50 dark:bg-violet-500/12",
+    iconColor: "text-violet-600 dark:text-violet-400",
   },
 ];
 
 const roleBadgeStyles: Record<string, string> = {
-  admin: "bg-violet-50 text-violet-700 border-violet-200/60 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
-  case_worker: "bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20",
-  read_only: "bg-slate-50 text-slate-600 border-slate-200/60 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/20",
-  sponsor: "bg-pink-50 text-pink-700 border-pink-200/60 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/20",
+  admin: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/25",
+  case_worker: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/25",
+  read_only: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-500/25",
+  sponsor: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/15 dark:text-pink-300 dark:border-pink-500/25",
 };
 
 const roleLabels: Record<string, string> = {
@@ -78,14 +81,13 @@ export function AppSidebar() {
     ? `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || user.username?.[0]?.toUpperCase() || "U"
     : "U";
 
-  const sponsorNavItems = [
+  const sponsorNavItems: NavItem[] = [
     {
       title: "My Portal",
       url: "/",
       icon: Heart,
-      activeIconBg: "bg-pink-50 dark:bg-pink-500/10",
-      activeIconColor: "text-pink-600 dark:text-pink-400",
-      inactiveIconColor: "text-slate-400 dark:text-slate-500",
+      iconBg: "bg-pink-50 dark:bg-pink-500/12",
+      iconColor: "text-pink-600 dark:text-pink-400",
     },
   ];
 
@@ -95,48 +97,111 @@ export function AppSidebar() {
       ? [...navItems, ...adminNavItems]
       : navItems;
 
+  const displayName = user?.firstName && user?.lastName
+    ? `${user.firstName} ${user.lastName}`
+    : user?.username || "User";
+
   return (
     <Sidebar>
+      {/* ── Brand header ─────────────────────────────────── */}
       <SidebarHeader className="px-5 pt-6 pb-5">
-        <div className="flex items-center gap-3.5">
-          <img src={pweLogo} alt="Partners with Ethiopia" className="h-11 w-11 rounded-xl object-cover shadow-md ring-1 ring-border/30" data-testid="img-sidebar-logo" />
-          <div className="flex flex-col gap-0.5">
-            <span className="text-base font-bold tracking-tight leading-tight text-foreground" data-testid="text-app-name">
+        <div className="flex items-center gap-4">
+          <div className="shrink-0 rounded-2xl shadow-md ring-1 ring-border/20 overflow-hidden">
+            <img
+              src={pweLogo}
+              alt="Partners with Ethiopia"
+              className="h-[52px] w-[52px] object-cover"
+              data-testid="img-sidebar-logo"
+            />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[18px] font-bold tracking-tight leading-tight text-foreground" data-testid="text-app-name">
               <span className="text-[#2e8b57]">PWE</span> Portal
             </span>
-            <span className="text-[12px] font-semibold tracking-wide uppercase text-[#66DAB5]">Child Sponsorship</span>
+            <span className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#3cba88] mt-0.5">
+              Child Sponsorship
+            </span>
           </div>
         </div>
       </SidebarHeader>
 
-      <div className="mx-4 h-px bg-border/40" />
+      {/* ── MENU label with dividers ─────────────────────── */}
+      <div className="px-5 mb-2">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border/50" />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/50">
+            Menu
+          </span>
+          <div className="h-px flex-1 bg-border/50" />
+        </div>
+      </div>
 
-      <SidebarContent className="px-3 pt-4">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/50 px-3 mb-1">Menu</SidebarGroupLabel>
+      {/* ── Nav items ────────────────────────────────────── */}
+      <SidebarContent className="px-3">
+        <SidebarGroup className="p-0">
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-0.5">
+            <SidebarMenu className="space-y-1">
               {allNavItems.map((item) => {
-                const isActive = item.url === "/" ? location === "/" : location.startsWith(item.url);
+                const isActive = item.url === "/"
+                  ? location === "/"
+                  : location.startsWith(item.url);
+
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
                       data-active={isActive}
-                      className={`relative rounded-lg h-10 transition-all duration-150 ${
-                        isActive
-                          ? "bg-card shadow-sm border border-border/50 font-medium text-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      }`}
+                      className={`
+                        relative h-[54px] rounded-xl px-3 transition-all duration-200
+                        ${isActive
+                          ? "bg-violet-50 dark:bg-violet-500/10 shadow-sm border border-violet-100 dark:border-violet-500/15"
+                          : "hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent"
+                        }
+                      `}
                     >
-                      <Link href={item.url} data-testid={`link-nav-${item.title.toLowerCase().replace(/\s/g, "-")}`}>
+                      <Link
+                        href={item.url}
+                        data-testid={`link-nav-${item.title.toLowerCase().replace(/\s/g, "-")}`}
+                        className="flex items-center gap-3.5 w-full"
+                      >
+                        {/* Left accent bar */}
                         {isActive && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary" />
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3.5px] h-7 rounded-r-full bg-violet-500" />
                         )}
-                        <div className={`flex h-6 w-6 items-center justify-center rounded-md ${isActive ? item.activeIconBg : ""}`}>
-                          <item.icon className={`h-4 w-4 ${isActive ? item.activeIconColor : item.inactiveIconColor}`} />
+
+                        {/* Icon container — always colored */}
+                        <div className={`
+                          flex h-10 w-10 shrink-0 items-center justify-center rounded-xl
+                          transition-colors duration-200
+                          ${isActive
+                            ? item.iconBg + " shadow-sm"
+                            : "bg-slate-100/80 dark:bg-slate-800/60"
+                          }
+                        `}>
+                          <item.icon className={`h-[18px] w-[18px] transition-colors duration-200 ${
+                            isActive
+                              ? item.iconColor
+                              : "text-slate-400 dark:text-slate-500"
+                          }`} />
                         </div>
-                        <span className="text-[13px]">{item.title}</span>
+
+                        {/* Label */}
+                        <span className={`
+                          flex-1 text-[15px] font-semibold transition-colors duration-200
+                          ${isActive
+                            ? "text-violet-700 dark:text-violet-300"
+                            : "text-slate-600 dark:text-slate-400 group-hover:text-foreground"
+                          }
+                        `}>
+                          {item.title}
+                        </span>
+
+                        {/* Chevron */}
+                        <ChevronRight className={`h-4 w-4 shrink-0 transition-colors duration-200 ${
+                          isActive
+                            ? "text-violet-400 dark:text-violet-500"
+                            : "text-slate-300 dark:text-slate-600"
+                        }`} />
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -147,19 +212,25 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        <div className="mx-0 mb-3 h-px bg-border/40" />
-        <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3">
-          <Avatar className="h-9 w-9 ring-2 ring-background shadow-sm">
-            <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+      {/* ── Footer user card ─────────────────────────────── */}
+      <SidebarFooter className="px-4 pb-5 pt-3">
+        <div className="h-px bg-border/40 mb-4" />
+        <div className="flex items-center gap-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-border/40 px-4 py-3 shadow-sm">
+          <Avatar className="h-10 w-10 shrink-0 ring-2 ring-background shadow-sm">
+            <AvatarFallback className="text-sm font-bold bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300">
+              {initials}
+            </AvatarFallback>
           </Avatar>
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <span className="truncate text-sm font-medium leading-tight" data-testid="text-user-name">
-              {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username}
+          <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+            <span
+              className="truncate text-[14px] font-semibold leading-tight text-foreground"
+              data-testid="text-user-name"
+            >
+              {displayName}
             </span>
             <Badge
               variant="outline"
-              className={`mt-1 w-fit text-[10px] font-medium px-1.5 py-0 h-[18px] ${roleBadgeStyles[user?.role || ""] || ""}`}
+              className={`mt-1 w-fit text-[10px] font-semibold px-2 py-0 h-[17px] rounded-full ${roleBadgeStyles[user?.role || ""] || ""}`}
               data-testid="text-user-role"
             >
               {roleLabels[user?.role || ""] || user?.role}
@@ -168,11 +239,11 @@ export function AppSidebar() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/8"
+            className="h-8 w-8 rounded-xl shrink-0 text-slate-400 hover:text-destructive hover:bg-destructive/8 transition-colors"
             onClick={() => logout()}
             data-testid="button-logout"
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <LogOut className="h-4 w-4" />
           </Button>
         </div>
       </SidebarFooter>
