@@ -516,6 +516,33 @@ export async function registerRoutes(
     }
   });
 
+  // --- Sponsor-child assignment (admin only) ---
+  // Atomically re-links a sponsor user to a child, clearing any previous assignment.
+  app.post("/api/users/:id/assign-child", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const { childId } = req.body; // number | null
+
+      // Find and clear any child currently linked to this user
+      const allChildren = await storage.getChildren();
+      const prevChild = allChildren.find((c) => c.sponsorUserId === userId);
+      if (prevChild && prevChild.id !== childId) {
+        await storage.updateChild(prevChild.id, { sponsorUserId: null });
+      }
+
+      // Assign new child
+      if (childId != null) {
+        const child = await storage.getChild(Number(childId));
+        if (!child) return res.status(404).json({ message: "Child not found" });
+        await storage.updateChild(Number(childId), { sponsorUserId: userId });
+      }
+
+      res.json({ message: "Child assignment updated" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // --- Export ---
   app.post("/api/export/children", isAuthenticated, async (req: any, res) => {
     try {
