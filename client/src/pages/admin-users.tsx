@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2,
-  Shield, Eye, Heart, Users, ChevronRight, Baby,
+  Shield, Eye, Heart, Users, Baby, MessageSquare,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
@@ -35,6 +36,7 @@ type ChildSummary = {
   fullName: string;
   status: string;
   sponsorUserId: string | null;
+  sponsorCanComment: boolean | null;
 };
 
 const roleLabels: Record<string, string> = {
@@ -71,7 +73,7 @@ const emptyCreate = {
 };
 const emptyEdit = {
   username: "", firstName: "", lastName: "", role: "case_worker",
-  password: "", organizationId: "", sponsorChildId: "",
+  password: "", organizationId: "", sponsorChildId: "", sponsorCanComment: false,
 };
 
 export default function AdminUsers() {
@@ -141,6 +143,16 @@ export default function AdminUsers() {
         if (newChildId !== currentChildId) {
           await apiRequest("POST", `/api/users/${editUser!.id}/assign-child`, { childId: newChildId });
         }
+        // Update sponsorCanComment on the assigned child (current or new)
+        const targetChildId = newChildId ?? currentChildId;
+        if (targetChildId !== null) {
+          const prevCanComment = currentChild?.sponsorCanComment ?? false;
+          if (editForm.sponsorCanComment !== prevCanComment || newChildId !== currentChildId) {
+            await apiRequest("PATCH", `/api/children/${targetChildId}`, {
+              sponsorCanComment: editForm.sponsorCanComment,
+            });
+          }
+        }
       } else {
         const currentChild = getAssignedChild(editUser!.id);
         if (currentChild) {
@@ -181,6 +193,7 @@ export default function AdminUsers() {
       password: "",
       organizationId: u.organizationId ? String(u.organizationId) : "",
       sponsorChildId: assignedChild ? String(assignedChild.id) : "",
+      sponsorCanComment: assignedChild?.sponsorCanComment ?? false,
     });
   };
 
@@ -264,15 +277,26 @@ export default function AdminUsers() {
                         <div className="mt-2.5 flex flex-wrap items-center gap-2">
                           {u.role === "sponsor" && (
                             assignedChild ? (
-                              <div className="flex items-center gap-1.5 rounded-md bg-pink-50 dark:bg-pink-500/10 border border-pink-200/60 dark:border-pink-500/20 px-2.5 py-1" data-testid={`badge-assigned-child-${u.id}`}>
-                                <Baby className="h-3.5 w-3.5 text-pink-500 shrink-0" />
-                                <span className="text-xs font-medium text-pink-700 dark:text-pink-300">
-                                  {assignedChild.fullName}
-                                </span>
-                                <Badge variant="outline" className="text-[10px] px-1 h-4 capitalize border-pink-200/60 text-pink-600">
-                                  {assignedChild.status}
-                                </Badge>
-                              </div>
+                              <>
+                                <div className="flex items-center gap-1.5 rounded-md bg-pink-50 dark:bg-pink-500/10 border border-pink-200/60 dark:border-pink-500/20 px-2.5 py-1" data-testid={`badge-assigned-child-${u.id}`}>
+                                  <Baby className="h-3.5 w-3.5 text-pink-500 shrink-0" />
+                                  <span className="text-xs font-medium text-pink-700 dark:text-pink-300">
+                                    {assignedChild.fullName}
+                                  </span>
+                                  <Badge variant="outline" className="text-[10px] px-1 h-4 capitalize border-pink-200/60 text-pink-600">
+                                    {assignedChild.status}
+                                  </Badge>
+                                </div>
+                                <div
+                                  className={`flex items-center gap-1 rounded-md border px-2 py-1 ${assignedChild.sponsorCanComment ? "bg-emerald-50 border-emerald-200/60 dark:bg-emerald-500/10 dark:border-emerald-500/20" : "bg-muted/40 border-border/40"}`}
+                                  data-testid={`badge-commenting-${u.id}`}
+                                >
+                                  <MessageSquare className={`h-3 w-3 ${assignedChild.sponsorCanComment ? "text-emerald-600" : "text-muted-foreground/50"}`} />
+                                  <span className={`text-[11px] font-medium ${assignedChild.sponsorCanComment ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/60"}`}>
+                                    {assignedChild.sponsorCanComment ? "Commenting on" : "Commenting off"}
+                                  </span>
+                                </div>
+                              </>
                             ) : (
                               <span className="text-xs text-muted-foreground/60 italic" data-testid={`text-no-child-${u.id}`}>
                                 No child assigned yet
@@ -597,13 +621,25 @@ export default function AdminUsers() {
                     The sponsor will only be able to view this child's profile and progress.
                   </p>
 
-                  {/* Permission toggle notice */}
+                  {/* Sponsor commenting toggle */}
                   {editForm.sponsorChildId && (
-                    <div className="flex items-start gap-2.5 rounded-lg border border-amber-200/60 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/20 px-3.5 py-3">
-                      <ChevronRight className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                      <p className="text-xs text-amber-700 dark:text-amber-300">
-                        To enable or disable this sponsor's ability to leave comments, open the child's profile and use the <strong>Sponsor commenting</strong> toggle in the Messages tab.
-                      </p>
+                    <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-4 py-3 mt-1">
+                      <div className="flex items-center gap-2.5">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium leading-none">Allow sponsor commenting</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {editForm.sponsorCanComment
+                              ? "Sponsor can send messages from their portal"
+                              : "Sponsor cannot send messages right now"}
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={editForm.sponsorCanComment}
+                        onCheckedChange={(v) => setEditForm((f) => ({ ...f, sponsorCanComment: v }))}
+                        data-testid="switch-sponsor-can-comment"
+                      />
                     </div>
                   )}
                 </div>
