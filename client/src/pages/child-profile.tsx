@@ -596,9 +596,16 @@ export default function ChildProfile() {
     },
     onMutate: ({ id, type, action }) => {
       const key = `${type}-${id}`;
+      const otherType = type === "like" ? "love" : "like";
+      const otherKey = `${otherType}-${id}`;
       setMyReactions(prev => {
         const next = new Set(prev);
-        if (action === "unreact") next.delete(key); else next.add(key);
+        if (action === "unreact") {
+          next.delete(key);
+        } else {
+          next.add(key);
+          next.delete(otherKey);
+        }
         return next;
       });
     },
@@ -606,6 +613,22 @@ export default function ChildProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
     },
   });
+
+  const handleReact = (id: number, type: "like" | "love") => {
+    const key = `${type}-${id}`;
+    const otherType = type === "like" ? "love" : "like";
+    const otherKey = `${otherType}-${id}`;
+    const isActive = myReactions.has(key);
+    const otherIsActive = myReactions.has(otherKey);
+    if (isActive) {
+      reactMutation.mutate({ id, type, action: "unreact" });
+    } else {
+      if (otherIsActive) {
+        apiRequest("POST", `/api/messages/${id}/react`, { type: otherType, action: "unreact" }).catch(() => {});
+      }
+      reactMutation.mutate({ id, type, action: "react" });
+    }
+  };
 
   const replyMutation = useMutation({
     mutationFn: async ({ parentId, content }: { parentId: number; content: string }) => {
@@ -1103,7 +1126,7 @@ export default function ChildProfile() {
                             <div className="mt-3 flex items-center gap-2 flex-wrap">
                               <button
                                 type="button"
-                                onClick={() => reactMutation.mutate({ id: msg.id, type: "like", action: hasLiked ? "unreact" : "react" })}
+                                onClick={() => handleReact(msg.id, "like")}
                                 className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${hasLiked ? "border-[#3072DC] bg-[#3072DC]/10 text-[#3072DC] font-medium" : "border-border/60 bg-muted/40 text-muted-foreground hover:bg-blue-50 hover:border-blue-200 hover:text-[#3072DC]"}`}
                                 data-testid={`button-like-${msg.id}`}
                               >
@@ -1112,7 +1135,7 @@ export default function ChildProfile() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => reactMutation.mutate({ id: msg.id, type: "love", action: hasLoved ? "unreact" : "react" })}
+                                onClick={() => handleReact(msg.id, "love")}
                                 className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${hasLoved ? "border-[#E14B8E] bg-[#E14B8E]/10 text-[#E14B8E] font-medium" : "border-border/60 bg-muted/40 text-muted-foreground hover:bg-rose-50 hover:border-rose-200 hover:text-[#E14B8E]"}`}
                                 data-testid={`button-love-${msg.id}`}
                               >
@@ -1172,10 +1195,10 @@ export default function ChildProfile() {
                                         {reply.createdAt ? new Date(reply.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : ""}
                                       </p>
                                       <div className="mt-2 flex items-center gap-1.5">
-                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "like", action: replyHasLiked ? "unreact" : "react" })} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors ${replyHasLiked ? "border-[#3072DC] bg-[#3072DC]/10 text-[#3072DC] font-medium" : "border-border/60 bg-background text-muted-foreground hover:bg-blue-50 hover:text-[#3072DC]"}`} data-testid={`button-like-reply-${reply.id}`}>
+                                        <button type="button" onClick={() => handleReact(reply.id, "like")} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors ${replyHasLiked ? "border-[#3072DC] bg-[#3072DC]/10 text-[#3072DC] font-medium" : "border-border/60 bg-background text-muted-foreground hover:bg-blue-50 hover:text-[#3072DC]"}`} data-testid={`button-like-reply-${reply.id}`}>
                                           <ThumbsUp className={`h-2.5 w-2.5 ${replyHasLiked ? "fill-[#3072DC]" : ""}`} />{replyRxn.like > 0 && replyRxn.like}
                                         </button>
-                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "love", action: replyHasLoved ? "unreact" : "react" })} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors ${replyHasLoved ? "border-[#E14B8E] bg-[#E14B8E]/10 text-[#E14B8E] font-medium" : "border-border/60 bg-background text-muted-foreground hover:bg-rose-50 hover:text-[#E14B8E]"}`} data-testid={`button-love-reply-${reply.id}`}>
+                                        <button type="button" onClick={() => handleReact(reply.id, "love")} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors ${replyHasLoved ? "border-[#E14B8E] bg-[#E14B8E]/10 text-[#E14B8E] font-medium" : "border-border/60 bg-background text-muted-foreground hover:bg-rose-50 hover:text-[#E14B8E]"}`} data-testid={`button-love-reply-${reply.id}`}>
                                           <Heart className={`h-2.5 w-2.5 ${replyHasLoved ? "fill-[#E14B8E]" : ""}`} />{replyRxn.love > 0 && replyRxn.love}
                                         </button>
                                       </div>
