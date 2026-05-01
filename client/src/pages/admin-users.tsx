@@ -393,8 +393,8 @@ export default function AdminUsers() {
 
         {/* ── Create dialog ─────────────────────────── */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent className="sm:max-w-[520px]">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[520px] flex flex-col max-h-[90vh]">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 <UserPlus className="h-4 w-4 text-emerald-600" />
                 Create New User
@@ -402,8 +402,9 @@ export default function AdminUsers() {
             </DialogHeader>
             <form
               onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }}
-              className="space-y-5 pt-1"
+              className="flex flex-col flex-1 overflow-hidden"
             >
+              <div className="overflow-y-auto flex-1 space-y-5 pt-1 pr-1">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Username (Email Address)</Label>
                 <Input
@@ -502,8 +503,9 @@ export default function AdminUsers() {
                   }))}
                 />
               )}
+              </div>{/* end scrollable area */}
 
-              <DialogFooter className="pt-2">
+              <DialogFooter className="shrink-0 border-t pt-4 mt-2">
                 <Button type="button" variant="outline" className="rounded-lg" onClick={() => setCreateOpen(false)}>Cancel</Button>
                 <Button
                   type="submit"
@@ -520,8 +522,8 @@ export default function AdminUsers() {
 
         {/* ── Edit dialog ───────────────────────────── */}
         <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
-          <DialogContent className="sm:max-w-[520px]">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[520px] flex flex-col max-h-[90vh]">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 <Pencil className="h-4 w-4 text-primary" />
                 Edit User
@@ -532,8 +534,9 @@ export default function AdminUsers() {
             </DialogHeader>
             <form
               onSubmit={(e) => { e.preventDefault(); updateMutation.mutate(); }}
-              className="space-y-5 pt-1"
+              className="flex flex-col flex-1 overflow-hidden"
             >
+              <div className="overflow-y-auto flex-1 space-y-5 pt-1 pr-1">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Username (Email Address)</Label>
                 <Input
@@ -637,8 +640,9 @@ export default function AdminUsers() {
                   data-testid="input-edit-password"
                 />
               </div>
+              </div>{/* end scrollable area */}
 
-              <DialogFooter className="pt-1">
+              <DialogFooter className="shrink-0 border-t pt-4 mt-2">
                 <Button type="button" variant="outline" className="rounded-lg" onClick={() => setEditUser(null)}>Cancel</Button>
                 <Button
                   type="submit"
