@@ -558,6 +558,114 @@
   .end-creds { margin-top: 36px; background: rgba(0,0,0,.2); border-radius: 12px; padding: 18px 32px; display: inline-block; }
   .end-creds p { font-size: 13px; color: rgba(255,255,255,.7); margin: 0; }
   .end-creds strong { color: #b2f0d8; }
+
+  /* ════════════════════════════════════════════════
+     RESPONSIVE — TABLET  ≤ 900px
+  ════════════════════════════════════════════════ */
+  @media (max-width: 900px) {
+    .slide-inner   { padding: 36px 36px 80px; }
+    .slide-title   { font-size: 32px; }
+    .slide-sub     { font-size: 15px; margin-bottom: 20px; }
+    .grid-4        { grid-template-columns: 1fr 1fr; }
+    .grid-3        { grid-template-columns: 1fr 1fr; }
+    .two-col       { grid-template-columns: 1fr; gap: 16px; }
+    .cover h1      { font-size: 38px; }
+    .cover p       { font-size: 17px; }
+    .end-slide h1  { font-size: 36px; }
+    .screenshot-frame { max-width: 100%; }
+  }
+
+  /* ════════════════════════════════════════════════
+     RESPONSIVE — MOBILE  ≤ 640px
+  ════════════════════════════════════════════════ */
+  @media (max-width: 640px) {
+    /* Allow slide content to scroll on mobile */
+    .slide { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+
+    /* Core layout */
+    .slide-inner {
+      padding: 20px 18px 90px;
+      gap: 6px;
+      flex-direction: column !important;
+    }
+
+    /* Typography */
+    .slide-label   { font-size: 11px; }
+    .slide-title   { font-size: 22px; line-height: 1.2; margin-bottom: 4px; }
+    .slide-sub     { font-size: 13px; margin-bottom: 14px; max-width: 100%; }
+
+    /* Grids — single column */
+    .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; gap: 9px; }
+    .two-col       { grid-template-columns: 1fr; gap: 10px; }
+
+    /* Feature cards */
+    .feature-card  { padding: 13px 15px; gap: 6px; }
+    .fc-icon       { width: 30px; height: 30px; font-size: 15px; }
+    .fc-title      { font-size: 13.5px; }
+    .feature-card p { font-size: 12px; }
+
+    /* Steps */
+    .steps         { gap: 9px; }
+    .step          { padding: 11px 13px; gap: 11px; }
+    .step-num      { width: 26px; height: 26px; font-size: 12px; flex-shrink: 0; }
+    .step-body h4  { font-size: 13px; }
+    .step-body p   { font-size: 11.5px; }
+
+    /* Role cards */
+    .role-row      { gap: 8px; }
+    .role-card     { padding: 11px 13px; gap: 11px; }
+    .role-icon     { width: 30px; height: 30px; font-size: 14px; }
+    .role-card h4  { font-size: 13px; }
+    .role-card p   { font-size: 11.5px; }
+
+    /* Highlight boxes */
+    .highlight     { padding: 13px 15px; }
+    .highlight h3  { font-size: 13.5px; }
+    .highlight p   { font-size: 12px; }
+
+    /* Two-col column headers */
+    .col-head      { font-size: 12px; }
+
+    /* Summary table — stack columns */
+    .summary-table { gap: 2px; }
+    .sum-row       { grid-template-columns: 1fr; gap: 2px; padding: 9px 13px; font-size: 12px; }
+    .sum-row .label { font-size: 10.5px; color: rgba(255,255,255,.4); }
+
+    /* Cover slide */
+    .cover h1      { font-size: 26px; letter-spacing: -.02em; }
+    .cover p       { font-size: 14px; margin-top: 10px; }
+    .cover .tagline { font-size: 11px; margin-top: 20px; }
+    .cover-logo    { width: 68px; height: 68px; border-radius: 16px; margin-bottom: 18px; }
+    .cover-logo img { width: 62px; height: 62px; }
+    .screenshot-strip { height: 110px; }
+
+    /* Login slide — hide screenshot on small screens */
+    .screenshot-frame { display: none; }
+
+    /* End slide */
+    .end-slide h1  { font-size: 26px; letter-spacing: -.02em; }
+    .end-slide p   { font-size: 13.5px; }
+
+    /* UI chrome — simplify on mobile */
+    .hint          { display: none; }
+    .counter       { font-size: 11px; top: 12px; right: 12px; }
+    .dots          { display: none; }
+    .nav           { bottom: 18px; gap: 10px; }
+    .nav button    { width: 40px; height: 40px; font-size: 18px; }
+
+    /* Menu drawer — full width on phone */
+    .menu-panel    { width: 100%; }
+    .menu-btn      { top: 12px; left: 12px; }
+  }
+
+  /* ════════════════════════════════════════════════
+     RESPONSIVE — SMALL PHONE  ≤ 400px
+  ════════════════════════════════════════════════ */
+  @media (max-width: 400px) {
+    .slide-title   { font-size: 20px; }
+    .slide-sub     { font-size: 12.5px; }
+    .step-body p, .role-card p, .feature-card p, .highlight p { font-size: 11px; }
+  }
 </style>
 </head>
 <body>
@@ -1275,6 +1383,24 @@
     if (e.key === 'ArrowRight' || e.key === ' ') go(1);
     if (e.key === 'ArrowLeft') go(-1);
   });
+
+  /* ── Touch swipe ──────────────────────────────── */
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  document.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 44) {
+      if (menuOpen) return;
+      go(dx < 0 ? 1 : -1);
+    }
+  }, { passive: true });
 
   /* ── Init ─────────────────────────────────────── */
   goTo(0);
