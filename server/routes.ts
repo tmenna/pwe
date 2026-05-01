@@ -514,11 +514,12 @@ export async function registerRoutes(
 
   app.post("/api/messages/:id/react", isAuthenticated, async (req: any, res) => {
     try {
-      const { type } = req.body;
+      const { type, action } = req.body;
       if (!["like", "love"].includes(type)) {
         return res.status(400).json({ message: "Reaction type must be like or love" });
       }
-      const updated = await storage.reactToMessage(parseInt(req.params.id), type as "like" | "love");
+      const resolvedAction: "react" | "unreact" = action === "unreact" ? "unreact" : "react";
+      const updated = await storage.reactToMessage(parseInt(req.params.id), type as "like" | "love", resolvedAction);
       if (!updated) return res.status(404).json({ message: "Comment not found" });
       res.json(updated);
     } catch (error: any) {

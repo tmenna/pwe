@@ -38,7 +38,7 @@ export interface IStorage {
   createMessage(msg: InsertMessage): Promise<Message>;
   updateMessageStatus(id: number, status: string): Promise<Message | undefined>;
   deleteMessage(id: number): Promise<void>;
-  reactToMessage(id: number, type: "like" | "love"): Promise<Message | undefined>;
+  reactToMessage(id: number, type: "like" | "love", action: "react" | "unreact"): Promise<Message | undefined>;
 
   getStats(organizationId?: number): Promise<{ totalChildren: number; active: number; paused: number; exited: number; totalDocuments: number; sponsored: number; nonSponsored: number }>;
 }
@@ -156,11 +156,12 @@ export class DatabaseStorage implements IStorage {
     await db.delete(messages).where(eq(messages.id, id));
   }
 
-  async reactToMessage(id: number, type: "like" | "love"): Promise<Message | undefined> {
+  async reactToMessage(id: number, type: "like" | "love", action: "react" | "unreact"): Promise<Message | undefined> {
     const [msg] = await db.select().from(messages).where(eq(messages.id, id));
     if (!msg) return undefined;
     const current = (msg.reactions as { like: number; love: number }) ?? { like: 0, love: 0 };
-    const updated = { ...current, [type]: (current[type] ?? 0) + 1 };
+    const delta = action === "react" ? 1 : -1;
+    const updated = { ...current, [type]: Math.max(0, (current[type] ?? 0) + delta) };
     const [result] = await db.update(messages).set({ reactions: updated }).where(eq(messages.id, id)).returning();
     return result || undefined;
   }

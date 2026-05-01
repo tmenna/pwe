@@ -149,6 +149,7 @@ function ChildPortal({ child }: { child: Child }) {
   const qClient = useQueryClient();
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
+  const [myReactions, setMyReactions] = useState<Set<string>>(new Set());
   const sponsorName = user?.firstName && user?.lastName
     ? `${user.firstName} ${user.lastName}`
     : user?.username || "Sponsor";
@@ -181,8 +182,16 @@ function ChildPortal({ child }: { child: Child }) {
   });
 
   const reactMutation = useMutation({
-    mutationFn: async ({ id, type }: { id: number; type: "like" | "love" }) => {
-      return apiRequest("POST", `/api/messages/${id}/react`, { type });
+    mutationFn: async ({ id, type, action }: { id: number; type: "like" | "love"; action: "react" | "unreact" }) => {
+      return apiRequest("POST", `/api/messages/${id}/react`, { type, action });
+    },
+    onMutate: ({ id, type, action }) => {
+      const key = `${type}-${id}`;
+      setMyReactions(prev => {
+        const next = new Set(prev);
+        if (action === "unreact") next.delete(key); else next.add(key);
+        return next;
+      });
     },
     onSuccess: () => {
       qClient.invalidateQueries({ queryKey: ["/api/children", String(childId), "messages"] });
@@ -518,6 +527,8 @@ function ChildPortal({ child }: { child: Child }) {
                       const StatusIcon = statusIcons[msg.status] || Clock;
                       const statusColors: Record<string, string> = { pending: "text-amber-500", delivered: "text-blue-500", read: "text-emerald-500" };
                       const rxn = (msg.reactions as { like: number; love: number } | null) ?? { like: 0, love: 0 };
+                      const hasLiked = myReactions.has(`like-${msg.id}`);
+                      const hasLoved = myReactions.has(`love-${msg.id}`);
 
                       return (
                         <div key={msg.id} className="space-y-2">
@@ -547,11 +558,11 @@ function ChildPortal({ child }: { child: Child }) {
                             <p className="mt-3 text-sm text-foreground leading-relaxed">{msg.content}</p>
                             {/* Reactions + Reply */}
                             <div className="mt-3 flex items-center gap-2 flex-wrap">
-                              <button type="button" onClick={() => reactMutation.mutate({ id: msg.id, type: "like" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 px-2.5 py-1 text-xs text-muted-foreground transition-colors" data-testid={`button-like-${msg.id}`}>
-                                <ThumbsUp className="h-3 w-3" />{rxn.like > 0 && <span>{rxn.like}</span>}
+                              <button type="button" onClick={() => reactMutation.mutate({ id: msg.id, type: "like", action: hasLiked ? "unreact" : "react" })} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${hasLiked ? "border-[#3072DC] bg-[#3072DC]/10 text-[#3072DC] font-medium" : "border-border/60 bg-background text-muted-foreground hover:bg-blue-50 hover:border-blue-200 hover:text-[#3072DC]"}`} data-testid={`button-like-${msg.id}`}>
+                                <ThumbsUp className={`h-3 w-3 ${hasLiked ? "fill-[#3072DC]" : ""}`} />{rxn.like > 0 && <span>{rxn.like}</span>}
                               </button>
-                              <button type="button" onClick={() => reactMutation.mutate({ id: msg.id, type: "love" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 px-2.5 py-1 text-xs text-muted-foreground transition-colors" data-testid={`button-love-${msg.id}`}>
-                                <Heart className="h-3 w-3" />{rxn.love > 0 && <span>{rxn.love}</span>}
+                              <button type="button" onClick={() => reactMutation.mutate({ id: msg.id, type: "love", action: hasLoved ? "unreact" : "react" })} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${hasLoved ? "border-[#E14B8E] bg-[#E14B8E]/10 text-[#E14B8E] font-medium" : "border-border/60 bg-background text-muted-foreground hover:bg-rose-50 hover:border-rose-200 hover:text-[#E14B8E]"}`} data-testid={`button-love-${msg.id}`}>
+                                <Heart className={`h-3 w-3 ${hasLoved ? "fill-[#E14B8E]" : ""}`} />{rxn.love > 0 && <span>{rxn.love}</span>}
                               </button>
                               {child.sponsorCanComment && (
                                 <button type="button" onClick={() => { setReplyingTo(replyingTo === msg.id ? null : msg.id); setReplyContent(""); }} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors" data-testid={`button-reply-${msg.id}`}>
@@ -568,6 +579,8 @@ function ChildPortal({ child }: { child: Child }) {
                               {replies.map((reply) => {
                                 const replyIsSponsor = reply.senderRole === "sponsor";
                                 const replyRxn = (reply.reactions as { like: number; love: number } | null) ?? { like: 0, love: 0 };
+                                const replyHasLiked = myReactions.has(`like-${reply.id}`);
+                                const replyHasLoved = myReactions.has(`love-${reply.id}`);
                                 return (
                                   <div key={reply.id} className="flex gap-2">
                                     <CornerDownRight className="h-3.5 w-3.5 text-muted-foreground/40 mt-3 shrink-0" />
@@ -579,11 +592,11 @@ function ChildPortal({ child }: { child: Child }) {
                                       </div>
                                       <p className="mt-1.5 text-xs text-foreground/80 leading-relaxed">{reply.content}</p>
                                       <div className="mt-2 flex gap-1.5">
-                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "like" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-blue-50 hover:text-blue-600 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors" data-testid={`button-like-reply-${reply.id}`}>
-                                          <ThumbsUp className="h-2.5 w-2.5" />{replyRxn.like > 0 && replyRxn.like}
+                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "like", action: replyHasLiked ? "unreact" : "react" })} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors ${replyHasLiked ? "border-[#3072DC] bg-[#3072DC]/10 text-[#3072DC] font-medium" : "border-border/60 bg-background text-muted-foreground hover:bg-blue-50 hover:text-[#3072DC]"}`} data-testid={`button-like-reply-${reply.id}`}>
+                                          <ThumbsUp className={`h-2.5 w-2.5 ${replyHasLiked ? "fill-[#3072DC]" : ""}`} />{replyRxn.like > 0 && replyRxn.like}
                                         </button>
-                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "love" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-rose-50 hover:text-rose-600 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors" data-testid={`button-love-reply-${reply.id}`}>
-                                          <Heart className="h-2.5 w-2.5" />{replyRxn.love > 0 && replyRxn.love}
+                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "love", action: replyHasLoved ? "unreact" : "react" })} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors ${replyHasLoved ? "border-[#E14B8E] bg-[#E14B8E]/10 text-[#E14B8E] font-medium" : "border-border/60 bg-background text-muted-foreground hover:bg-rose-50 hover:text-[#E14B8E]"}`} data-testid={`button-love-reply-${reply.id}`}>
+                                          <Heart className={`h-2.5 w-2.5 ${replyHasLoved ? "fill-[#E14B8E]" : ""}`} />{replyRxn.love > 0 && replyRxn.love}
                                         </button>
                                       </div>
                                     </div>
