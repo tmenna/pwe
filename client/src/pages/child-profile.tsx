@@ -433,6 +433,10 @@ export default function ChildProfile() {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [myReactions, setMyReactions] = useState<Set<string>>(new Set());
+  const [lastCommentVisit, setLastCommentVisit] = useState<number>(() => {
+    const stored = localStorage.getItem(`comments-visited-${childId}`);
+    return stored ? parseInt(stored, 10) : 0;
+  });
   const canEdit = user?.role !== "sponsor";
 
   const { data: child, isLoading } = useQuery<Child>({
@@ -454,6 +458,9 @@ export default function ChildProfile() {
     queryKey: ["/api/children", childId, "messages"],
     enabled: !!childId,
   });
+  const unreadCommentCount = messagesData
+    ? messagesData.filter(m => !m.parentId && new Date(m.createdAt).getTime() > lastCommentVisit).length
+    : 0;
 
   const { data: organizations } = useQuery<Organization[]>({
     queryKey: ["/api/organizations"],
@@ -796,7 +803,13 @@ export default function ChildProfile() {
           </div>
         </Card>
 
-        <Tabs defaultValue="documents" className="mt-7">
+        <Tabs defaultValue="documents" className="mt-7" onValueChange={(v) => {
+            if (v === "messages") {
+              const now = Date.now();
+              localStorage.setItem(`comments-visited-${childId}`, String(now));
+              setLastCommentVisit(now);
+            }
+          }}>
           <TabsList className="rounded-lg" data-testid="tabs-profile">
             <TabsTrigger value="documents" className="rounded-md" data-testid="tab-documents">
               <FileText className="mr-2 h-4 w-4" />
@@ -809,6 +822,11 @@ export default function ChildProfile() {
             <TabsTrigger value="messages" className="rounded-md" data-testid="tab-messages">
               <MessageSquare className="mr-2 h-4 w-4" />
               Comments
+              {unreadCommentCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-semibold min-w-[16px] h-4 px-1 leading-none" data-testid="badge-unread-comments">
+                  {unreadCommentCount}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
 
