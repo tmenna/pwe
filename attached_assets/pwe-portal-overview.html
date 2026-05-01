@@ -103,6 +103,180 @@
     z-index: 999;
   }
 
+  /* ── Slide menu button ────────────────────────── */
+  .menu-btn {
+    position: fixed;
+    top: 14px; left: 16px;
+    z-index: 1001;
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.16);
+    color: #fff;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: background .2s;
+    font-size: 15px;
+  }
+  .menu-btn:hover { background: rgba(255,255,255,.22); }
+
+  /* ── Menu overlay backdrop ───────────────────── */
+  .menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.52);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease;
+    backdrop-filter: blur(2px);
+  }
+  .menu-overlay.open { opacity: 1; pointer-events: auto; }
+
+  /* ── Menu drawer ─────────────────────────────── */
+  .menu-panel {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 310px;
+    background: linear-gradient(180deg, #0c1a2e 0%, #0f172a 100%);
+    border-right: 1px solid rgba(255,255,255,.09);
+    z-index: 1001;
+    transform: translateX(-100%);
+    transition: transform .35s cubic-bezier(.4,0,.2,1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 8px 0 32px rgba(0,0,0,.4);
+  }
+  .menu-panel.open { transform: translateX(0); }
+
+  .menu-header {
+    padding: 18px 16px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .menu-header-left { display: flex; align-items: center; gap: 10px; }
+  .menu-logo-dot {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg,#4ecb9e,#2ea87c);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .menu-header h2 {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,.6);
+    letter-spacing: .04em;
+  }
+  .menu-header p {
+    font-size: 10px;
+    color: rgba(255,255,255,.3);
+    margin-top: 1px;
+  }
+  .menu-close {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.1);
+    color: rgba(255,255,255,.5);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    transition: background .2s, color .2s;
+    flex-shrink: 0;
+  }
+  .menu-close:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+  .menu-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 8px 16px;
+  }
+  .menu-list::-webkit-scrollbar { width: 3px; }
+  .menu-list::-webkit-scrollbar-track { background: transparent; }
+  .menu-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 2px; }
+
+  .menu-section {
+    padding: 10px 8px 3px;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: rgba(255,255,255,.25);
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s;
+    border: none;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    color: rgba(255,255,255,.65);
+    margin-bottom: 1px;
+  }
+  .menu-item:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.9); }
+  .menu-item.current {
+    background: rgba(78,203,158,.13);
+    color: #4ecb9e;
+    border: 1px solid rgba(78,203,158,.18);
+  }
+
+  .menu-num {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.07);
+    font-size: 10px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: rgba(255,255,255,.35);
+    font-variant-numeric: tabular-nums;
+  }
+  .menu-item.current .menu-num {
+    background: rgba(78,203,158,.2);
+    color: #4ecb9e;
+  }
+
+  .menu-text { min-width: 0; flex: 1; }
+  .menu-title { font-size: 12px; font-weight: 500; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .menu-sub { font-size: 10px; color: rgba(255,255,255,.3); margin-top: 1px; }
+  .menu-item.current .menu-sub { color: rgba(78,203,158,.55); }
+  .menu-item.current .menu-title { font-weight: 600; }
+
+  .menu-arrow {
+    font-size: 10px;
+    color: rgba(255,255,255,.2);
+    flex-shrink: 0;
+    transition: color .15s;
+  }
+  .menu-item:hover .menu-arrow { color: rgba(255,255,255,.45); }
+  .menu-item.current .menu-arrow { color: rgba(78,203,158,.5); }
+
+  .menu-footer {
+    padding: 10px 16px 14px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    font-size: 10px;
+    color: rgba(255,255,255,.22);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   /* ════════════════════════════════════════════════
      SLIDE THEMES
   ════════════════════════════════════════════════ */
@@ -964,9 +1138,33 @@
 
 </div><!-- /deck -->
 
+<!-- Menu button -->
+<button class="menu-btn" id="menuBtn" title="Slide menu (M)">&#9776;</button>
+
+<!-- Menu overlay backdrop -->
+<div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+
+<!-- Menu drawer -->
+<div class="menu-panel" id="menuPanel">
+  <div class="menu-header">
+    <div class="menu-header-left">
+      <div class="menu-logo-dot">P</div>
+      <div>
+        <h2>PWE Portal</h2>
+        <p>Slide navigation</p>
+      </div>
+    </div>
+    <button class="menu-close" onclick="closeMenu()" title="Close (Esc)">✕</button>
+  </div>
+  <div class="menu-list" id="menuList"></div>
+  <div class="menu-footer">
+    <span>&#8592; &#8594; arrow keys &nbsp;·&nbsp; M to toggle menu &nbsp;·&nbsp; Esc to close</span>
+  </div>
+</div>
+
 <!-- Controls -->
 <div class="counter" id="counter">1 / 15</div>
-<div class="hint">← → arrow keys to navigate</div>
+<div class="hint">← → arrow keys &nbsp;·&nbsp; M for menu</div>
 <div class="nav">
   <button id="prev" onclick="go(-1)">&#8592;</button>
   <div class="dots" id="dots"></div>
@@ -974,11 +1172,34 @@
 </div>
 
 <script>
+  /* ── Slide data ───────────────────────────────── */
+  const SLIDE_DATA = [
+    { section: "Introduction", title: "Welcome", sub: "PWE Child Sponsorship Portal" },
+    { section: "Introduction", title: "What is the PWE Portal?", sub: "Overview & purpose" },
+    { section: "Introduction", title: "Signing In", sub: "Login & access" },
+    { section: "Features", title: "Dashboard", sub: "At-a-glance overview & stats" },
+    { section: "Features", title: "Child Profiles & Records", sub: "Lifecycle management" },
+    { section: "Features", title: "Documents & Progress Timeline", sub: "Files & milestones" },
+    { section: "Features", title: "Sponsor Commenting", sub: "Comments, reactions & replies" },
+    { section: "Features", title: "Dedicated Sponsor Experience", sub: "Sponsor portal" },
+    { section: "Features", title: "User Management & Roles", sub: "Admin, Case Worker, Sponsor" },
+    { section: "Features", title: "Assigning Children to Sponsors", sub: "Sponsorship links" },
+    { section: "How to Use", title: "Admin Workflow", sub: "Day-to-day admin tasks" },
+    { section: "How to Use", title: "Case Worker Workflow", sub: "Managing children & records" },
+    { section: "How to Use", title: "Sponsor Portal Walkthrough", sub: "Sponsor experience" },
+    { section: "Reference", title: "Key Navigation & Tips", sub: "Quick reference guide" },
+    { section: "Reference", title: "Thank You", sub: "From Poverty to Possibility" },
+  ];
+
+  /* ── Core state ───────────────────────────────── */
   const slides = document.querySelectorAll('.slide');
   const dotsEl = document.getElementById('dots');
   const counter = document.getElementById('counter');
+  const menuList = document.getElementById('menuList');
   let cur = 0;
+  let menuOpen = false;
 
+  /* ── Build dots ───────────────────────────────── */
   slides.forEach((_, i) => {
     const d = document.createElement('div');
     d.className = 'dot' + (i === 0 ? ' on' : '');
@@ -986,21 +1207,80 @@
     dotsEl.appendChild(d);
   });
 
+  /* ── Build menu list ──────────────────────────── */
+  let lastSection = '';
+  SLIDE_DATA.forEach((s, i) => {
+    if (s.section !== lastSection) {
+      const label = document.createElement('div');
+      label.className = 'menu-section';
+      label.textContent = s.section;
+      menuList.appendChild(label);
+      lastSection = s.section;
+    }
+    const btn = document.createElement('button');
+    btn.className = 'menu-item' + (i === 0 ? ' current' : '');
+    btn.id = 'mi' + i;
+    btn.onclick = () => { goTo(i); closeMenu(); };
+    btn.innerHTML =
+      '<div class="menu-num">' + (i + 1) + '</div>' +
+      '<div class="menu-text">' +
+        '<div class="menu-title">' + s.title + '</div>' +
+        '<div class="menu-sub">' + s.sub + '</div>' +
+      '</div>' +
+      '<div class="menu-arrow">›</div>';
+    menuList.appendChild(btn);
+  });
+
+  /* ── Navigation ───────────────────────────────── */
   function goTo(n) {
     slides[cur].classList.remove('active');
     document.querySelectorAll('.dot')[cur].classList.remove('on');
+    const prevItem = document.getElementById('mi' + cur);
+    if (prevItem) prevItem.classList.remove('current');
+
     cur = Math.max(0, Math.min(n, slides.length - 1));
+
     slides[cur].classList.add('active');
     document.querySelectorAll('.dot')[cur].classList.add('on');
     counter.textContent = (cur + 1) + ' / ' + slides.length;
+
+    const curItem = document.getElementById('mi' + cur);
+    if (curItem) {
+      curItem.classList.add('current');
+      curItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   }
 
   function go(dir) { goTo(cur + dir); }
 
+  /* ── Menu open / close ────────────────────────── */
+  function openMenu() {
+    document.getElementById('menuPanel').classList.add('open');
+    document.getElementById('menuOverlay').classList.add('open');
+    menuOpen = true;
+  }
+
+  function closeMenu() {
+    document.getElementById('menuPanel').classList.remove('open');
+    document.getElementById('menuOverlay').classList.remove('open');
+    menuOpen = false;
+  }
+
+  function toggleMenu() { menuOpen ? closeMenu() : openMenu(); }
+
+  document.getElementById('menuBtn').onclick = toggleMenu;
+
+  /* ── Keyboard ─────────────────────────────────── */
   document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeMenu(); return; }
+    if (e.key === 'm' || e.key === 'M') { toggleMenu(); return; }
+    if (menuOpen) return;
     if (e.key === 'ArrowRight' || e.key === ' ') go(1);
     if (e.key === 'ArrowLeft') go(-1);
   });
+
+  /* ── Init ─────────────────────────────────────── */
+  goTo(0);
 </script>
 </body>
 </html>
