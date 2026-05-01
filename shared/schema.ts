@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, serial, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, serial, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -66,6 +66,8 @@ export const messages = pgTable("messages", {
   senderRole: varchar("sender_role", { length: 20 }).notNull(),
   content: text("content").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
+  parentId: integer("parent_id"),
+  reactions: jsonb("reactions").$type<{ like: number; love: number }>().default({ like: 0, love: 0 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

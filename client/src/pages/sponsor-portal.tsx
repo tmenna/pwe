@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Heart, FileText, Image, StickyNote, GraduationCap, Clock, MessageSquare,
   Milestone, RefreshCw, MapPin, BookOpen, User, Calendar, Send, Mail,
-  CheckCheck, Eye, Inbox, MessageCircleOff,
+  CheckCheck, Eye, Inbox, MessageCircleOff, ThumbsUp, CornerDownRight, Reply, X,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,26 +100,26 @@ function SendMessageDialog({ childId, sponsorName, onClose }: { childId: number;
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="rounded-lg shadow-sm bg-pink-600 hover:bg-pink-700 text-white h-9 px-4 text-sm" data-testid="button-send-message">
-          <Send className="mr-2 h-3.5 w-3.5" />
-          Send a Message
+          <MessageSquare className="mr-2 h-3.5 w-3.5" />
+          Leave a Comment
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-pink-500" />
-            Send a Message
+            <MessageSquare className="h-4 w-4 text-pink-500" />
+            Leave a Comment
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-1">
           <p className="text-sm text-muted-foreground">
-            Your message will be delivered to the PWE care team and associated with your sponsored child's record.
+            Your comment will be delivered to the PWE care team and associated with your sponsored child's record.
           </p>
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Message</Label>
+            <Label className="text-sm font-medium">Comment</Label>
             <Textarea
               className="min-h-[120px] rounded-lg border-border/60 resize-none"
-              placeholder="Write your message here..."
+              placeholder="Write your comment here..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
               data-testid="input-message-content"
@@ -133,7 +133,7 @@ function SendMessageDialog({ childId, sponsorName, onClose }: { childId: number;
               disabled={mutation.isPending || !content.trim()}
               data-testid="button-confirm-send"
             >
-              {mutation.isPending ? "Sending..." : "Send Message"}
+              {mutation.isPending ? "Posting..." : "Post Comment"}
             </Button>
           </div>
         </div>
@@ -145,6 +145,10 @@ function SendMessageDialog({ childId, sponsorName, onClose }: { childId: number;
 function ChildPortal({ child }: { child: Child }) {
   const childId = child.id;
   const { user } = useAuth();
+  const { toast } = useToast();
+  const qClient = useQueryClient();
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyContent, setReplyContent] = useState("");
   const sponsorName = user?.firstName && user?.lastName
     ? `${user.firstName} ${user.lastName}`
     : user?.username || "Sponsor";
@@ -174,6 +178,28 @@ function ChildPortal({ child }: { child: Child }) {
       if (!res.ok) throw new Error("Failed to fetch messages");
       return res.json();
     },
+  });
+
+  const reactMutation = useMutation({
+    mutationFn: async ({ id, type }: { id: number; type: "like" | "love" }) => {
+      return apiRequest("POST", `/api/messages/${id}/react`, { type });
+    },
+    onSuccess: () => {
+      qClient.invalidateQueries({ queryKey: ["/api/children", String(childId), "messages"] });
+    },
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: async ({ parentId, content }: { parentId: number; content: string }) => {
+      return apiRequest("POST", `/api/messages/${parentId}/reply`, { childId, content });
+    },
+    onSuccess: () => {
+      qClient.invalidateQueries({ queryKey: ["/api/children", String(childId), "messages"] });
+      setReplyingTo(null);
+      setReplyContent("");
+      toast({ title: "Reply posted" });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const latestMilestone = timeline?.find((e) => e.entryType === "milestone");
@@ -206,7 +232,7 @@ function ChildPortal({ child }: { child: Child }) {
             <SendMessageDialog childId={childId} sponsorName={sponsorName} onClose={() => {}} />
           ) : (
             <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/40 px-4 py-2.5 text-sm text-muted-foreground" data-testid="text-commenting-disabled">
-              <Mail className="h-4 w-4 shrink-0" />
+              <MessageSquare className="h-4 w-4 shrink-0" />
               Commenting not currently enabled
             </div>
           )}
@@ -345,8 +371,8 @@ function ChildPortal({ child }: { child: Child }) {
               Documents
             </TabsTrigger>
             <TabsTrigger value="messages" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-messages">
-              <Mail className="mr-2 h-3.5 w-3.5" />
-              Messages
+              <MessageSquare className="mr-2 h-3.5 w-3.5" />
+              Comments
             </TabsTrigger>
           </TabsList>
 
@@ -452,14 +478,14 @@ function ChildPortal({ child }: { child: Child }) {
             </Card>
           </TabsContent>
 
-          {/* Messages Tab */}
+          {/* Comments Tab */}
           <TabsContent value="messages">
             <Card className="border-border/50">
               <div className="p-6">
                 <div className="flex items-center justify-between gap-4 mb-5">
                   <h3 className="text-[15px] font-semibold flex items-center gap-2.5">
                     <span className="inline-block w-1 h-5 rounded-full bg-pink-500" />
-                    Messages
+                    Comments
                   </h3>
                   {child.sponsorCanComment ? (
                     <SendMessageDialog childId={childId} sponsorName={sponsorName} onClose={() => {}} />
@@ -473,58 +499,117 @@ function ChildPortal({ child }: { child: Child }) {
                   <div className="space-y-3">
                     {[1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
                   </div>
-                ) : !messages?.length ? (
+                ) : !messages?.filter(m => !m.parentId).length ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted mb-3">
-                      <Inbox className="h-5 w-5 text-muted-foreground" />
+                      <MessageSquare className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <p className="text-sm font-medium text-muted-foreground">No messages yet</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">Use the button above to send your first message to the care team</p>
+                    <p className="text-sm font-medium text-muted-foreground">No comments yet</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">
+                      {child.sponsorCanComment ? "Use the button above to leave the first comment" : "Comments will appear here once enabled"}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {messages.map((msg) => {
+                    {messages?.filter(m => !m.parentId).map((msg) => {
+                      const replies = messages?.filter(r => r.parentId === msg.id) ?? [];
                       const isSponsor = msg.senderRole === "sponsor";
-                      const statusIcons: Record<string, any> = {
-                        pending: Clock,
-                        delivered: Eye,
-                        read: CheckCheck,
-                      };
+                      const statusIcons: Record<string, any> = { pending: Clock, delivered: Eye, read: CheckCheck };
                       const StatusIcon = statusIcons[msg.status] || Clock;
-                      const statusColors: Record<string, string> = {
-                        pending: "text-amber-500",
-                        delivered: "text-blue-500",
-                        read: "text-emerald-500",
-                      };
+                      const statusColors: Record<string, string> = { pending: "text-amber-500", delivered: "text-blue-500", read: "text-emerald-500" };
+                      const rxn = (msg.reactions as { like: number; love: number } | null) ?? { like: 0, love: 0 };
+
                       return (
-                        <div
-                          key={msg.id}
-                          className={`rounded-xl border p-4 ${isSponsor ? "border-pink-200/60 bg-pink-50/40 dark:bg-pink-500/5 dark:border-pink-500/20" : "border-blue-200/60 bg-blue-50/40 dark:bg-blue-500/5 dark:border-blue-500/20"}`}
-                          data-testid={`message-item-${msg.id}`}
-                        >
-                          <div className="flex items-start justify-between gap-3 flex-wrap">
-                            <div className="flex items-center gap-2">
-                              <div className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold ${isSponsor ? "bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-300" : "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"}`}>
-                                {msg.senderName.charAt(0).toUpperCase()}
+                        <div key={msg.id} className="space-y-2">
+                          <div
+                            className={`rounded-xl border p-4 ${isSponsor ? "border-pink-200/60 bg-pink-50/40 dark:bg-pink-500/5 dark:border-pink-500/20" : "border-blue-200/60 bg-blue-50/40 dark:bg-blue-500/5 dark:border-blue-500/20"}`}
+                            data-testid={`message-item-${msg.id}`}
+                          >
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <div className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold ${isSponsor ? "bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-300" : "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"}`}>
+                                  {msg.senderName.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium leading-none">{msg.senderName}</p>
+                                  <Badge variant="outline" className={`mt-1 text-[10px] px-1.5 py-0 h-[16px] ${isSponsor ? "bg-pink-50 text-pink-700 border-pink-200/60 dark:bg-pink-500/15 dark:text-pink-300" : "bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-500/15 dark:text-blue-300"}`}>
+                                    {isSponsor ? "Sponsor" : "Care Team"}
+                                  </Badge>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-sm font-medium leading-none">{msg.senderName}</p>
-                                <Badge
-                                  variant="outline"
-                                  className={`mt-1 text-[10px] px-1.5 py-0 h-[16px] ${isSponsor ? "bg-pink-50 text-pink-700 border-pink-200/60 dark:bg-pink-500/15 dark:text-pink-300" : "bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-500/15 dark:text-blue-300"}`}
-                                >
-                                  {isSponsor ? "Sponsor" : "Care Team"}
-                                </Badge>
+                              <div className="flex items-center gap-2">
+                                <StatusIcon className={`h-3.5 w-3.5 ${statusColors[msg.status]}`} />
+                                <p className="text-[11px] text-muted-foreground">
+                                  {new Date(msg.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <StatusIcon className={`h-3.5 w-3.5 ${statusColors[msg.status]}`} />
-                              <p className="text-[11px] text-muted-foreground">
-                                {new Date(msg.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                              </p>
+                            <p className="mt-3 text-sm text-foreground leading-relaxed">{msg.content}</p>
+                            {/* Reactions + Reply */}
+                            <div className="mt-3 flex items-center gap-2 flex-wrap">
+                              <button type="button" onClick={() => reactMutation.mutate({ id: msg.id, type: "like" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 px-2.5 py-1 text-xs text-muted-foreground transition-colors" data-testid={`button-like-${msg.id}`}>
+                                <ThumbsUp className="h-3 w-3" />{rxn.like > 0 && <span>{rxn.like}</span>}
+                              </button>
+                              <button type="button" onClick={() => reactMutation.mutate({ id: msg.id, type: "love" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 px-2.5 py-1 text-xs text-muted-foreground transition-colors" data-testid={`button-love-${msg.id}`}>
+                                <Heart className="h-3 w-3" />{rxn.love > 0 && <span>{rxn.love}</span>}
+                              </button>
+                              {child.sponsorCanComment && (
+                                <button type="button" onClick={() => { setReplyingTo(replyingTo === msg.id ? null : msg.id); setReplyContent(""); }} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors" data-testid={`button-reply-${msg.id}`}>
+                                  <Reply className="h-3 w-3" />
+                                  Reply{replies.length > 0 ? ` · ${replies.length}` : ""}
+                                </button>
+                              )}
                             </div>
                           </div>
-                          <p className="mt-3 text-sm text-foreground leading-relaxed">{msg.content}</p>
+
+                          {/* Replies */}
+                          {replies.length > 0 && (
+                            <div className="ml-6 space-y-2">
+                              {replies.map((reply) => {
+                                const replyIsSponsor = reply.senderRole === "sponsor";
+                                const replyRxn = (reply.reactions as { like: number; love: number } | null) ?? { like: 0, love: 0 };
+                                return (
+                                  <div key={reply.id} className="flex gap-2">
+                                    <CornerDownRight className="h-3.5 w-3.5 text-muted-foreground/40 mt-3 shrink-0" />
+                                    <div className={`flex-1 rounded-xl border p-3 ${replyIsSponsor ? "border-pink-200/40 bg-pink-50/30 dark:bg-pink-500/5 dark:border-pink-500/15" : "border-blue-200/40 bg-blue-50/30 dark:bg-blue-500/5 dark:border-blue-500/15"}`} data-testid={`reply-item-${reply.id}`}>
+                                      <div className="flex items-center gap-2">
+                                        <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-semibold ${replyIsSponsor ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"}`}>{reply.senderName.charAt(0).toUpperCase()}</div>
+                                        <p className="text-xs font-semibold">{reply.senderName}</p>
+                                        <p className="text-[10px] text-muted-foreground ml-auto">{new Date(reply.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+                                      </div>
+                                      <p className="mt-1.5 text-xs text-foreground/80 leading-relaxed">{reply.content}</p>
+                                      <div className="mt-2 flex gap-1.5">
+                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "like" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-blue-50 hover:text-blue-600 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors" data-testid={`button-like-reply-${reply.id}`}>
+                                          <ThumbsUp className="h-2.5 w-2.5" />{replyRxn.like > 0 && replyRxn.like}
+                                        </button>
+                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "love" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-rose-50 hover:text-rose-600 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors" data-testid={`button-love-reply-${reply.id}`}>
+                                          <Heart className="h-2.5 w-2.5" />{replyRxn.love > 0 && replyRxn.love}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Inline reply input */}
+                          {replyingTo === msg.id && (
+                            <div className="ml-6 flex gap-2">
+                              <CornerDownRight className="h-3.5 w-3.5 text-muted-foreground/40 mt-2.5 shrink-0" />
+                              <div className="flex-1 flex gap-2 items-end">
+                                <Textarea rows={2} placeholder="Write a reply…" value={replyContent} onChange={(e) => setReplyContent(e.target.value)} className="rounded-lg border-border/60 text-sm resize-none flex-1" data-testid={`input-reply-${msg.id}`} />
+                                <div className="flex flex-col gap-1.5">
+                                  <Button size="sm" className="rounded-lg h-8 bg-pink-600 hover:bg-pink-700 text-white" disabled={!replyContent.trim() || replyMutation.isPending} onClick={() => replyMutation.mutate({ parentId: msg.id, content: replyContent })} data-testid={`button-submit-reply-${msg.id}`}>
+                                    {replyMutation.isPending ? "…" : <Send className="h-3.5 w-3.5" />}
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="rounded-lg h-8" onClick={() => setReplyingTo(null)}>
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

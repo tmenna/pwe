@@ -28,7 +28,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - Sponsored/Non-Sponsored categorization with filtering and dashboard stats
 - Document Management (upload files linked to child profiles, 7 categories, delete confirmation dialog)
 - Progress Timeline (chronological feed of milestones and events)
-- Sponsor Messaging (send messages on behalf of sponsors, status tracking: pending/delivered/read)
+- Sponsor Commenting (leave comments on behalf of sponsors, reactions: like/love, threaded replies, status tracking: pending/delivered/read)
 - Multi-Organization Management (create/manage organizations, assign children to organizations)
 - Organization-based access control (non-admin users assigned to an org only see that org's children)
 - Multi-child sponsor assignment: sponsors can be linked to one or more children; per-child commenting toggle directly in User Management
@@ -37,13 +37,13 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - Custom username/password login (no signup - admin creates users)
 - Admin user management panel (create, edit, delete users, assign roles and organizations)
 - Role-based access control: admin, case_worker, read_only, sponsor
-- **Sponsor Portal**: Dedicated read-only portal for sponsors — warm welcome, child profile card, progress/documents/messages tabs, send-message capability; completely isolated from admin UI
+- **Sponsor Portal**: Dedicated read-only portal for sponsors — warm welcome, child profile card, progress/documents/comments tabs, comment/react/reply capability; completely isolated from admin UI
 
 ## Auth System
 - Login via username/password (POST /api/login), no signup form
 - Default admin account seeded: username "admin", password "admin123"
 - Sessions stored in PostgreSQL via connect-pg-simple
-- Roles: admin (full access + user management + org management), case_worker (CRUD on children/docs/timeline/messages), read_only (view only), sponsor (view assigned children + send messages only)
+- Roles: admin (full access + user management + org management), case_worker (CRUD on children/docs/timeline/comments), read_only (view only), sponsor (view assigned children + leave comments/reactions/replies if enabled)
 - Admin panel at /admin/users for managing user accounts
 
 ## Project Structure

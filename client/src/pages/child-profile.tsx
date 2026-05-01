@@ -5,6 +5,7 @@ import {
   ArrowLeft, Edit, Upload, Plus, FileText, Image, StickyNote,
   GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2, Camera, Check, X, Pencil,
   Milestone, MessageSquare, RefreshCw, Heart, Mail, Send, MoreHorizontal, Building2, MessageCircle,
+  ThumbsUp, CornerDownRight, Reply,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -392,10 +393,10 @@ function SendMessageDialog({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label className="text-sm font-medium">Message</Label>
+        <Label className="text-sm font-medium">Comment</Label>
         <Textarea
           className="rounded-lg border-border/60"
-          placeholder="Write your message..."
+          placeholder="Write your comment..."
           rows={4}
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -410,7 +411,7 @@ function SendMessageDialog({
           disabled={isPending || !senderName || !content}
           data-testid="button-confirm-message"
         >
-          {isPending ? "Sending..." : "Send"}
+          {isPending ? "Posting..." : "Post Comment"}
         </Button>
       </div>
     </div>
@@ -429,6 +430,8 @@ export default function ChildProfile() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const sponsorPhotoInputRef = useRef<HTMLInputElement>(null);
   const [messageOpen, setMessageOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyContent, setReplyContent] = useState("");
   const canEdit = user?.role !== "read_only";
 
   const { data: child, isLoading } = useQuery<Child>({
@@ -585,7 +588,31 @@ export default function ChildProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
-      toast({ title: "Message deleted" });
+      toast({ title: "Comment deleted" });
+    },
+  });
+
+  const reactMutation = useMutation({
+    mutationFn: async ({ id, type }: { id: number; type: "like" | "love" }) => {
+      return apiRequest("POST", `/api/messages/${id}/react`, { type });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
+    },
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: async ({ parentId, content }: { parentId: number; content: string }) => {
+      return apiRequest("POST", `/api/messages/${parentId}/reply`, { childId: Number(childId), content });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
+      setReplyingTo(null);
+      setReplyContent("");
+      toast({ title: "Reply posted" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to post reply", description: error.message, variant: "destructive" });
     },
   });
 
@@ -781,8 +808,8 @@ export default function ChildProfile() {
               Timeline
             </TabsTrigger>
             <TabsTrigger value="messages" className="rounded-md" data-testid="tab-messages">
-              <Mail className="mr-2 h-4 w-4" />
-              Messages
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Comments
             </TabsTrigger>
           </TabsList>
 
@@ -999,13 +1026,13 @@ export default function ChildProfile() {
                 <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" className="rounded-lg shadow-sm" data-testid="button-send-message">
-                      <Send className="mr-2 h-4 w-4" />
-                      Send Message
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Leave a Comment
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Send Message</DialogTitle>
+                      <DialogTitle>Leave a Comment</DialogTitle>
                     </DialogHeader>
                     <SendMessageDialog
                       onSend={(data) => sendMessageMutation.mutate(data)}
@@ -1021,19 +1048,20 @@ export default function ChildProfile() {
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
               </div>
-            ) : !messagesData?.length ? (
+            ) : !messagesData?.filter(m => !m.parentId).length ? (
               <Card className="flex flex-col items-center justify-center p-14 text-center border-border/50">
-                <Mail className="mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">No messages yet</p>
+                <MessageSquare className="mb-3 h-10 w-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">No comments yet</p>
                 {canEdit && (
                   <Button variant="outline" size="sm" className="mt-4 rounded-lg" onClick={() => setMessageOpen(true)} data-testid="button-send-first-message">
-                    Send First Message
+                    Leave First Comment
                   </Button>
                 )}
               </Card>
             ) : (
-              <div className="space-y-2.5">
-                {messagesData.map((msg) => {
+              <div className="space-y-3">
+                {messagesData.filter(m => !m.parentId).map((msg) => {
+                  const replies = messagesData.filter(r => r.parentId === msg.id);
                   const roleColor = msg.senderRole === "sponsor" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-blue-500/10 text-blue-700 dark:text-blue-400";
                   const statusColors: Record<string, string> = {
                     pending: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
@@ -1041,63 +1069,159 @@ export default function ChildProfile() {
                     read: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
                   };
                   const statusColor = statusColors[msg.status] || statusColors.pending;
+                  const rxn = (msg.reactions as { like: number; love: number } | null) ?? { like: 0, love: 0 };
 
                   return (
-                    <Card key={msg.id} className="p-4 border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`message-item-${msg.id}`}>
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium" data-testid={`text-sender-${msg.id}`}>{msg.senderName}</span>
-                            <Badge variant="secondary" className={`text-xs rounded-md ${roleColor}`} data-testid={`badge-role-${msg.id}`}>
-                              {msg.senderRole}
-                            </Badge>
-                            <Badge variant="secondary" className={`text-xs rounded-md ${statusColor}`} data-testid={`badge-status-${msg.id}`}>
-                              {msg.status}
-                            </Badge>
+                    <div key={msg.id} className="space-y-2">
+                      <Card className="p-4 border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`message-item-${msg.id}`}>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-medium" data-testid={`text-sender-${msg.id}`}>{msg.senderName}</span>
+                              <Badge variant="secondary" className={`text-xs rounded-md ${roleColor}`} data-testid={`badge-role-${msg.id}`}>
+                                {msg.senderRole === "sponsor" ? "Sponsor" : "Care Team"}
+                              </Badge>
+                              <Badge variant="secondary" className={`text-xs rounded-md ${statusColor}`} data-testid={`badge-status-${msg.id}`}>
+                                {msg.status}
+                              </Badge>
+                            </div>
+                            <p className="mt-2 text-sm text-foreground/80" data-testid={`text-message-content-${msg.id}`}>{msg.content}</p>
+                            <p className="mt-1.5 text-xs text-muted-foreground">
+                              {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : ""}
+                            </p>
+                            {/* Reaction + Reply bar */}
+                            <div className="mt-3 flex items-center gap-2 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => reactMutation.mutate({ id: msg.id, type: "like" })}
+                                className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 px-2.5 py-1 text-xs text-muted-foreground transition-colors"
+                                data-testid={`button-like-${msg.id}`}
+                              >
+                                <ThumbsUp className="h-3 w-3" />
+                                {rxn.like > 0 && <span>{rxn.like}</span>}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => reactMutation.mutate({ id: msg.id, type: "love" })}
+                                className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 px-2.5 py-1 text-xs text-muted-foreground transition-colors"
+                                data-testid={`button-love-${msg.id}`}
+                              >
+                                <Heart className="h-3 w-3" />
+                                {rxn.love > 0 && <span>{rxn.love}</span>}
+                              </button>
+                              {user?.role !== "read_only" && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setReplyingTo(replyingTo === msg.id ? null : msg.id); setReplyContent(""); }}
+                                  className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 hover:bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors"
+                                  data-testid={`button-reply-${msg.id}`}
+                                >
+                                  <Reply className="h-3 w-3" />
+                                  Reply {replies.length > 0 && `· ${replies.length}`}
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <p className="mt-2 text-sm text-muted-foreground" data-testid={`text-message-content-${msg.id}`}>{msg.content}</p>
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : ""}
-                          </p>
-                        </div>
-                        {canEdit && (
-                          <div className="flex items-center gap-1">
+                          {canEdit && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" data-testid={`button-message-actions-${msg.id}`}>
+                                <Button variant="ghost" size="icon" className="shrink-0" data-testid={`button-message-actions-${msg.id}`}>
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 {msg.status !== "delivered" && (
-                                  <DropdownMenuItem
-                                    onClick={() => updateMessageMutation.mutate({ id: msg.id, status: "delivered" })}
-                                    data-testid={`button-mark-delivered-${msg.id}`}
-                                  >
+                                  <DropdownMenuItem onClick={() => updateMessageMutation.mutate({ id: msg.id, status: "delivered" })} data-testid={`button-mark-delivered-${msg.id}`}>
                                     Mark as Delivered
                                   </DropdownMenuItem>
                                 )}
                                 {msg.status !== "read" && (
-                                  <DropdownMenuItem
-                                    onClick={() => updateMessageMutation.mutate({ id: msg.id, status: "read" })}
-                                    data-testid={`button-mark-read-${msg.id}`}
-                                  >
+                                  <DropdownMenuItem onClick={() => updateMessageMutation.mutate({ id: msg.id, status: "read" })} data-testid={`button-mark-read-${msg.id}`}>
                                     Mark as Read
                                   </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => deleteMessageMutation.mutate(msg.id)}
-                                  data-testid={`button-delete-message-${msg.id}`}
-                                >
-                                  Delete Message
+                                <DropdownMenuItem className="text-destructive" onClick={() => deleteMessageMutation.mutate(msg.id)} data-testid={`button-delete-message-${msg.id}`}>
+                                  Delete Comment
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
+                          )}
+                        </div>
+                      </Card>
+
+                      {/* Replies */}
+                      {replies.length > 0 && (
+                        <div className="ml-6 space-y-2">
+                          {replies.map((reply) => {
+                            const replyRoleColor = reply.senderRole === "sponsor" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-blue-500/10 text-blue-700 dark:text-blue-400";
+                            const replyRxn = (reply.reactions as { like: number; love: number } | null) ?? { like: 0, love: 0 };
+                            return (
+                              <div key={reply.id} className="flex gap-2">
+                                <CornerDownRight className="h-3.5 w-3.5 text-muted-foreground/40 mt-3 shrink-0" />
+                                <Card className="flex-1 p-3 border-border/40 bg-muted/20" data-testid={`reply-item-${reply.id}`}>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="text-xs font-semibold">{reply.senderName}</span>
+                                        <Badge variant="secondary" className={`text-[10px] rounded-md px-1.5 ${replyRoleColor}`}>{reply.senderRole === "sponsor" ? "Sponsor" : "Care Team"}</Badge>
+                                      </div>
+                                      <p className="mt-1 text-xs text-foreground/80">{reply.content}</p>
+                                      <p className="mt-1 text-[10px] text-muted-foreground">
+                                        {reply.createdAt ? new Date(reply.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : ""}
+                                      </p>
+                                      <div className="mt-2 flex items-center gap-1.5">
+                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "like" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors" data-testid={`button-like-reply-${reply.id}`}>
+                                          <ThumbsUp className="h-2.5 w-2.5" />{replyRxn.like > 0 && replyRxn.like}
+                                        </button>
+                                        <button type="button" onClick={() => reactMutation.mutate({ id: reply.id, type: "love" })} className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors" data-testid={`button-love-reply-${reply.id}`}>
+                                          <Heart className="h-2.5 w-2.5" />{replyRxn.love > 0 && replyRxn.love}
+                                        </button>
+                                      </div>
+                                    </div>
+                                    {canEdit && (
+                                      <button type="button" onClick={() => deleteMessageMutation.mutate(reply.id)} className="text-muted-foreground hover:text-destructive" data-testid={`button-delete-reply-${reply.id}`}>
+                                        <X className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </Card>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Inline reply input */}
+                      {replyingTo === msg.id && (
+                        <div className="ml-6 flex gap-2">
+                          <CornerDownRight className="h-3.5 w-3.5 text-muted-foreground/40 mt-2.5 shrink-0" />
+                          <div className="flex-1 flex gap-2 items-end">
+                            <Textarea
+                              rows={2}
+                              placeholder="Write a reply…"
+                              value={replyContent}
+                              onChange={(e) => setReplyContent(e.target.value)}
+                              className="rounded-lg border-border/60 text-sm resize-none flex-1"
+                              data-testid={`input-reply-${msg.id}`}
+                            />
+                            <div className="flex flex-col gap-1.5">
+                              <Button
+                                size="sm"
+                                className="rounded-lg h-8"
+                                disabled={!replyContent.trim() || replyMutation.isPending}
+                                onClick={() => replyMutation.mutate({ parentId: msg.id, content: replyContent })}
+                                data-testid={`button-submit-reply-${msg.id}`}
+                              >
+                                {replyMutation.isPending ? "…" : <Send className="h-3.5 w-3.5" />}
+                              </Button>
+                              <Button size="sm" variant="ghost" className="rounded-lg h-8" onClick={() => setReplyingTo(null)}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </Card>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>

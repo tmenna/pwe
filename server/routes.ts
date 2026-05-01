@@ -514,6 +514,50 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/messages/:id/react", isAuthenticated, async (req: any, res) => {
+    try {
+      const { type } = req.body;
+      if (!["like", "love"].includes(type)) {
+        return res.status(400).json({ message: "Reaction type must be like or love" });
+      }
+      const updated = await storage.reactToMessage(parseInt(req.params.id), type as "like" | "love");
+      if (!updated) return res.status(404).json({ message: "Comment not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/messages/:id/reply", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.currentUser;
+      if (!user) return res.status(401).json({ message: "Unauthorized" });
+      if (user.role === "read_only") return res.status(403).json({ message: "Read-only users cannot reply" });
+
+      const parentId = parseInt(req.params.id);
+      const { content } = req.body;
+      if (!content?.trim()) return res.status(400).json({ message: "Reply content is required" });
+
+      const senderName = user.firstName && user.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : user.username;
+      const senderRole = user.role === "sponsor" ? "sponsor" : "admin";
+
+      const reply = await storage.createMessage({
+        childId: req.body.childId,
+        senderName,
+        senderRole,
+        content: content.trim(),
+        status: "pending",
+        parentId,
+        reactions: { like: 0, love: 0 },
+      });
+      res.json(reply);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/messages/pending", isAuthenticated, async (_req, res) => {
     try {
       const msgs = await storage.getPendingMessages();
