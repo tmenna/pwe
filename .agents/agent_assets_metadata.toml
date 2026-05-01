@@ -12,3 +12,9 @@ id = "Yz1YSR8FY_gyhW1eSBa1g"
 uri = "file://REPLIT_TO_RENDER_GUIDE.md"
 type = "text"
 title = "Replit → GitHub → Render Deployment Guide"
+
+[[outputs]]
+id = "EYFqwaaGipaOz676FCELe"
+uri = "file://attached_assets/pwe-portal-slides.zip"
+type = "unspecified"
+title = "PWE Portal — Feature & How-to Slide Deck (HTML)"

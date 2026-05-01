@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PWE Child Sponsorship Records Portal — Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --teal:    #4ecb9e;
+    --teal-dk: #2ea87c;
+    --blue:    #3b82f6;
+    --blue-dk: #1d4ed8;
+    --emerald: #059669;
+    --amber:   #d97706;
+    --rose:    #e11d48;
+    --slate:   #1e293b;
+    --mid:     #475569;
+    --light:   #f8fafc;
+    --border:  #e2e8f0;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    color: #fff;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── Slideshow shell ─────────────────────────── */
+  .deck {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .45s ease;
+    overflow: hidden;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  /* ── Nav arrows ──────────────────────────────── */
+  .nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 999;
+  }
+  .nav button {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    color: #fff;
+    border-radius: 50%;
+    width: 40px; height: 40px;
+    font-size: 18px;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: background .2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav button:hover { background: rgba(255,255,255,.25); }
+  .nav .dots { display: flex; gap: 6px; }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.3);
+    cursor: pointer;
+    transition: background .2s, transform .2s;
+  }
+  .dot.on { background: var(--teal); transform: scale(1.3); }
+
+  /* ── Slide counter ───────────────────────────── */
+  .counter {
+    position: fixed;
+    top: 18px; right: 24px;
+    font-size: 12px;
+    color: rgba(255,255,255,.4);
+    z-index: 999;
+    letter-spacing: .05em;
+  }
+
+  /* ── Keyboard hint ───────────────────────────── */
+  .hint {
+    position: fixed;
+    bottom: 28px; left: 28px;
+    font-size: 11px;
+    color: rgba(255,255,255,.25);
+    z-index: 999;
+  }
+
+  /* ════════════════════════════════════════════════
+     SLIDE THEMES
+  ════════════════════════════════════════════════ */
+
+  /* ── Cover ───────────────────────────────────── */
+  .cover {
+    background: linear-gradient(135deg, #0d4f3a 0%, #1a7a5a 40%, #4ecb9e 100%);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0;
+  }
+  .cover-logo {
+    width: 90px; height: 90px;
+    border-radius: 20px;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    overflow: hidden;
+  }
+  .cover-logo img { width: 80px; height: 80px; object-fit: contain; }
+  .cover h1 { font-size: 48px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
+  .cover h1 span { color: #b2f0d8; }
+  .cover p { margin-top: 14px; font-size: 19px; color: rgba(255,255,255,.75); font-weight: 400; }
+  .cover .tagline {
+    margin-top: 32px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: rgba(255,255,255,.5); letter-spacing: .1em; text-transform: uppercase;
+  }
+  .cover .tagline::before, .cover .tagline::after {
+    content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.2);
+    max-width: 80px;
+  }
+  .screenshot-strip {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 220px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    opacity: .18;
+  }
+  .screenshot-strip img {
+    width: 820px;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -10px 60px rgba(0,0,0,.5);
+  }
+
+  /* ── Dark slate slides ───────────────────────── */
+  .dark-slide {
+    background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+  }
+
+  /* ── Light slides ────────────────────────────── */
+  .light-slide {
+    background: linear-gradient(145deg, #f0fdf9 0%, #ecfdf5 100%);
+    color: var(--slate);
+  }
+  .light-slide .slide-label { color: var(--teal-dk); }
+  .light-slide .slide-title { color: var(--slate); }
+  .light-slide .slide-sub { color: var(--mid); }
+  .light-slide .tag { background: #d1fae5; color: #065f46; }
+  .light-slide .feature-card { background: #fff; border: 1px solid #d1fae5; color: var(--slate); }
+  .light-slide .feature-card p { color: var(--mid); }
+
+  /* ── Blue accent slides ──────────────────────── */
+  .blue-slide {
+    background: linear-gradient(145deg, #0c1a3a 0%, #1e3a6e 100%);
+  }
+
+  /* ── Slide layout helpers ────────────────────── */
+  .slide-inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 52px 64px 80px;
+    gap: 8px;
+  }
+
+  .slide-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 4px;
+  }
+  .slide-title {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.15;
+    margin-bottom: 6px;
+  }
+  .slide-sub {
+    font-size: 15px;
+    color: rgba(255,255,255,.6);
+    margin-bottom: 28px;
+    max-width: 640px;
+    line-height: 1.6;
+  }
+
+  /* ── Feature grid ────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; flex: 1; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; flex: 1; }
+
+  .feature-card {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 14px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: background .2s;
+  }
+  .feature-card:hover { background: rgba(255,255,255,.1); }
+
+  .fc-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+  }
+  .fc-title {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .feature-card p {
+    font-size: 12.5px;
+    color: rgba(255,255,255,.55);
+    line-height: 1.55;
+  }
+
+  /* ── Tag / badge ─────────────────────────────── */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(78,203,158,.15);
+    color: var(--teal);
+    border: 1px solid rgba(78,203,158,.25);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
+
+  /* ── Step list ───────────────────────────────── */
+  .steps { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .step {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .step-num {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--teal);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-body h4 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .step-body p { font-size: 12.5px; color: rgba(255,255,255,.55); line-height: 1.5; }
+
+  /* ── Two-col layout ──────────────────────────── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    flex: 1;
+  }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .col-head {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--teal);
+    margin-bottom: 4px;
+  }
+
+  /* ── Role pills ──────────────────────────────── */
+  .role-row { display: flex; flex-direction: column; gap: 10px; }
+  .role-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 11px;
+    padding: 13px 16px;
+  }
+  .role-icon {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .role-card h4 { font-size: 13.5px; font-weight: 700; margin-bottom: 2px; }
+  .role-card p  { font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.5; }
+
+  /* ── Divider accent bar ──────────────────────── */
+  .accent-bar {
+    width: 4px; height: 32px;
+    border-radius: 2px;
+    background: var(--teal);
+    flex-shrink: 0;
+  }
+
+  /* ── Pill list ───────────────────────────────── */
+  .pill-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .pill {
+    padding: 5px 13px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid;
+  }
+
+  /* ── Screenshot frame ────────────────────────── */
+  .screenshot-frame {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .screenshot-frame img { width: 100%; display: block; }
+
+  /* ── Highlight box ───────────────────────────── */
+  .highlight {
+    background: linear-gradient(135deg, rgba(78,203,158,.12), rgba(59,130,246,.08));
+    border: 1px solid rgba(78,203,158,.2);
+    border-radius: 14px;
+    padding: 20px 24px;
+  }
+  .highlight h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .highlight p  { font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.6; }
+
+  /* ── Summary table ───────────────────────────── */
+  .summary-table { display: flex; flex-direction: column; gap: 1px; border-radius: 12px; overflow: hidden; }
+  .sum-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    background: rgba(255,255,255,.05);
+    padding: 11px 18px;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .sum-row:nth-child(even) { background: rgba(255,255,255,.03); }
+  .sum-row .label { color: rgba(255,255,255,.5); font-weight: 500; }
+  .sum-row .value { color: rgba(255,255,255,.9); }
+
+  /* ── End slide ───────────────────────────────── */
+  .end-slide {
+    background: linear-gradient(135deg, #0d4f3a 0%, #1a7a5a 55%, #166534 100%);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .end-slide h1 { font-size: 44px; font-weight: 800; letter-spacing: -.03em; }
+  .end-slide p  { font-size: 16px; color: rgba(255,255,255,.65); margin-top: 12px; max-width: 520px; line-height: 1.6; }
+  .end-creds { margin-top: 36px; background: rgba(0,0,0,.2); border-radius: 12px; padding: 18px 32px; display: inline-block; }
+  .end-creds p { font-size: 13px; color: rgba(255,255,255,.7); margin: 0; }
+  .end-creds strong { color: #b2f0d8; }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- ══ SLIDE 1 · Cover ══════════════════════════ -->
+  <div class="slide cover active" id="s0">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;position:relative;z-index:1;padding:40px 20px 180px;">
+      <div class="cover-logo">
+        <img src="screenshots/login.jpg" alt="PWE Logo" style="width:90px;height:90px;object-fit:cover;border-radius:18px;">
+      </div>
+      <h1>PWE Child Sponsorship<br><span>Records Portal</span></h1>
+      <p>Secure internal case-management for Partners with Ethiopia</p>
+      <div class="tagline">From Poverty to Possibility</div>
+    </div>
+    <div class="screenshot-strip">
+      <img src="screenshots/login.jpg" alt="">
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 2 · What Is It ═════════════════════ -->
+  <div class="slide dark-slide" id="s1">
+    <div class="slide-inner">
+      <div class="slide-label">Overview</div>
+      <div class="slide-title">What is the PWE Portal?</div>
+      <div class="slide-sub">A private, password-protected web application for PWE staff and sponsors to manage child sponsorship records, documents, and communications — all in one place.</div>
+      <div class="two-col" style="gap:24px;">
+        <div class="col">
+          <div class="highlight">
+            <h3>🎯 Purpose</h3>
+            <p>Replace scattered spreadsheets and email chains with a structured, role-aware system that keeps every child's story safe, searchable, and up to date.</p>
+          </div>
+          <div class="highlight" style="margin-top:4px;">
+            <h3>🔒 Access</h3>
+            <p>Admin-issued accounts only — no public sign-up. Each user sees only what their role permits. Sponsors see only their assigned children.</p>
+          </div>
+          <div class="highlight" style="margin-top:4px;">
+            <h3>🌍 Multi-Org Ready</h3>
+            <p>Supports multiple partner organizations. Staff are scoped to their org; admins see everything.</p>
+          </div>
+        </div>
+        <div class="col">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="feature-card" style="align-items:center;text-align:center;">
+              <div class="fc-icon" style="background:rgba(78,203,158,.15);align-self:center;">👧</div>
+              <div class="fc-title">Child Profiles</div>
+            </div>
+            <div class="feature-card" style="align-items:center;text-align:center;">
+              <div class="fc-icon" style="background:rgba(59,130,246,.15);align-self:center;">📄</div>
+              <div class="fc-title">Documents</div>
+            </div>
+            <div class="feature-card" style="align-items:center;text-align:center;">
+              <div class="fc-icon" style="background:rgba(168,85,247,.15);align-self:center;">📅</div>
+              <div class="fc-title">Timeline</div>
+            </div>
+            <div class="feature-card" style="align-items:center;text-align:center;">
+              <div class="fc-icon" style="background:rgba(236,72,153,.15);align-self:center;">💌</div>
+              <div class="fc-title">Messaging</div>
+            </div>
+            <div class="feature-card" style="align-items:center;text-align:center;">
+              <div class="fc-icon" style="background:rgba(249,115,22,.15);align-self:center;">🏢</div>
+              <div class="fc-title">Organizations</div>
+            </div>
+            <div class="feature-card" style="align-items:center;text-align:center;">
+              <div class="fc-icon" style="background:rgba(16,185,129,.15);align-self:center;">📊</div>
+              <div class="fc-title">Export</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 3 · Login ══════════════════════════ -->
+  <div class="slide dark-slide" id="s2">
+    <div class="slide-inner" style="flex-direction:row;gap:48px;align-items:center;">
+      <div style="flex:1;display:flex;flex-direction:column;gap:16px;">
+        <div class="slide-label">Getting Started</div>
+        <div class="slide-title">Signing In</div>
+        <div class="slide-sub">Access is granted by the system administrator. There is no public sign-up page.</div>
+        <div class="steps" style="gap:12px;">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h4>Open the portal URL</h4>
+              <p>Navigate to the published portal link in your web browser.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h4>Enter your username &amp; password</h4>
+              <p>Use the credentials provided by your administrator. Contact your admin if you do not have an account.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h4>Click Sign In</h4>
+              <p>You will be directed to the dashboard (admins/case workers) or the Sponsor Portal (sponsors) based on your role.</p>
+            </div>
+          </div>
+        </div>
+        <div class="pill-list">
+          <span class="pill" style="background:rgba(78,203,158,.1);color:#4ecb9e;border-color:rgba(78,203,158,.25);">Default admin: admin / admin123</span>
+          <span class="pill" style="background:rgba(59,130,246,.1);color:#60a5fa;border-color:rgba(59,130,246,.25);">Sessions are secure &amp; server-stored</span>
+        </div>
+      </div>
+      <div style="flex:1;max-width:440px;">
+        <div class="screenshot-frame">
+          <img src="screenshots/login.jpg" alt="Login screen">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 4 · Dashboard ══════════════════════ -->
+  <div class="slide dark-slide" id="s3">
+    <div class="slide-inner">
+      <div class="slide-label">Feature · Dashboard</div>
+      <div class="slide-title">At-a-Glance Overview</div>
+      <div class="slide-sub">The dashboard greets admins and case workers with live statistics, a pending-messages alert, and quick access to recent activity.</div>
+      <div class="grid-4" style="flex:unset;margin-bottom:16px;">
+        <div class="feature-card" style="border-color:rgba(59,130,246,.25);background:rgba(59,130,246,.08);">
+          <div class="fc-icon" style="background:rgba(59,130,246,.2);">👥</div>
+          <div class="fc-title">Total Children</div>
+          <p>All registered child profiles across organizations.</p>
+        </div>
+        <div class="feature-card" style="border-color:rgba(78,203,158,.25);background:rgba(78,203,158,.08);">
+          <div class="fc-icon" style="background:rgba(78,203,158,.2);">✅</div>
+          <div class="fc-title">Active</div>
+          <p>Children currently enrolled in the sponsorship program.</p>
+        </div>
+        <div class="feature-card" style="border-color:rgba(217,119,6,.25);background:rgba(217,119,6,.08);">
+          <div class="fc-icon" style="background:rgba(217,119,6,.2);">⏸️</div>
+          <div class="fc-title">Paused</div>
+          <p>Profiles temporarily on hold.</p>
+        </div>
+        <div class="feature-card" style="border-color:rgba(236,72,153,.25);background:rgba(236,72,153,.08);">
+          <div class="fc-icon" style="background:rgba(236,72,153,.2);">💗</div>
+          <div class="fc-title">Sponsored</div>
+          <p>Children with an assigned sponsor account.</p>
+        </div>
+      </div>
+      <div class="two-col" style="flex:unset;">
+        <div class="highlight">
+          <h3>📬 Pending Messages Alert</h3>
+          <p>A banner appears when sponsor messages are waiting for review. Click to go straight to the messages queue.</p>
+        </div>
+        <div class="highlight">
+          <h3>🏢 Organization Filter</h3>
+          <p>Admins can filter all stats and activity by organization from the dashboard toolbar.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 5 · Child Profiles ════════════════ -->
+  <div class="slide dark-slide" id="s4">
+    <div class="slide-inner">
+      <div class="slide-label">Feature · Children</div>
+      <div class="slide-title">Child Profiles &amp; Records</div>
+      <div class="slide-sub">Every child has a rich profile card covering personal details, sponsorship status, photos, and a full activity history.</div>
+      <div class="grid-3">
+        <div class="feature-card">
+          <div class="fc-icon" style="background:rgba(78,203,158,.15);">📋</div>
+          <div class="fc-title">Core Info</div>
+          <p>Name, child ID, age, gender, location, program enrollment, assigned case worker, and status (Active / Paused / Exited).</p>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon" style="background:rgba(236,72,153,.15);">💗</div>
+          <div class="fc-title">Sponsorship Status</div>
+          <p>Mark a child as Sponsored or Non-Sponsored. Link a sponsor user account for portal access control.</p>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon" style="background:rgba(168,85,247,.15);">🖼️</div>
+          <div class="fc-title">Photos</div>
+          <p>Upload a child profile photo and a sponsor photo — both stored securely in cloud storage.</p>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon" style="background:rgba(59,130,246,.15);">🔍</div>
+          <div class="fc-title">Search &amp; Filter</div>
+          <p>Filter children by status, sponsorship, or organization. Search by name or child ID instantly.</p>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon" style="background:rgba(16,185,129,.15);">✏️</div>
+          <div class="fc-title">Inline Description</div>
+          <p>Rich editable description field on the profile — case workers can update a child's story without opening a form.</p>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon" style="background:rgba(249,115,22,.15);">📤</div>
+          <div class="fc-title">Data Export</div>
+          <p>Export any selection of fields to CSV or XLSX for reporting and external use.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 6 · Documents &amp; Timeline ═════════ -->
+  <div class="slide blue-slide" id="s5">
+    <div class="slide-inner">
+      <div class="slide-label">Feature · Records</div>
+      <div class="slide-title">Documents &amp; Progress Timeline</div>
+      <div class="slide-sub">Each child profile has two activity tabs — a file cabinet for documents and a chronological timeline of milestones.</div>
+      <div class="two-col">
+        <div class="col">
+          <div class="col-head">📄 Document Management</div>
+          <div class="feature-card">
+            <div class="fc-title">Upload Files</div>
+            <p>Attach any file type — reports, photos, letters, certificates — directly to a child's profile via secure cloud upload.</p>
+          </div>
+          <div class="feature-card">
+            <div class="fc-title">7 Categories</div>
+            <p>Progress Report · Photo Update · Sponsor Letter · Medical Record · School Report · Certificate · Other</p>
+          </div>
+          <div class="feature-card">
+            <div class="fc-title">Edit &amp; Delete</div>
+            <p>Update document descriptions or remove files with a confirmation step to prevent accidents.</p>
+          </div>
+        </div>
+        <div class="col">
+          <div class="col-head">📅 Progress Timeline</div>
+          <div class="feature-card">
+            <div class="fc-title">Chronological Feed</div>
+            <p>Log any milestone, event, or update as a dated entry. Entries are displayed newest-first in a clean card feed.</p>
+          </div>
+          <div class="feature-card">
+            <div class="fc-title">Entry Types</div>
+            <p>Milestone · Health Update · Education · Family · Program · General — each with a distinct icon and colour.</p>
+          </div>
+          <div class="feature-card">
+            <div class="fc-title">Editable</div>
+            <p>Case workers and admins can update or expand timeline entries at any time.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 7 · Messaging ══════════════════════ -->
+  <div class="slide dark-slide" id="s6">
+    <div class="slide-inner">
+      <div class="slide-label">Feature · Communication</div>
+      <div class="slide-title">Sponsor Messaging</div>
+      <div class="slide-sub">A structured messaging layer lets staff log sponsor letters and track whether they have been delivered and read.</div>
+      <div class="grid-2" style="gap:20px;">
+        <div class="col" style="gap:12px;">
+          <div class="feature-card">
+            <div class="fc-icon" style="background:rgba(236,72,153,.15);">✉️</div>
+            <div class="fc-title">Send a Message</div>
+            <p>Staff enter the sponsor's name, select a role (sponsor / admin), and write the message content. Submitted messages are saved with a Pending status.</p>
+          </div>
+          <div class="feature-card">
+            <div class="fc-icon" style="background:rgba(78,203,158,.15);">🔄</div>
+            <div class="fc-title">Status Workflow</div>
+            <p>Each message moves through three states:<br>
+              <strong style="color:#f59e0b;">Pending</strong> → <strong style="color:#60a5fa;">Delivered</strong> → <strong style="color:#34d399;">Read</strong><br>
+              Staff update status as they track real-world delivery.
+            </p>
+          </div>
+        </div>
+        <div class="col" style="gap:12px;">
+          <div class="feature-card">
+            <div class="fc-icon" style="background:rgba(59,130,246,.15);">📬</div>
+            <div class="fc-title">Pending Queue</div>
+            <p>Admins and case workers see all unreviewed messages across all children in one consolidated view — accessible from the dashboard alert.</p>
+          </div>
+          <div class="feature-card">
+            <div class="fc-icon" style="background:rgba(168,85,247,.15);">💬</div>
+            <div class="fc-title">Sponsor Commenting</div>
+            <p>Admin can enable per-child commenting permission for sponsor users, allowing sponsors to send messages directly from their portal.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 8 · Sponsor Portal ════════════════ -->
+  <div class="slide" style="background:linear-gradient(145deg,#1a0a2e,#2d1054);" id="s7">
+    <div class="slide-inner">
+      <div class="slide-label" style="color:#c084fc;">Feature · Sponsor Portal</div>
+      <div class="slide-title">Dedicated Sponsor Experience</div>
+      <div class="slide-sub">Sponsors log in to a completely separate, warm-toned portal — isolated from all staff pages.</div>
+      <div class="grid-3" style="gap:14px;">
+        <div class="feature-card" style="border-color:rgba(192,132,252,.2);background:rgba(192,132,252,.07);">
+          <div class="fc-icon" style="background:rgba(192,132,252,.15);">👤</div>
+          <div class="fc-title">Child Profile Card</div>
+          <p>A warm, photo-centred card shows the sponsor's assigned child(ren) with name, age, location, and program details.</p>
+        </div>
+        <div class="feature-card" style="border-color:rgba(192,132,252,.2);background:rgba(192,132,252,.07);">
+          <div class="fc-icon" style="background:rgba(192,132,252,.15);">📁</div>
+          <div class="fc-title">Documents &amp; Timeline</div>
+          <p>Sponsors can view (not edit) uploaded documents and the child's progress timeline in a read-only layout.</p>
+        </div>
+        <div class="feature-card" style="border-color:rgba(192,132,252,.2);background:rgba(192,132,252,.07);">
+          <div class="fc-icon" style="background:rgba(192,132,252,.15);">💌</div>
+          <div class="fc-title">Send a Message</div>
+          <p>When commenting is enabled by admin, sponsors can write and submit messages directly from their portal tab.</p>
+        </div>
+        <div class="feature-card" style="border-color:rgba(192,132,252,.2);background:rgba(192,132,252,.07);">
+          <div class="fc-icon" style="background:rgba(192,132,252,.15);">👧👧</div>
+          <div class="fc-title">Multi-Child Support</div>
+          <p>Sponsors assigned to more than one child see a child-picker bar at the top to switch between profiles.</p>
+        </div>
+        <div class="feature-card" style="border-color:rgba(192,132,252,.2);background:rgba(192,132,252,.07);">
+          <div class="fc-icon" style="background:rgba(192,132,252,.15);">🔐</div>
+          <div class="fc-title">Fully Isolated</div>
+          <p>Sponsors cannot access any staff pages, other children's data, or user management — strict server-side enforcement.</p>
+        </div>
+        <div class="feature-card" style="border-color:rgba(192,132,252,.2);background:rgba(192,132,252,.07);">
+          <div class="fc-icon" style="background:rgba(192,132,252,.15);">🖼️</div>
+          <div class="fc-title">Sponsor Photo</div>
+          <p>A sponsor photo is shown on the child's profile card, giving the relationship a personal, visual touch.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 9 · User Management ══════════════ -->
+  <div class="slide dark-slide" id="s8">
+    <div class="slide-inner">
+      <div class="slide-label">Feature · Administration</div>
+      <div class="slide-title">User Management &amp; Roles</div>
+      <div class="slide-sub">Admins control who can access the portal and what they can do. All four roles are managed from a single panel.</div>
+      <div class="role-row">
+        <div class="role-card">
+          <div class="role-icon" style="background:rgba(249,115,22,.15);">🛡️</div>
+          <div>
+            <h4 style="color:#fb923c;">Admin</h4>
+            <p>Full access to every feature including user management, organization management, data export, and all child records across all organizations.</p>
+          </div>
+        </div>
+        <div class="role-card">
+          <div class="role-icon" style="background:rgba(59,130,246,.15);">💼</div>
+          <div>
+            <h4 style="color:#60a5fa;">Case Worker</h4>
+            <p>Create and edit child profiles, upload documents, add timeline entries, and manage messages for their assigned organization.</p>
+          </div>
+        </div>
+        <div class="role-card">
+          <div class="role-icon" style="background:rgba(100,116,139,.15);">👁️</div>
+          <div>
+            <h4 style="color:#94a3b8;">Read Only</h4>
+            <p>View child profiles, documents, and timeline entries — no ability to create, edit, or delete any records.</p>
+          </div>
+        </div>
+        <div class="role-card">
+          <div class="role-icon" style="background:rgba(236,72,153,.15);">💗</div>
+          <div>
+            <h4 style="color:#f472b6;">Sponsor</h4>
+            <p>Access their own assigned children only via the Sponsor Portal. Can send messages if admin has enabled commenting per child.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 10 · Sponsor Assignment ══════════ -->
+  <div class="slide dark-slide" id="s9">
+    <div class="slide-inner">
+      <div class="slide-label">Feature · Sponsor Assignment</div>
+      <div class="slide-title">Assigning Children to Sponsors</div>
+      <div class="slide-sub">Admins use a powerful searchable picker in the User Management panel to assign one or many children to a sponsor account.</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Open User Management → Create or Edit a sponsor user</h4>
+            <p>Navigate to Admin → User Management. Click Add User or the Edit icon on an existing sponsor.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Set role to Sponsor — child picker appears</h4>
+            <p>An "Assigned Child Profiles" section appears with a live search input and a full scrollable list of all children.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Search and select individually — or use Select all shown</h4>
+            <p>Type a name or ID to filter, then click a row to select it, or click "Select all N shown" to bulk-assign every matching child at once.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Control commenting per child (edit mode)</h4>
+            <p>Use the global "Allow commenting — all selected" switch to enable messaging for all at once, or fine-tune per child with individual toggles. Mixed states are clearly indicated.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 11 · How to Use (Admin) ══════════ -->
+  <div class="slide blue-slide" id="s10">
+    <div class="slide-inner">
+      <div class="slide-label">How to Use · Admin</div>
+      <div class="slide-title">Day-to-Day Admin Workflow</div>
+      <div class="slide-sub">Typical tasks for an administrator managing the portal.</div>
+      <div class="grid-2" style="gap:14px;">
+        <div class="steps" style="gap:10px;">
+          <div class="step">
+            <div class="step-num" style="background:#3b82f6;">A</div>
+            <div class="step-body">
+              <h4>Create a child profile</h4>
+              <p>Children → Add Child → fill in details → Save. Upload a profile photo from the child's profile page.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num" style="background:#3b82f6;">B</div>
+            <div class="step-body">
+              <h4>Create a sponsor account</h4>
+              <p>Admin → User Management → Add User → set role to Sponsor → search and assign children → Save.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num" style="background:#3b82f6;">C</div>
+            <div class="step-body">
+              <h4>Create an organization</h4>
+              <p>Admin → Organizations → Add Organization → enter name and description → Save. Assign children and users to this org.</p>
+            </div>
+          </div>
+        </div>
+        <div class="steps" style="gap:10px;">
+          <div class="step">
+            <div class="step-num" style="background:#3b82f6;">D</div>
+            <div class="step-body">
+              <h4>Review pending messages</h4>
+              <p>Dashboard alert shows unread messages. Click to open the queue, update statuses, or delete messages.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num" style="background:#3b82f6;">E</div>
+            <div class="step-body">
+              <h4>Export data</h4>
+              <p>Children List → Export → select fields → choose CSV or XLSX → Download. Use for reports and external sharing.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num" style="background:#3b82f6;">F</div>
+            <div class="step-body">
+              <h4>Enable sponsor commenting</h4>
+              <p>Edit a sponsor user → turn on "Allow commenting" per child. The sponsor will then see a message tab in their portal.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 12 · How to Use (Case Worker) ════ -->
+  <div class="slide dark-slide" id="s11">
+    <div class="slide-inner">
+      <div class="slide-label">How to Use · Case Worker</div>
+      <div class="slide-title">Case Worker Workflow</div>
+      <div class="slide-sub">Routine tasks for staff maintaining child records and tracking progress.</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num" style="background:#059669;">1</div>
+          <div class="step-body">
+            <h4>Update a child's status or details</h4>
+            <p>Open the child's profile → click Edit → change status, age, location, or any field → Save. Status options: Active, Paused, Exited.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#059669;">2</div>
+          <div class="step-body">
+            <h4>Upload a document</h4>
+            <p>Child profile → Documents tab → Upload Document → choose a category (e.g. Progress Report) → add description → Upload. File is stored in cloud storage.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#059669;">3</div>
+          <div class="step-body">
+            <h4>Add a timeline entry</h4>
+            <p>Child profile → Timeline tab → Add Entry → select entry type, write title and description → Save. Entry appears at the top of the feed.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#059669;">4</div>
+          <div class="step-body">
+            <h4>Log a sponsor message</h4>
+            <p>Child profile → Messages tab → Send Message → enter sender name, role, and content → Send. Mark as Delivered or Read as the message is tracked.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 13 · How to Use (Sponsor) ════════ -->
+  <div class="slide" style="background:linear-gradient(145deg,#1a0a2e,#2d1054);" id="s12">
+    <div class="slide-inner">
+      <div class="slide-label" style="color:#c084fc;">How to Use · Sponsor</div>
+      <div class="slide-title">Sponsor Portal Walkthrough</div>
+      <div class="slide-sub">Sponsors have a simpler, focused experience designed around their relationship with their child.</div>
+      <div class="steps">
+        <div class="step" style="background:rgba(192,132,252,.07);border-color:rgba(192,132,252,.2);">
+          <div class="step-num" style="background:#9333ea;">1</div>
+          <div class="step-body">
+            <h4>Log in with sponsor credentials</h4>
+            <p>You are taken directly to the Sponsor Portal — a warm, dedicated view separate from staff pages.</p>
+          </div>
+        </div>
+        <div class="step" style="background:rgba(192,132,252,.07);border-color:rgba(192,132,252,.2);">
+          <div class="step-num" style="background:#9333ea;">2</div>
+          <div class="step-body">
+            <h4>View your child's profile</h4>
+            <p>See the child's photo, name, age, location, and program information. If you sponsor multiple children, use the child-picker bar at the top to switch.</p>
+          </div>
+        </div>
+        <div class="step" style="background:rgba(192,132,252,.07);border-color:rgba(192,132,252,.2);">
+          <div class="step-num" style="background:#9333ea;">3</div>
+          <div class="step-body">
+            <h4>Browse documents and timeline</h4>
+            <p>Switch between the Documents and Progress tabs to see uploaded files and milestone updates from the case team.</p>
+          </div>
+        </div>
+        <div class="step" style="background:rgba(192,132,252,.07);border-color:rgba(192,132,252,.2);">
+          <div class="step-num" style="background:#9333ea;">4</div>
+          <div class="step-body">
+            <h4>Send a message (if enabled)</h4>
+            <p>If your admin has turned on commenting, a Messages tab appears. Write your message and click Send — staff will see it in their review queue.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 14 · Quick Reference ════════════ -->
+  <div class="slide dark-slide" id="s13">
+    <div class="slide-inner">
+      <div class="slide-label">Quick Reference</div>
+      <div class="slide-title">Key Navigation &amp; Tips</div>
+      <div class="slide-sub">Useful shortcuts and reminders for everyday portal use.</div>
+      <div class="two-col">
+        <div class="col">
+          <div class="col-head">Navigation</div>
+          <div class="summary-table">
+            <div class="sum-row"><span class="label">Dashboard</span><span class="value">Home — stats, alerts, recent activity</span></div>
+            <div class="sum-row"><span class="label">Children</span><span class="value">Full child list with search &amp; filters</span></div>
+            <div class="sum-row"><span class="label">Organizations</span><span class="value">Admin only — manage org groups</span></div>
+            <div class="sum-row"><span class="label">User Management</span><span class="value">Admin only — accounts &amp; roles</span></div>
+            <div class="sum-row"><span class="label">Sponsor Portal</span><span class="value">Auto-redirect for sponsor accounts</span></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="col-head">Tips &amp; Reminders</div>
+          <div class="steps" style="gap:9px;">
+            <div class="step" style="padding:12px 16px;">
+              <div class="step-num" style="width:24px;height:24px;font-size:11px;background:var(--teal);">💡</div>
+              <div class="step-body">
+                <h4>Change child status</h4>
+                <p>Edit the child → Status dropdown → Active / Paused / Exited.</p>
+              </div>
+            </div>
+            <div class="step" style="padding:12px 16px;">
+              <div class="step-num" style="width:24px;height:24px;font-size:11px;background:var(--teal);">💡</div>
+              <div class="step-body">
+                <h4>Filter children by org</h4>
+                <p>Use the organization dropdown in the Children list toolbar.</p>
+              </div>
+            </div>
+            <div class="step" style="padding:12px 16px;">
+              <div class="step-num" style="width:24px;height:24px;font-size:11px;background:var(--teal);">💡</div>
+              <div class="step-body">
+                <h4>Bulk-assign children to sponsor</h4>
+                <p>Search in the child picker, then click "Select all N shown".</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 15 · End ══════════════════════════ -->
+  <div class="slide end-slide" id="s14">
+    <h1>Partners with Ethiopia</h1>
+    <p>From Poverty to Possibility — empowering children and communities through structured sponsorship and care.</p>
+    <div class="end-creds">
+      <p>Default admin login: <strong>admin</strong> / <strong>admin123</strong></p>
+      <p style="margin-top:6px;">Change this password after first login.</p>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Controls -->
+<div class="counter" id="counter">1 / 15</div>
+<div class="hint">← → arrow keys to navigate</div>
+<div class="nav">
+  <button id="prev" onclick="go(-1)">&#8592;</button>
+  <div class="dots" id="dots"></div>
+  <button id="next" onclick="go(1)">&#8594;</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' on' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+
+  function goTo(n) {
+    slides[cur].classList.remove('active');
+    document.querySelectorAll('.dot')[cur].classList.remove('on');
+    cur = Math.max(0, Math.min(n, slides.length - 1));
+    slides[cur].classList.add('active');
+    document.querySelectorAll('.dot')[cur].classList.add('on');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+  }
+
+  function go(dir) { goTo(cur + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') go(1);
+    if (e.key === 'ArrowLeft') go(-1);
+  });
+</script>
+</body>
+</html>
