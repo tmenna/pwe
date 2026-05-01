@@ -1,5 +1,6 @@
 import express, { type Express, type RequestHandler } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, registerUserRoutes } from "./auth";
 import { insertChildSchema } from "@shared/schema";
@@ -75,6 +76,12 @@ export async function registerRoutes(
   await setupAuth(app);
   registerUserRoutes(app);
   registerUploadRoutes(app, isAuthenticated);
+
+  // --- Slide deck (public, no auth required) ---
+  app.get("/slides", (_req, res) => {
+    res.sendFile(path.resolve("attached_assets/pwe-portal-overview.html"));
+  });
+  app.use("/slides-assets", express.static(path.resolve("attached_assets/screenshots")));
 
   // --- Organizations ---
   app.get("/api/organizations", isAuthenticated, async (_req, res) => {
