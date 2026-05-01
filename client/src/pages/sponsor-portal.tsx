@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Heart, FileText, Image, StickyNote, GraduationCap, Clock, MessageSquare,
   Milestone, RefreshCw, MapPin, BookOpen, User, Calendar, Send, Mail,
-  CheckCheck, Eye, Inbox, MessageCircleOff, ThumbsUp, CornerDownRight, Reply, X,
+  Inbox, MessageCircleOff, ThumbsUp, CornerDownRight, Reply, X,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -523,9 +523,6 @@ function ChildPortal({ child }: { child: Child }) {
                     {messages?.filter(m => !m.parentId).map((msg) => {
                       const replies = messages?.filter(r => r.parentId === msg.id) ?? [];
                       const isSponsor = msg.senderRole === "sponsor";
-                      const statusIcons: Record<string, any> = { pending: Clock, delivered: Eye, read: CheckCheck };
-                      const StatusIcon = statusIcons[msg.status] || Clock;
-                      const statusColors: Record<string, string> = { pending: "text-amber-500", delivered: "text-blue-500", read: "text-emerald-500" };
                       const rxn = (msg.reactions as { like: number; love: number } | null) ?? { like: 0, love: 0 };
                       const hasLiked = myReactions.has(`like-${msg.id}`);
                       const hasLoved = myReactions.has(`love-${msg.id}`);
@@ -548,12 +545,9 @@ function ChildPortal({ child }: { child: Child }) {
                                   </Badge>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <StatusIcon className={`h-3.5 w-3.5 ${statusColors[msg.status]}`} />
-                                <p className="text-[11px] text-muted-foreground">
-                                  {new Date(msg.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                                </p>
-                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                {new Date(msg.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                              </p>
                             </div>
                             <p className="mt-3 text-sm text-foreground leading-relaxed">{msg.content}</p>
                             {/* Reactions + Reply */}

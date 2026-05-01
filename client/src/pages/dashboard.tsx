@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Plus, Building2, MessageSquare, ArrowRight, Users, Heart, TrendingUp } from "lucide-react";
+import { Plus, Building2, ArrowRight, Users, Heart, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import type { Organization, Message } from "@shared/schema";
+import type { Organization } from "@shared/schema";
 
 interface Stats {
   totalChildren: number;
@@ -179,11 +179,6 @@ export default function Dashboard() {
       if (!res.ok) throw new Error("Failed to fetch stats");
       return res.json();
     },
-  });
-
-  const { data: pendingMessages } = useQuery<Message[]>({
-    queryKey: ["/api/messages/pending"],
-    enabled: user?.role === "admin" || user?.role === "case_worker",
   });
 
   // Trigger chart animation after data loads
@@ -395,35 +390,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── Pending Messages ────────────────────────────────────── */}
-        {(user?.role === "admin" || user?.role === "case_worker") && pendingMessages && pendingMessages.length > 0 && (
-          <Card className="rounded-2xl border-border/40 shadow-sm bg-white dark:bg-card p-7 sm:p-8">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h2 className="text-[15px] font-semibold flex items-center gap-2.5" data-testid="text-pending-messages">
-                <span className="inline-block w-1 h-5 rounded-full bg-amber-500" />
-                Pending Messages ({pendingMessages.length})
-              </h2>
-            </div>
-            <div className="space-y-1">
-              {pendingMessages.slice(0, 5).map((msg) => (
-                <Link key={msg.id} href={`/children/${msg.childId}`}>
-                  <div className="flex items-start gap-3 rounded-xl p-3 transition-all duration-150 hover:bg-slate-50 dark:hover:bg-slate-800/40 border border-transparent hover:border-border/40" data-testid={`pending-msg-${msg.id}`}>
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10">
-                      <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <p className="text-sm font-medium truncate">From {msg.senderName}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{msg.content}</p>
-                    </div>
-                    <Badge variant="outline" className="shrink-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 text-[10px]">
-                      Pending
-                    </Badge>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </Card>
-        )}
       </div>
     </div>
   );

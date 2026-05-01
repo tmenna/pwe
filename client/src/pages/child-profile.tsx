@@ -573,16 +573,6 @@ export default function ChildProfile() {
     },
   });
 
-  const updateMessageMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      return apiRequest("PATCH", `/api/messages/${id}`, { status });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
-      toast({ title: "Message status updated" });
-    },
-  });
-
   const deleteMessageMutation = useMutation({
     mutationFn: async (id: number) => {
       return apiRequest("DELETE", `/api/messages/${id}`);
@@ -1072,12 +1062,6 @@ export default function ChildProfile() {
                 {messagesData.filter(m => !m.parentId).map((msg) => {
                   const replies = messagesData.filter(r => r.parentId === msg.id);
                   const roleColor = msg.senderRole === "sponsor" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-blue-500/10 text-blue-700 dark:text-blue-400";
-                  const statusColors: Record<string, string> = {
-                    pending: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-                    delivered: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-                    read: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-                  };
-                  const statusColor = statusColors[msg.status] || statusColors.pending;
                   const rxn = (msg.reactions as { like: number; love: number } | null) ?? { like: 0, love: 0 };
                   const hasLiked = myReactions.has(`like-${msg.id}`);
                   const hasLoved = myReactions.has(`love-${msg.id}`);
@@ -1091,9 +1075,6 @@ export default function ChildProfile() {
                               <span className="text-sm font-medium" data-testid={`text-sender-${msg.id}`}>{msg.senderName}</span>
                               <Badge variant="secondary" className={`text-xs rounded-md ${roleColor}`} data-testid={`badge-role-${msg.id}`}>
                                 {msg.senderRole === "sponsor" ? "Sponsor" : "Care Team"}
-                              </Badge>
-                              <Badge variant="secondary" className={`text-xs rounded-md ${statusColor}`} data-testid={`badge-status-${msg.id}`}>
-                                {msg.status}
                               </Badge>
                             </div>
                             <p className="mt-2 text-sm text-foreground/80" data-testid={`text-message-content-${msg.id}`}>{msg.content}</p>
@@ -1141,16 +1122,6 @@ export default function ChildProfile() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {msg.status !== "delivered" && (
-                                  <DropdownMenuItem onClick={() => updateMessageMutation.mutate({ id: msg.id, status: "delivered" })} data-testid={`button-mark-delivered-${msg.id}`}>
-                                    Mark as Delivered
-                                  </DropdownMenuItem>
-                                )}
-                                {msg.status !== "read" && (
-                                  <DropdownMenuItem onClick={() => updateMessageMutation.mutate({ id: msg.id, status: "read" })} data-testid={`button-mark-read-${msg.id}`}>
-                                    Mark as Read
-                                  </DropdownMenuItem>
-                                )}
                                 <DropdownMenuItem className="text-destructive" onClick={() => deleteMessageMutation.mutate(msg.id)} data-testid={`button-delete-message-${msg.id}`}>
                                   Delete Comment
                                 </DropdownMenuItem>

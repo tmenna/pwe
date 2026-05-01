@@ -28,12 +28,12 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - Sponsored/Non-Sponsored categorization with filtering and dashboard stats
 - Document Management (upload files linked to child profiles, 7 categories, delete confirmation dialog)
 - Progress Timeline (chronological feed of milestones and events)
-- Sponsor Commenting (leave comments on behalf of sponsors, reactions: like/love, threaded replies, status tracking: pending/delivered/read)
+- Sponsor Commenting (leave comments on behalf of sponsors, reactions: like/love with toggle/undo, threaded replies)
 - Multi-Organization Management (create/manage organizations, assign children to organizations)
 - Organization-based access control (non-admin users assigned to an org only see that org's children)
 - Multi-child sponsor assignment: sponsors can be linked to one or more children; per-child commenting toggle directly in User Management
 - Data Export to CSV/XLSX with selectable fields
-- Dashboard with statistics overview (total, active, paused, sponsored counts), org filter, and pending messages
+- Dashboard with statistics overview (total, active, paused, sponsored counts) and org filter
 - Custom username/password login (no signup - admin creates users)
 - Admin user management panel (create, edit, delete users, assign roles and organizations)
 - Role-based access control: admin, case_worker, sponsor
