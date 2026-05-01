@@ -432,7 +432,7 @@ export default function ChildProfile() {
   const [messageOpen, setMessageOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
-  const canEdit = user?.role !== "read_only";
+  const canEdit = user?.role !== "sponsor";
 
   const { data: child, isLoading } = useQuery<Child>({
     queryKey: ["/api/children", childId],
@@ -1109,7 +1109,7 @@ export default function ChildProfile() {
                                 <Heart className="h-3 w-3" />
                                 {rxn.love > 0 && <span>{rxn.love}</span>}
                               </button>
-                              {user?.role !== "read_only" && (
+                              {canEdit && (
                                 <button
                                   type="button"
                                   onClick={() => { setReplyingTo(replyingTo === msg.id ? null : msg.id); setReplyContent(""); }}

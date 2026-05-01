@@ -43,29 +43,25 @@ type ChildSummary = {
 const roleLabels: Record<string, string> = {
   admin: "Administrator",
   case_worker: "Case Worker",
-  read_only: "Read Only",
   sponsor: "Sponsor",
 };
 
 const roleBadgeColors: Record<string, string> = {
   admin: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/25",
   case_worker: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/25",
-  read_only: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/25",
   sponsor: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/25",
 };
 
 const roleIcons: Record<string, React.ElementType> = {
   admin: Shield,
   case_worker: Users,
-  read_only: Eye,
   sponsor: Heart,
 };
 
 const rolePermissionDesc: Record<string, string> = {
   admin: "Full access — all children, settings, and user management",
-  case_worker: "Can create and edit children, documents, and messages",
-  read_only: "View-only access to assigned children",
-  sponsor: "View-only portal for their assigned children",
+  case_worker: "Can create and edit children, documents, and comments",
+  sponsor: "Read-only portal for their assigned children; can comment if enabled",
 };
 
 type EditForm = {
@@ -464,7 +460,6 @@ export default function AdminUsers() {
                   <SelectContent>
                     <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="case_worker">Case Worker</SelectItem>
-                    <SelectItem value="read_only">Read Only</SelectItem>
                     <SelectItem value="sponsor">Sponsor</SelectItem>
                   </SelectContent>
                 </Select>
@@ -589,7 +584,6 @@ export default function AdminUsers() {
                   <SelectContent>
                     <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="case_worker">Case Worker</SelectItem>
-                    <SelectItem value="read_only">Read Only</SelectItem>
                     <SelectItem value="sponsor">Sponsor</SelectItem>
                   </SelectContent>
                 </Select>

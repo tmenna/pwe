@@ -23,7 +23,7 @@ const isNotReadOnly: RequestHandler = async (req: any, res, next) => {
   try {
     const user = req.currentUser;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-    if (user.role === "read_only" || user.role === "sponsor") {
+    if (user.role === "sponsor") {
       return res.status(403).json({ message: "You do not have permission to modify records" });
     }
     next();
@@ -430,8 +430,6 @@ export async function registerRoutes(
     try {
       const user = req.currentUser;
       if (!user) return res.status(401).json({ message: "Unauthorized" });
-      if (user.role === "read_only") return res.status(403).json({ message: "Read-only users cannot send messages" });
-
       const childId = parseInt(req.params.id);
       const child = await storage.getChild(childId);
       if (!child) return res.status(404).json({ message: "Child not found" });
@@ -532,8 +530,6 @@ export async function registerRoutes(
     try {
       const user = req.currentUser;
       if (!user) return res.status(401).json({ message: "Unauthorized" });
-      if (user.role === "read_only") return res.status(403).json({ message: "Read-only users cannot reply" });
-
       const parentId = parseInt(req.params.id);
       const { content } = req.body;
       if (!content?.trim()) return res.status(400).json({ message: "Reply content is required" });

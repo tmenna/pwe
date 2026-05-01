@@ -36,14 +36,14 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - Dashboard with statistics overview (total, active, paused, sponsored counts), org filter, and pending messages
 - Custom username/password login (no signup - admin creates users)
 - Admin user management panel (create, edit, delete users, assign roles and organizations)
-- Role-based access control: admin, case_worker, read_only, sponsor
+- Role-based access control: admin, case_worker, sponsor
 - **Sponsor Portal**: Dedicated read-only portal for sponsors — warm welcome, child profile card, progress/documents/comments tabs, comment/react/reply capability; completely isolated from admin UI
 
 ## Auth System
 - Login via username/password (POST /api/login), no signup form
 - Default admin account seeded: username "admin", password "admin123"
 - Sessions stored in PostgreSQL via connect-pg-simple
-- Roles: admin (full access + user management + org management), case_worker (CRUD on children/docs/timeline/comments), read_only (view only), sponsor (view assigned children + leave comments/reactions/replies if enabled)
+- Roles: admin (full access + user management + org management), case_worker (CRUD on children/docs/timeline/comments), sponsor (view assigned children via sponsor portal + leave comments/reactions/replies if enabled)
 - Admin panel at /admin/users for managing user accounts
 
 ## Project Structure

@@ -130,7 +130,7 @@ function ExportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
 
 export default function ChildrenList() {
   const { user } = useAuth();
-  const canEdit = user?.role !== "read_only";
+  const canEdit = user?.role !== "sponsor";
   const isAdmin = user?.role === "admin";
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);

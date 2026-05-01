@@ -162,7 +162,7 @@ export { StatusBadge };
 /* ─── Dashboard ──────────────────────────────────────────────────── */
 export default function Dashboard() {
   const { user } = useAuth();
-  const canEdit = user?.role !== "read_only";
+  const canEdit = user?.role !== "sponsor";
   const isAdmin = user?.role === "admin";
   const userOrgId = user?.organizationId;
   const [orgFilter, setOrgFilter] = useState<string>(userOrgId ? String(userOrgId) : "all");

@@ -49,13 +49,13 @@ export default function ChildForm() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  if (user?.role === "read_only") {
+  if (user?.role === "sponsor") {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
         <Card className="max-w-md p-8 text-center border-border/50">
           <ShieldAlert className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
           <h2 className="mb-2 text-lg font-semibold">Access Restricted</h2>
-          <p className="mb-4 text-sm text-muted-foreground">Read-only users cannot create or edit child records.</p>
+          <p className="mb-4 text-sm text-muted-foreground">Sponsors cannot create or edit child records.</p>
           <Button variant="outline" className="rounded-lg" onClick={() => navigate("/children")}>Back to Children</Button>
         </Card>
       </div>

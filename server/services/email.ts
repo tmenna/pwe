@@ -266,7 +266,6 @@ export async function sendUserWelcomeEmail(
   const roleLabels: Record<string, string> = {
     admin: "Administrator",
     case_worker: "Case Worker",
-    read_only: "Read Only",
     sponsor: "Sponsor",
   };
 

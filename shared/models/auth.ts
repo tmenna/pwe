@@ -44,7 +44,7 @@ export const createUserSchema = z.object({
   firstName: z.string().optional().nullable(),
   lastName: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
-  role: z.enum(["admin", "case_worker", "read_only", "sponsor"]),
+  role: z.enum(["admin", "case_worker", "sponsor"]),
   organizationId: z.coerce.number().optional().nullable(),
 });
 
@@ -53,7 +53,7 @@ export const updateUserSchema = z.object({
   firstName: z.string().optional().nullable(),
   lastName: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
-  role: z.enum(["admin", "case_worker", "read_only", "sponsor"]).optional(),
+  role: z.enum(["admin", "case_worker", "sponsor"]).optional(),
   password: z.string().min(6).optional(),
   organizationId: z.coerce.number().optional().nullable(),
 });
