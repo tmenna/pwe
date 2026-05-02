@@ -20,7 +20,8 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - **Backend**: Express.js with TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **Auth**: Custom username/password authentication with bcryptjs password hashing, express-session with connect-pg-simple for PostgreSQL session store
-- **File uploads**: Replit Object Storage (cloud-based, persists across deployments) with presigned URL upload flow
+- **File uploads**: Cloudflare R2 (S3-compatible, cloud storage) — server-proxied upload flow; files served via R2 public URL or signed URLs. Falls back to local disk in dev if R2 not configured.
+- **Email notifications**: Resend — new message alerts, welcome emails, pending message summaries. Gracefully no-ops if RESEND_API_KEY not set.
 - **Export**: xlsx package for CSV/XLSX spreadsheet generation
 
 ## Key Features
