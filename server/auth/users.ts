@@ -3,8 +3,26 @@ import { authStorage } from "./storage";
 import { isAuthenticated } from "./session";
 import { createUserSchema, updateUserSchema } from "@shared/models/auth";
 import bcrypt from "bcryptjs";
-import { sendUserWelcomeEmail } from "../services/email";
+import { sendUserWelcomeEmail, sendAdminPasswordResetEmail } from "../services/email";
 import { jobQueue } from "../services/jobs";
+
+function generateRandomPassword(): string {
+  const upper  = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower  = "abcdefghjkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const pick   = (s: string) => s[Math.floor(Math.random() * s.length)];
+  const parts  = [
+    pick(upper), pick(upper),
+    pick(lower), pick(lower), pick(lower), pick(lower),
+    pick(digits), pick(digits), pick(digits), pick(digits),
+    "!",
+  ];
+  for (let i = parts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [parts[i], parts[j]] = [parts[j], parts[i]];
+  }
+  return parts.join("");
+}
 
 const isAdmin = async (req: any, res: any, next: any) => {
   if (req.currentUser?.role !== "admin") {
@@ -110,6 +128,35 @@ export function registerUserRoutes(app: Express): void {
       }
       await authStorage.deleteUser(req.params.id);
       res.json({ message: "User deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/users/:id/reset-password", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const user = await authStorage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const newPassword = generateRandomPassword();
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await authStorage.updateUser(req.params.id, { hashedPassword });
+
+      let emailSent = false;
+      const recipientEmail = user.email || user.username;
+      if (recipientEmail && recipientEmail.includes("@")) {
+        const result = await sendAdminPasswordResetEmail({
+          recipientEmail,
+          recipientName: user.firstName && user.lastName
+            ? `${user.firstName} ${user.lastName}`
+            : user.username,
+          username: user.username,
+          newPassword,
+        });
+        emailSent = result.success;
+      }
+
+      res.json({ newPassword, emailSent, email: recipientEmail });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

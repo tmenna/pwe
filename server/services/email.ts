@@ -335,6 +335,50 @@ export async function sendPasswordResetEmail(
 }
 
 // ---------------------------------------------------------------------------
+// Notification: admin-generated password reset
+// ---------------------------------------------------------------------------
+
+export interface AdminPasswordResetPayload {
+  recipientEmail: string;
+  recipientName: string;
+  username: string;
+  newPassword: string;
+}
+
+export async function sendAdminPasswordResetEmail(
+  payload: AdminPasswordResetPayload
+): Promise<SendResult> {
+  const loginUrl = APP_URL || "#";
+
+  const html = brandedEmail(
+    "Your Password Has Been Reset",
+    [
+      paragraph(
+        `Hello ${highlight(payload.recipientName)}, an administrator has reset your PWE Portal password.`
+      ),
+      infoBox([
+        ["Username", payload.username],
+        ["New Password", payload.newPassword],
+      ]),
+      paragraph(
+        "Please log in with the new password above and change it immediately from your account settings."
+      ),
+      actionButton("Log In to Portal", loginUrl),
+      paragraph(
+        `If you did not expect this change, please contact your administrator immediately.`
+      ),
+    ].join("\n"),
+    "Your PWE Portal password has been reset"
+  );
+
+  return send(
+    payload.recipientEmail,
+    "Password Reset by Administrator — PWE Portal",
+    html
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Test email (admin utility)
 // ---------------------------------------------------------------------------
 

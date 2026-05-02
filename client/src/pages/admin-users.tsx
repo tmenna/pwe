@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2,
   Shield, Eye, Heart, Users, Baby, MessageSquare, Search, X, Check,
+  KeyRound, Copy, CheckCheck, Mail, MailX,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
@@ -101,6 +102,9 @@ export default function AdminUsers() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<SafeUser | null>(null);
   const [deleteUser, setDeleteUser] = useState<SafeUser | null>(null);
+  const [resetUser, setResetUser] = useState<SafeUser | null>(null);
+  const [resetResult, setResetResult] = useState<{ newPassword: string; emailSent: boolean; email: string } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [form, setForm] = useState<CreateForm>(emptyCreate);
   const [editForm, setEditForm] = useState<EditForm>(emptyEdit);
 
@@ -212,6 +216,27 @@ export default function AdminUsers() {
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/users/${resetUser!.id}/reset-password`, {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setResetUser(null);
+      setResetResult(data);
+      setCopied(false);
+    },
+    onError: (err: Error) => toast({ title: "Reset failed", description: err.message, variant: "destructive" }),
+  });
+
+  const copyPassword = () => {
+    if (resetResult?.newPassword) {
+      navigator.clipboard.writeText(resetResult.newPassword);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const openEdit = (u: SafeUser) => {
     const assignedChildren = getAssignedChildren(u.id);
@@ -363,6 +388,16 @@ export default function AdminUsers() {
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-lg hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-500/10"
+                        onClick={() => setResetUser(u)}
+                        title="Reset password"
+                        data-testid={`button-reset-password-${u.id}`}
+                      >
+                        <KeyRound className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -648,6 +683,100 @@ export default function AdminUsers() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Reset Password confirm dialog ─────────── */}
+        <Dialog open={!!resetUser} onOpenChange={(open) => !open && setResetUser(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-amber-500" />
+                Reset Password
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex items-start gap-3 py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10">
+                <KeyRound className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm leading-relaxed">
+                  Generate a new random password for <strong>{resetUser?.username}</strong>?
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  The current password will be replaced immediately.
+                  {resetUser?.username?.includes("@")
+                    ? " The new password will also be emailed to the user."
+                    : " Make sure to share the new password with the user manually."}
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" className="rounded-lg" onClick={() => setResetUser(null)} data-testid="button-cancel-reset">
+                Cancel
+              </Button>
+              <Button
+                className="rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+                onClick={() => resetPasswordMutation.mutate()}
+                disabled={resetPasswordMutation.isPending}
+                data-testid="button-confirm-reset"
+              >
+                <KeyRound className="mr-2 h-4 w-4" />
+                {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Reset Password result dialog ───────────── */}
+        <Dialog open={!!resetResult} onOpenChange={(open) => !open && setResetResult(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-emerald-600" />
+                Password Reset Successfully
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                The new password has been generated and applied. Share it with the user so they can log in.
+              </p>
+
+              {/* Password display */}
+              <div className="rounded-lg border border-border/60 bg-muted/40 p-4">
+                <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">New Password</p>
+                <div className="flex items-center justify-between gap-3">
+                  <code className="text-lg font-mono font-semibold tracking-widest select-all" data-testid="text-new-password">
+                    {resetResult?.newPassword}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-lg shrink-0"
+                    onClick={copyPassword}
+                    data-testid="button-copy-password"
+                  >
+                    {copied
+                      ? <><CheckCheck className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />Copied</>
+                      : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy</>
+                    }
+                  </Button>
+                </div>
+              </div>
+
+              {/* Email status */}
+              <div className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm ${resetResult?.emailSent ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
+                {resetResult?.emailSent
+                  ? <><Mail className="h-4 w-4 shrink-0" /><span>Email sent to <strong>{resetResult.email}</strong></span></>
+                  : <><MailX className="h-4 w-4 shrink-0" /><span>No email sent — share the password manually with the user</span></>
+                }
+              </div>
+            </div>
+            <DialogFooter>
+              <Button className="rounded-lg" onClick={() => setResetResult(null)} data-testid="button-close-reset-result">
+                Done
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
