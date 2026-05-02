@@ -24,6 +24,7 @@ import {
   isR2Configured,
   uploadFile,
   generateDownloadUrl,
+  generatePresignedUploadUrl,
   getLocalFilePath,
   validateFile,
   MAX_FILE_SIZE_BYTES,
@@ -59,10 +60,15 @@ export function registerUploadRoutes(app: Express, authMiddleware?: RequestHandl
 
   /**
    * Step 1 — Request an upload slot.
-   * Returns a PUT URL pointing back at this server plus an objectPath
-   * (the /objects/ path that will be stored in the DB).
+   *
+   * When R2 is configured:  returns a short-lived presigned PUT URL pointing
+   *   directly at R2 — the browser uploads straight to the bucket, bypassing
+   *   this server entirely.
+   *
+   * Local dev fallback: returns a server-proxy PUT URL (/api/uploads/put/:token)
+   *   which buffers the file and writes to disk.
    */
-  app.post("/api/uploads/request-url", ...auth, (req: any, res: any) => {
+  app.post("/api/uploads/request-url", ...auth, async (req: any, res: any) => {
     cleanExpired();
 
     const { name, size, contentType } = req.body ?? {};
@@ -79,15 +85,36 @@ export function registerUploadRoutes(app: Express, authMiddleware?: RequestHandl
     }
 
     const token = randomUUID();
-    const ext = name.includes(".") ? "." + name.split(".").pop()!.replace(/[^a-z0-9]/gi, "").toLowerCase() : "";
     const safeName = String(name)
       .replace(/[^a-z0-9._-]/gi, "_")
       .slice(0, 80);
     const r2Key = `uploads/${token}-${safeName}`;
+    const objectPath = `/objects/${r2Key}`;
+    const mimeType = (contentType as string) || "application/octet-stream";
 
+    // ── Direct-to-R2 presigned upload (preferred when R2 is configured) ──
+    if (isR2Configured()) {
+      try {
+        const presignedUrl = await generatePresignedUploadUrl(r2Key, mimeType);
+        if (presignedUrl) {
+          return res.json({
+            uploadURL: presignedUrl,
+            objectPath,
+            token,
+            direct: true,
+            metadata: { name, r2Key },
+          });
+        }
+      } catch (err: any) {
+        console.error("[uploads] Failed to generate presigned URL:", err);
+        return res.status(500).json({ error: "Could not generate upload URL" });
+      }
+    }
+
+    // ── Server-proxy fallback (local dev without R2) ──
     pendingUploads.set(token, {
       r2Key,
-      contentType: contentType || "application/octet-stream",
+      contentType: mimeType,
       size: size || 0,
       expiresAt: Date.now() + PENDING_TTL_MS,
     });
@@ -95,9 +122,8 @@ export function registerUploadRoutes(app: Express, authMiddleware?: RequestHandl
     const proto = req.headers["x-forwarded-proto"] || req.protocol;
     const host = req.headers["x-forwarded-host"] || req.get("host");
     const uploadURL = `${proto}://${host}/api/uploads/put/${token}`;
-    const objectPath = `/objects/${r2Key}`;
 
-    res.json({ uploadURL, objectPath, token, metadata: { name, r2Key } });
+    res.json({ uploadURL, objectPath, token, direct: false, metadata: { name, r2Key } });
   });
 
   /**

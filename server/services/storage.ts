@@ -129,28 +129,29 @@ export function buildObjectKey(
 }
 
 /**
- * Allocate an upload slot.
- * Returns a server-side PUT URL (the client always uploads to this server,
- * never directly to R2 — avoids CORS setup on the bucket).
+ * Generate a presigned PUT URL so the browser can upload directly to R2.
+ * Falls back to returning null when R2 is not configured (dev mode uses
+ * the server-proxy path instead).
+ *
+ * CORS requirement on the R2 bucket:
+ *   AllowedOrigins: ["https://your-app-domain.com"]
+ *   AllowedMethods: ["GET", "HEAD", "PUT"]
+ *   AllowedHeaders: ["Content-Type", "Content-Length"]
  */
-export function allocateUploadSlot(originalFilename: string): {
-  token: string;
-  r2Key: string;
-  uploadURL: string;
-  objectPath: string;
-} {
-  const token = randomUUID();
-  const r2Key = `uploads/${token}-${path
-    .basename(originalFilename)
-    .replace(/[^a-z0-9._-]/gi, "_")
-    .slice(0, 80)}`;
+export async function generatePresignedUploadUrl(
+  r2Key: string,
+  contentType: string,
+  expiresInSeconds = 300
+): Promise<string | null> {
+  if (!isR2Configured()) return null;
 
-  return {
-    token,
-    r2Key,
-    uploadURL: `__server__/api/uploads/put/${token}`,
-    objectPath: `/objects/${r2Key}`,
-  };
+  const client = getS3Client();
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: r2Key,
+    ContentType: contentType,
+  });
+  return getSignedUrl(client, command, { expiresIn: expiresInSeconds });
 }
 
 /**
