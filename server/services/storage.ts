@@ -31,10 +31,15 @@ import fs from "fs";
 // Configuration
 // ---------------------------------------------------------------------------
 
-const R2_ENDPOINT = process.env.R2_ENDPOINT || "";
+// Support both R2_ACCOUNT_ID (standard Cloudflare naming) and legacy R2_ENDPOINT
+const _accountId = process.env.R2_ACCOUNT_ID || "";
+const R2_ENDPOINT =
+  process.env.R2_ENDPOINT ||
+  (_accountId ? `https://${_accountId}.r2.cloudflarestorage.com` : "");
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || "";
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || "";
-const R2_BUCKET = process.env.R2_BUCKET || "";
+// Support both R2_BUCKET_NAME (standard) and legacy R2_BUCKET
+const R2_BUCKET = process.env.R2_BUCKET_NAME || process.env.R2_BUCKET || "";
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || ""; // optional public CDN URL
 
 const LOCAL_UPLOADS_DIR = process.env.UPLOADS_DIR
