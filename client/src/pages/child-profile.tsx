@@ -355,68 +355,6 @@ function InlineDescription({ child, canEdit }: { child: Child; canEdit: boolean 
   );
 }
 
-function SendMessageDialog({
-  onSend,
-  isPending,
-  onClose,
-}: {
-  onSend: (data: { senderName: string; senderRole: string; content: string }) => void;
-  isPending: boolean;
-  onClose: () => void;
-}) {
-  const [senderName, setSenderName] = useState("");
-  const [senderRole, setSenderRole] = useState("sponsor");
-  const [content, setContent] = useState("");
-
-  return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Sender Name</Label>
-        <Input
-          className="h-11 rounded-lg border-border/60"
-          placeholder="Enter sender name"
-          value={senderName}
-          onChange={(e) => setSenderName(e.target.value)}
-          data-testid="input-sender-name"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Sender Role</Label>
-        <Select value={senderRole} onValueChange={setSenderRole}>
-          <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-sender-role">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="sponsor">Sponsor</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Comment</Label>
-        <Textarea
-          className="rounded-lg border-border/60"
-          placeholder="Write your comment..."
-          rows={4}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          data-testid="input-message-content"
-        />
-      </div>
-      <div className="flex justify-end gap-3 pt-1">
-        <Button variant="outline" className="rounded-lg" onClick={onClose} data-testid="button-cancel-message">Cancel</Button>
-        <Button
-          className="rounded-lg shadow-sm"
-          onClick={() => onSend({ senderName, senderRole, content })}
-          disabled={isPending || !senderName || !content}
-          data-testid="button-confirm-message"
-        >
-          {isPending ? "Posting..." : "Post Comment"}
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 export default function ChildProfile() {
   const [, params] = useRoute("/children/:id");
@@ -429,7 +367,6 @@ export default function ChildProfile() {
   const queryClient = useQueryClient();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const sponsorPhotoInputRef = useRef<HTMLInputElement>(null);
-  const [messageOpen, setMessageOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [myReactions, setMyReactions] = useState<Set<string>>(new Set());
@@ -563,20 +500,6 @@ export default function ChildProfile() {
     },
     onError: (error: Error) => {
       toast({ title: "Sponsor photo upload failed", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const sendMessageMutation = useMutation({
-    mutationFn: async (data: { senderName: string; senderRole: string; content: string }) => {
-      return apiRequest("POST", `/api/children/${childId}/messages`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
-      toast({ title: "Message sent" });
-      setMessageOpen(false);
-    },
-    onError: (error: Error) => {
-      toast({ title: "Failed to send message", description: error.message, variant: "destructive" });
     },
   });
 
@@ -1062,26 +985,6 @@ export default function ChildProfile() {
                   </div>
                 )}
               </div>
-              {canEdit && (
-                <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="rounded-lg shadow-sm" data-testid="button-send-message">
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Leave a Comment
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Leave a Comment</DialogTitle>
-                    </DialogHeader>
-                    <SendMessageDialog
-                      onSend={(data) => sendMessageMutation.mutate(data)}
-                      isPending={sendMessageMutation.isPending}
-                      onClose={() => setMessageOpen(false)}
-                    />
-                  </DialogContent>
-                </Dialog>
-              )}
             </div>
 
             {messagesLoading ? (
@@ -1091,12 +994,12 @@ export default function ChildProfile() {
             ) : !messagesData?.filter(m => !m.parentId).length ? (
               <Card className="flex flex-col items-center justify-center p-14 text-center border-border/50">
                 <MessageSquare className="mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">No comments yet</p>
-                {canEdit && (
-                  <Button variant="outline" size="sm" className="mt-4 rounded-lg" onClick={() => setMessageOpen(true)} data-testid="button-send-first-message">
-                    Leave First Comment
-                  </Button>
-                )}
+                <p className="text-sm font-medium">No sponsor comments yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {child.sponsorCanComment
+                    ? "The sponsor can post comments from their portal."
+                    : "Enable sponsor commenting above to allow the sponsor to post here."}
+                </p>
               </Card>
             ) : (
               <div className="space-y-3">
