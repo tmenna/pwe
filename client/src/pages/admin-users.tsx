@@ -103,7 +103,7 @@ export default function AdminUsers() {
   const [editUser, setEditUser] = useState<SafeUser | null>(null);
   const [deleteUser, setDeleteUser] = useState<SafeUser | null>(null);
   const [resetUser, setResetUser] = useState<SafeUser | null>(null);
-  const [resetResult, setResetResult] = useState<{ newPassword: string; emailSent: boolean; email: string } | null>(null);
+  const [resetResult, setResetResult] = useState<{ newPassword: string; emailSent: boolean; emailError?: string; email: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const testEmailMutation = useMutation({
@@ -792,11 +792,14 @@ export default function AdminUsers() {
               </div>
 
               {/* Email delivery status */}
-              <div className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm ${resetResult?.emailSent ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
-                {resetResult?.emailSent
-                  ? <><Mail className="h-4 w-4 shrink-0" /><span>Password also emailed to <strong>{resetResult.email}</strong></span></>
-                  : <><MailX className="h-4 w-4 shrink-0" /><span>No email sent — no email address on file for this user</span></>
-                }
+              <div className={`flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-sm ${resetResult?.emailSent ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
+                {resetResult?.emailSent ? (
+                  <><Mail className="h-4 w-4 shrink-0 mt-0.5" /><span>Password also emailed to <strong>{resetResult.email}</strong></span></>
+                ) : resetResult?.emailError ? (
+                  <><MailX className="h-4 w-4 shrink-0 mt-0.5" /><span>Email failed — <strong>{resetResult.emailError}</strong>. Share the password above manually.</span></>
+                ) : (
+                  <><MailX className="h-4 w-4 shrink-0 mt-0.5" /><span>No email sent — no email address on file for this user</span></>
+                )}
               </div>
             </div>
             <DialogFooter>

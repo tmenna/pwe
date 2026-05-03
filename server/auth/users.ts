@@ -206,8 +206,10 @@ export function registerUserRoutes(app: Express): void {
       await authStorage.updateUser(req.params.id, { hashedPassword });
 
       let emailSent = false;
+      let emailError: string | undefined;
       const recipientEmail = user.email || user.username;
       if (recipientEmail && recipientEmail.includes("@")) {
+        console.log(`[reset-password] Sending to ${recipientEmail} for user ${user.username}`);
         const result = await sendAdminPasswordResetEmail({
           recipientEmail,
           recipientName: user.firstName && user.lastName
@@ -217,9 +219,17 @@ export function registerUserRoutes(app: Express): void {
           newPassword,
         });
         emailSent = result.success;
+        emailError = result.error;
+        if (!emailSent) {
+          console.error(`[reset-password] Email failed for ${recipientEmail}: ${emailError}`);
+        } else {
+          console.log(`[reset-password] Email sent successfully to ${recipientEmail} — id: ${result.id}`);
+        }
+      } else {
+        console.warn(`[reset-password] No valid email for user ${user.username} — skipping email`);
       }
 
-      res.json({ newPassword, emailSent, email: recipientEmail });
+      res.json({ newPassword, emailSent, emailError, email: recipientEmail });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
