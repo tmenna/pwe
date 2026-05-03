@@ -184,10 +184,7 @@ export function registerUserRoutes(app: Express): void {
   // Admin utility: send a test email to verify Resend is working
   app.post("/api/admin/test-email", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const to = req.body.email || req.currentUser.email || req.currentUser.username;
-      if (!to || !to.includes("@")) {
-        return res.status(400).json({ message: "No valid email address found for your account. Update your email first." });
-      }
+      const to = "teki.menna@gmail.com";
       const result = await sendTestEmail(to);
       if (result.success) {
         res.json({ message: `Test email sent to ${to}`, email: to });
