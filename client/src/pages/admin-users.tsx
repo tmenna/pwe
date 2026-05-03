@@ -705,9 +705,9 @@ export default function AdminUsers() {
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   The current password will be replaced immediately.
-                  {resetUser?.username?.includes("@")
-                    ? " The new password will also be emailed to the user."
-                    : " Make sure to share the new password with the user manually."}
+                  {(resetUser?.email || resetUser?.username?.includes("@"))
+                    ? ` The new password will be emailed to ${resetUser?.email || resetUser?.username}.`
+                    : " No email address on file — share the new password manually."}
                 </p>
               </div>
             </div>

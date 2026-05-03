@@ -33,7 +33,18 @@ function validateConfig(): void {
   }
 
   if (isEmailConfigured()) {
-    console.log("[config] ✓ Resend email configured");
+    const fromEmail = process.env.FROM_EMAIL;
+    if (!fromEmail) {
+      console.warn(
+        "[config] ⚠ Resend configured but FROM_EMAIL is not set.\n" +
+        "         Falling back to onboarding@resend.dev — Resend's test sender.\n" +
+        "         This can ONLY deliver to the email address that owns your Resend account.\n" +
+        "         To send to any recipient, verify a domain in Resend and set:\n" +
+        '           FROM_EMAIL="PWE Portal <noreply@yourdomain.com>"'
+      );
+    } else {
+      console.log(`[config] ✓ Resend email configured — sending from ${fromEmail}`);
+    }
   } else {
     console.log("[config] ⚠ RESEND_API_KEY not set — email notifications disabled");
   }
