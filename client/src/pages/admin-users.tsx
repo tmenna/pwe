@@ -84,11 +84,12 @@ type CreateForm = {
   role: string;
   organizationId: string;
   sponsorChildIds: number[];
+  sponsorCommentingMap: Record<number, boolean>;
 };
 
 const emptyCreate: CreateForm = {
   username: "", password: "", firstName: "", lastName: "",
-  role: "case_worker", organizationId: "", sponsorChildIds: [],
+  role: "case_worker", organizationId: "", sponsorChildIds: [], sponsorCommentingMap: {},
 };
 
 const emptyEdit: EditForm = {
@@ -164,6 +165,12 @@ export default function AdminUsers() {
         await apiRequest("POST", `/api/users/${newUser.id}/assign-child`, {
           childIds: form.sponsorChildIds,
         });
+        for (const childId of form.sponsorChildIds) {
+          const canComment = form.sponsorCommentingMap[childId] ?? false;
+          if (canComment) {
+            await apiRequest("PATCH", `/api/children/${childId}`, { sponsorCanComment: true });
+          }
+        }
       }
       return newUser;
     },
@@ -556,12 +563,20 @@ export default function AdminUsers() {
                 <SponsorChildPicker
                   children_={children || []}
                   selectedIds={form.sponsorChildIds}
-                  onToggle={(id, checked) => setForm((f) => ({
-                    ...f,
-                    sponsorChildIds: checked
+                  commentingMap={form.sponsorCommentingMap}
+                  onToggle={(id, checked) => setForm((f) => {
+                    const ids = checked
                       ? [...f.sponsorChildIds.filter((x) => x !== id), id]
-                      : f.sponsorChildIds.filter((x) => x !== id),
+                      : f.sponsorChildIds.filter((x) => x !== id);
+                    const map = { ...f.sponsorCommentingMap };
+                    if (!checked) delete map[id];
+                    return { ...f, sponsorChildIds: ids, sponsorCommentingMap: map };
+                  })}
+                  onToggleCommenting={(id, v) => setForm((f) => ({
+                    ...f,
+                    sponsorCommentingMap: { ...f.sponsorCommentingMap, [id]: v },
                   }))}
+                  showCommentingToggles
                 />
               )}
               </div>{/* end scrollable area */}
