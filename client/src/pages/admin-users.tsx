@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2,
   Shield, Eye, Heart, Users, Baby, MessageSquare, Search, X, Check,
-  KeyRound, Copy, CheckCheck, Mail, MailX,
+  KeyRound, Copy, CheckCheck, Mail, MailX, SendHorizonal,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
@@ -105,6 +105,23 @@ export default function AdminUsers() {
   const [resetUser, setResetUser] = useState<SafeUser | null>(null);
   const [resetResult, setResetResult] = useState<{ newPassword: string; emailSent: boolean; email: string } | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const testEmailMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/test-email", {});
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message);
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Test email sent", description: `Check ${data.email} for a delivery confirmation.` });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Email delivery failed", description: err.message, variant: "destructive" });
+    },
+  });
   const [form, setForm] = useState<CreateForm>(emptyCreate);
   const [editForm, setEditForm] = useState<EditForm>(emptyEdit);
 
@@ -283,15 +300,29 @@ export default function AdminUsers() {
               <p className="text-sm text-muted-foreground mt-0.5">Manage portal accounts, roles, and child assignments</p>
             </div>
           </div>
-          <Button
-            size="sm"
-            className="rounded-lg shadow-sm h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white"
-            onClick={() => setCreateOpen(true)}
-            data-testid="button-add-user"
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add User
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-lg h-9 px-3 text-muted-foreground border-border/60"
+              onClick={() => testEmailMutation.mutate()}
+              disabled={testEmailMutation.isPending}
+              title="Send a test email to verify delivery is working"
+              data-testid="button-test-email"
+            >
+              <SendHorizonal className="mr-1.5 h-3.5 w-3.5" />
+              {testEmailMutation.isPending ? "Sending..." : "Test Email"}
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-lg shadow-sm h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => setCreateOpen(true)}
+              data-testid="button-add-user"
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add User
+            </Button>
+          </div>
         </div>
 
         {/* User list */}

@@ -3,7 +3,7 @@ import { authStorage } from "./storage";
 import { isAuthenticated } from "./session";
 import { createUserSchema, updateUserSchema } from "@shared/models/auth";
 import bcrypt from "bcryptjs";
-import { sendUserWelcomeEmail, sendAdminPasswordResetEmail } from "../services/email";
+import { sendUserWelcomeEmail, sendAdminPasswordResetEmail, sendTestEmail } from "../services/email";
 import { jobQueue } from "../services/jobs";
 
 function generateRandomPassword(): string {
@@ -178,6 +178,24 @@ export function registerUserRoutes(app: Express): void {
       res.json({ message: "User deleted" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin utility: send a test email to verify Resend is working
+  app.post("/api/admin/test-email", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const to = req.body.email || req.currentUser.email || req.currentUser.username;
+      if (!to || !to.includes("@")) {
+        return res.status(400).json({ message: "No valid email address found for your account. Update your email first." });
+      }
+      const result = await sendTestEmail(to);
+      if (result.success) {
+        res.json({ message: `Test email sent to ${to}`, email: to });
+      } else {
+        res.status(500).json({ message: `Failed to send: ${result.error}`, email: to });
+      }
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
     }
   });
 
