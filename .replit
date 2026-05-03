@@ -46,3 +46,4 @@ integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_database:1.0.
 
 [userenv.shared]
 APP_URL = "https://pweportal.org"
+FROM_EMAIL = "PWE Portal <noreply@pweportal.org>"
