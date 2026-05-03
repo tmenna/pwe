@@ -735,10 +735,10 @@ export default function AdminUsers() {
                   Generate a new random password for <strong>{resetUser?.username}</strong>?
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  The current password will be replaced immediately.
+                  The current password will be replaced immediately and the new password will be
                   {(resetUser?.email || resetUser?.username?.includes("@"))
-                    ? ` The new password will be emailed to ${resetUser?.email || resetUser?.username}.`
-                    : " No email address on file — share the new password manually."}
+                    ? ` emailed automatically to ${resetUser?.email || resetUser?.username}.`
+                    : " shown on screen — no email address on file for this user."}
                 </p>
               </div>
             </div>
@@ -769,39 +769,49 @@ export default function AdminUsers() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
-              <p className="text-sm text-muted-foreground">
-                The new password has been generated and applied. Share it with the user so they can log in.
-              </p>
-
-              {/* Password display */}
-              <div className="rounded-lg border border-border/60 bg-muted/40 p-4">
-                <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">New Password</p>
-                <div className="flex items-center justify-between gap-3">
-                  <code className="text-lg font-mono font-semibold tracking-widest select-all" data-testid="text-new-password">
-                    {resetResult?.newPassword}
-                  </code>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 rounded-lg shrink-0"
-                    onClick={copyPassword}
-                    data-testid="button-copy-password"
-                  >
-                    {copied
-                      ? <><CheckCheck className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />Copied</>
-                      : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy</>
-                    }
-                  </Button>
+              {resetResult?.emailSent ? (
+                /* ── Email was sent — no need to show/copy the password ── */
+                <div className="flex flex-col items-center gap-3 py-3 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-500/10">
+                    <Mail className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Password emailed successfully</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      The new password has been sent to <strong>{resetResult.email}</strong>.<br />
+                      Ask the user to check their inbox and log in.
+                    </p>
+                  </div>
                 </div>
-              </div>
-
-              {/* Email status */}
-              <div className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm ${resetResult?.emailSent ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
-                {resetResult?.emailSent
-                  ? <><Mail className="h-4 w-4 shrink-0" /><span>Email sent to <strong>{resetResult.email}</strong></span></>
-                  : <><MailX className="h-4 w-4 shrink-0" /><span>No email sent — share the password manually with the user</span></>
-                }
-              </div>
+              ) : (
+                /* ── No email on file — show the password for manual sharing ── */
+                <>
+                  <div className="flex items-center gap-2.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 dark:text-amber-300">
+                    <MailX className="h-4 w-4 shrink-0" />
+                    <span>No email address on file — share this password manually with the user</span>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-muted/40 p-4">
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">New Password</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <code className="text-lg font-mono font-semibold tracking-widest select-all" data-testid="text-new-password">
+                        {resetResult?.newPassword}
+                      </code>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-lg shrink-0"
+                        onClick={copyPassword}
+                        data-testid="button-copy-password"
+                      >
+                        {copied
+                          ? <><CheckCheck className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />Copied</>
+                          : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy</>
+                        }
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <DialogFooter>
               <Button className="rounded-lg" onClick={() => setResetResult(null)} data-testid="button-close-reset-result">
