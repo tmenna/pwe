@@ -32,6 +32,54 @@ const isAdmin = async (req: any, res: any, next: any) => {
 };
 
 export function registerUserRoutes(app: Express): void {
+  // Self-service: any logged-in user can update their own username and/or password
+  app.patch("/api/auth/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const { username, currentPassword, newPassword } = req.body;
+      const user = req.currentUser;
+
+      // If changing password, verify the current password first
+      if (newPassword) {
+        if (!currentPassword) {
+          return res.status(400).json({ message: "Current password is required to set a new password" });
+        }
+        const valid = await bcrypt.compare(currentPassword, user.hashedPassword);
+        if (!valid) {
+          return res.status(401).json({ message: "Current password is incorrect" });
+        }
+        if (newPassword.length < 6) {
+          return res.status(400).json({ message: "New password must be at least 6 characters" });
+        }
+      }
+
+      const updateData: any = {};
+
+      if (username && username !== user.username) {
+        const existing = await authStorage.getUserByUsername(username);
+        if (existing) {
+          return res.status(409).json({ message: "That username is already taken" });
+        }
+        updateData.username = username;
+      }
+
+      if (newPassword) {
+        updateData.hashedPassword = await bcrypt.hash(newPassword, 10);
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No changes provided" });
+      }
+
+      const updated = await authStorage.updateUser(user.id, updateData);
+      if (!updated) return res.status(404).json({ message: "User not found" });
+
+      const { hashedPassword, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
       const { hashedPassword, ...safeUser } = req.currentUser;

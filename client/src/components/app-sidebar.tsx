@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Users, LogOut, UserCog, Building2, Heart, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, UserCog, Building2, Heart, ChevronRight, Settings, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sidebar,
@@ -15,6 +17,12 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import pweLogo from "@assets/pwe-large-logo_1772038246752.jpg";
 
 interface NavItem {
@@ -74,6 +82,66 @@ const roleLabels: Record<string, string> = {
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+
+  const openSettings = () => {
+    setNewUsername(user?.username || "");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowCurrent(false);
+    setShowNew(false);
+    setSettingsOpen(true);
+  };
+
+  const profileMutation = useMutation({
+    mutationFn: async () => {
+      const body: any = {};
+      const trimmed = newUsername.trim();
+      if (trimmed && trimmed !== user?.username) body.username = trimmed;
+      if (newPassword) {
+        body.currentPassword = currentPassword;
+        body.newPassword = newPassword;
+      }
+      const res = await apiRequest("PATCH", "/api/auth/profile", body);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Account updated", description: "Your credentials have been saved." });
+      setSettingsOpen(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleSave = () => {
+    if (newPassword && newPassword !== confirmPassword) {
+      toast({ title: "Passwords don't match", description: "New password and confirmation must be the same.", variant: "destructive" });
+      return;
+    }
+    if (newPassword && newPassword.length < 6) {
+      toast({ title: "Password too short", description: "New password must be at least 6 characters.", variant: "destructive" });
+      return;
+    }
+    const trimmed = newUsername.trim();
+    const usernameChanged = trimmed && trimmed !== user?.username;
+    if (!usernameChanged && !newPassword) {
+      toast({ title: "No changes", description: "Update your username or password to save." });
+      return;
+    }
+    profileMutation.mutate();
+  };
 
   const initials = user
     ? `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || user.username?.[0]?.toUpperCase() || "U"
@@ -234,17 +302,141 @@ export function AppSidebar() {
               {roleLabels[user?.role || ""] || user?.role}
             </Badge>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-xl shrink-0 text-slate-400 hover:text-destructive hover:bg-destructive/8 transition-colors"
-            onClick={() => logout()}
-            data-testid="button-logout"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-xl shrink-0 text-slate-400 hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
+              onClick={openSettings}
+              title="Account settings"
+              data-testid="button-account-settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-xl shrink-0 text-slate-400 hover:text-destructive hover:bg-destructive/8 transition-colors"
+              onClick={() => logout()}
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </SidebarFooter>
+
+      {/* ── Account Settings Dialog ───────────────────── */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Account Settings
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 py-1">
+            {/* Username */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Username</Label>
+              <Input
+                className="h-11 rounded-lg border-border/60"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="Enter new username"
+                autoComplete="username"
+                data-testid="input-new-username"
+              />
+              <p className="text-xs text-muted-foreground">Leave unchanged to keep your current username.</p>
+            </div>
+
+            <Separator />
+
+            {/* Change password section */}
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Change Password</p>
+              <p className="text-xs text-muted-foreground">Leave blank to keep your current password.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Current Password</Label>
+              <div className="relative">
+                <Input
+                  type={showCurrent ? "text" : "password"}
+                  className="h-11 rounded-lg border-border/60 pr-10"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  autoComplete="current-password"
+                  data-testid="input-current-password"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowCurrent((v) => !v)}
+                  tabIndex={-1}
+                >
+                  {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">New Password</Label>
+              <div className="relative">
+                <Input
+                  type={showNew ? "text" : "password"}
+                  className="h-11 rounded-lg border-border/60 pr-10"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  autoComplete="new-password"
+                  data-testid="input-new-password"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowNew((v) => !v)}
+                  tabIndex={-1}
+                >
+                  {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Confirm New Password</Label>
+              <Input
+                type="password"
+                className={`h-11 rounded-lg border-border/60 ${confirmPassword && confirmPassword !== newPassword ? "border-destructive focus-visible:ring-destructive/30" : ""}`}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter new password"
+                autoComplete="new-password"
+                data-testid="input-confirm-password"
+              />
+              {confirmPassword && confirmPassword !== newPassword && (
+                <p className="text-xs text-destructive">Passwords don't match</p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" className="rounded-lg" onClick={() => setSettingsOpen(false)} data-testid="button-cancel-settings">
+              Cancel
+            </Button>
+            <Button
+              className="rounded-lg shadow-sm"
+              onClick={handleSave}
+              disabled={profileMutation.isPending}
+              data-testid="button-save-settings"
+            >
+              {profileMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sidebar>
   );
 }
