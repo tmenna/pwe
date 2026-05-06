@@ -30,6 +30,7 @@ export const children = pgTable("children", {
   organizationId: integer("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   sponsorUserId: varchar("sponsor_user_id"),
   sponsorCanComment: boolean("sponsor_can_comment").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
 });
 
 export const documents = pgTable("documents", {

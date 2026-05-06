@@ -135,7 +135,67 @@ export async function registerRoutes(
     }
   });
 
+  // --- Archive cleanup scheduler (runs every 6 hours) ---
+  setInterval(async () => {
+    try {
+      const purged = await storage.purgeExpiredArchivedChildren();
+      if (purged > 0) console.log(`[archive] Purged ${purged} expired archived child profile(s)`);
+    } catch (err: any) {
+      console.error("[archive] Purge job failed:", err?.message);
+    }
+  }, 6 * 60 * 60 * 1000);
+
   // --- Children ---
+  app.get("/api/children/archived", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
+      const result = await storage.getArchivedChildren(orgId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/children/:id/archive", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const child = await storage.getChild(id);
+      if (!child) return res.status(404).json({ message: "Child not found" });
+      if (child.archivedAt) return res.status(400).json({ message: "Child is already archived" });
+      const updated = await storage.archiveChild(id);
+      await storage.createTimelineEntry({
+        childId: id,
+        title: "Profile archived",
+        description: `Archived by ${getUserName(req)} — will be permanently deleted after 30 days`,
+        entryType: "status_change",
+        createdBy: getUserName(req),
+      });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/children/:id/unarchive", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const child = await storage.getChild(id);
+      if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!child.archivedAt) return res.status(400).json({ message: "Child is not archived" });
+      const updated = await storage.unarchiveChild(id);
+      await storage.createTimelineEntry({
+        childId: id,
+        title: "Profile restored from archive",
+        description: `Restored by ${getUserName(req)}`,
+        entryType: "status_change",
+        createdBy: getUserName(req),
+      });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/children", isAuthenticated, async (req: any, res) => {
     try {
       if (req.currentUser?.role === "sponsor") {

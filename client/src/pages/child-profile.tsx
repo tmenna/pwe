@@ -5,7 +5,7 @@ import {
   ArrowLeft, Edit, Upload, Plus, FileText, Image, StickyNote,
   GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2, Camera, Check, X, Pencil,
   Milestone, MessageSquare, RefreshCw, Heart, Mail, Send, MoreHorizontal, Building2, MessageCircle,
-  ThumbsUp, CornerDownRight, Reply,
+  ThumbsUp, CornerDownRight, Reply, Archive, ArchiveRestore,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -408,6 +408,33 @@ export default function ChildProfile() {
     enabled: user?.role === "admin",
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/children/${childId}/archive`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      toast({ title: "Profile archived", description: "This profile will be permanently deleted in 30 days. You can restore it at any time." });
+    },
+    onError: (error: Error) => toast({ title: "Archive failed", description: error.message, variant: "destructive" }),
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/children/${childId}/unarchive`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children", childId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/children/archived"] });
+      toast({ title: "Profile restored", description: "The profile has been restored to active children." });
+    },
+    onError: (error: Error) => toast({ title: "Restore failed", description: error.message, variant: "destructive" }),
+  });
+
   const toggleSponsorCommentMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
       return apiRequest("PATCH", `/api/children/${childId}`, { sponsorCanComment: enabled });
@@ -628,6 +655,11 @@ export default function ChildProfile() {
     { icon: Building2, label: "Organization", value: orgName, color: child.organizationId ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground" },
   ];
 
+  const archivedAt = child.archivedAt ? new Date(child.archivedAt as unknown as string) : null;
+  const daysLeft = archivedAt
+    ? Math.max(0, Math.ceil((archivedAt.getTime() + 30 * 24 * 60 * 60 * 1000 - Date.now()) / (24 * 60 * 60 * 1000)))
+    : null;
+
   return (
     <div className="flex-1 overflow-auto p-5 sm:p-8">
       <div className="mx-auto max-w-4xl">
@@ -635,6 +667,36 @@ export default function ChildProfile() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Children
         </Button>
+
+        {/* Archived banner */}
+        {child.archivedAt && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200/80 bg-amber-50 dark:bg-amber-500/8 dark:border-amber-500/20 px-4 py-3" data-testid="banner-archived">
+            <div className="flex items-center gap-2.5">
+              <Archive className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">This profile is archived</p>
+                <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
+                  {daysLeft === 0
+                    ? "Scheduled for permanent deletion today"
+                    : `Permanently deleted in ${daysLeft} day${daysLeft === 1 ? "" : "s"} · Archived on ${archivedAt!.toLocaleDateString()}`}
+                </p>
+              </div>
+            </div>
+            {user?.role === "admin" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-lg h-8 gap-1.5 border-amber-300 bg-white dark:bg-transparent hover:bg-amber-50 text-amber-700 dark:text-amber-300"
+                onClick={() => unarchiveMutation.mutate()}
+                disabled={unarchiveMutation.isPending}
+                data-testid="button-restore-profile"
+              >
+                <ArchiveRestore className="h-3.5 w-3.5" />
+                {unarchiveMutation.isPending ? "Restoring..." : "Restore Profile"}
+              </Button>
+            )}
+          </div>
+        )}
 
         <Card className="p-5 sm:p-7 border-border/50">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
@@ -709,14 +771,54 @@ export default function ChildProfile() {
                 <p className="mt-1 text-sm text-muted-foreground" data-testid="text-child-id">ID: {child.childId}</p>
               </div>
             </div>
-            {canEdit && (
-              <Button variant="outline" className="rounded-lg shrink-0" asChild data-testid="button-edit-child">
-                <Link href={`/children/${child.id}/edit`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-              </Button>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {canEdit && !child.archivedAt && (
+                <Button variant="outline" className="rounded-lg" asChild data-testid="button-edit-child">
+                  <Link href={`/children/${child.id}/edit`}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </Link>
+                </Button>
+              )}
+              {user?.role === "admin" && !child.archivedAt && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="rounded-lg gap-1.5 text-muted-foreground hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/8"
+                      data-testid="button-archive-child"
+                    >
+                      <Archive className="h-4 w-4" />
+                      Archive
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <Archive className="h-4 w-4 text-amber-500" />
+                        Archive Profile
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        <strong>{child.fullName}</strong>'s profile will be moved to the archive. It will remain accessible for <strong>30 days</strong>, then permanently deleted — including all documents, timeline entries, and comments.
+                        <br /><br />
+                        You can restore it at any time before the 30-day period ends.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+                        onClick={() => archiveMutation.mutate()}
+                        data-testid="button-confirm-archive"
+                      >
+                        <Archive className="mr-2 h-4 w-4" />
+                        Archive Profile
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
 
           <InlineDescription child={child} canEdit={canEdit} />

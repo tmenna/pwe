@@ -25,7 +25,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - **Export**: xlsx package for CSV/XLSX spreadsheet generation
 
 ## Key Features
-- Child Profiles (CRUD with status tracking: active/paused/exited, profile photo, sponsor photo, inline-editable description)
+- Child Profiles (CRUD with status tracking: active/paused/exited, profile photo, sponsor photo, inline-editable description, archive with 30-day soft-delete)
 - Sponsored/Non-Sponsored categorization with filtering and dashboard stats
 - Document Management (upload files linked to child profiles, 7 categories, delete confirmation dialog)
 - Progress Timeline (chronological feed of milestones and events)
@@ -63,7 +63,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 
 ## Database Tables
 - `organizations` - id, name, description, createdAt
-- `children` - id, childId, fullName, age, gender, location, programEnrollment, assignedSponsors, assignedCaseWorker, status, photoUrl, description, isSponsored, sponsorPhotoUrl, organizationId (FK), sponsorUserId (varchar, links to users.id), sponsorCanComment (boolean, default false — admin-controlled)
+- `children` - id, childId, fullName, age, gender, location, programEnrollment, assignedSponsors, assignedCaseWorker, status, photoUrl, description, isSponsored, sponsorPhotoUrl, organizationId (FK), sponsorUserId (varchar, links to users.id), sponsorCanComment (boolean, default false — admin-controlled), archivedAt (timestamp, nullable — set when archived, null when active)
 - `documents` - id, childId (FK), documentType, description, fileName, fileUrl, uploadedBy, uploadedAt
 - `timeline_entries` - id, childId (FK), title, description, entryType, createdBy, createdAt
 - `messages` - id, childId (FK), senderName, senderRole, content, status, createdAt

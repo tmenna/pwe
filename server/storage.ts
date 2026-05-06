@@ -7,7 +7,7 @@ import {
   type Message, type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, count, and } from "drizzle-orm";
+import { eq, desc, sql, count, and, isNull, isNotNull, lt } from "drizzle-orm";
 
 export interface IStorage {
   getOrganizations(): Promise<Organization[]>;
@@ -17,10 +17,14 @@ export interface IStorage {
   deleteOrganization(id: number): Promise<void>;
 
   getChildren(organizationId?: number): Promise<Child[]>;
+  getArchivedChildren(organizationId?: number): Promise<Child[]>;
   getChild(id: number): Promise<Child | undefined>;
   createChild(child: InsertChild): Promise<Child>;
   updateChild(id: number, child: Partial<InsertChild>): Promise<Child | undefined>;
   deleteChild(id: number): Promise<void>;
+  archiveChild(id: number): Promise<Child | undefined>;
+  unarchiveChild(id: number): Promise<Child | undefined>;
+  purgeExpiredArchivedChildren(): Promise<number>;
 
   getDocumentsByChild(childId: number): Promise<Document[]>;
   getDocumentById(id: number): Promise<Document | undefined>;
@@ -69,9 +73,24 @@ export class DatabaseStorage implements IStorage {
 
   async getChildren(organizationId?: number): Promise<Child[]> {
     if (organizationId) {
-      return db.select().from(children).where(eq(children.organizationId, organizationId)).orderBy(desc(children.id));
+      return db.select().from(children)
+        .where(and(eq(children.organizationId, organizationId), isNull(children.archivedAt)))
+        .orderBy(desc(children.id));
     }
-    return db.select().from(children).orderBy(desc(children.id));
+    return db.select().from(children)
+      .where(isNull(children.archivedAt))
+      .orderBy(desc(children.id));
+  }
+
+  async getArchivedChildren(organizationId?: number): Promise<Child[]> {
+    if (organizationId) {
+      return db.select().from(children)
+        .where(and(eq(children.organizationId, organizationId), isNotNull(children.archivedAt)))
+        .orderBy(desc(children.archivedAt));
+    }
+    return db.select().from(children)
+      .where(isNotNull(children.archivedAt))
+      .orderBy(desc(children.archivedAt));
   }
 
   async getChild(id: number): Promise<Child | undefined> {
@@ -91,6 +110,32 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChild(id: number): Promise<void> {
     await db.delete(children).where(eq(children.id, id));
+  }
+
+  async archiveChild(id: number): Promise<Child | undefined> {
+    const [updated] = await db.update(children)
+      .set({ archivedAt: new Date() })
+      .where(eq(children.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async unarchiveChild(id: number): Promise<Child | undefined> {
+    const [updated] = await db.update(children)
+      .set({ archivedAt: null })
+      .where(eq(children.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async purgeExpiredArchivedChildren(): Promise<number> {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const expired = await db.select({ id: children.id }).from(children)
+      .where(and(isNotNull(children.archivedAt), lt(children.archivedAt, cutoff)));
+    for (const { id } of expired) {
+      await db.delete(children).where(eq(children.id, id));
+    }
+    return expired.length;
   }
 
   async getDocumentsByChild(childId: number): Promise<Document[]> {
@@ -169,9 +214,10 @@ export class DatabaseStorage implements IStorage {
   async getStats(organizationId?: number) {
     let allChildren: Child[];
     if (organizationId) {
-      allChildren = await db.select().from(children).where(eq(children.organizationId, organizationId));
+      allChildren = await db.select().from(children)
+        .where(and(eq(children.organizationId, organizationId), isNull(children.archivedAt)));
     } else {
-      allChildren = await db.select().from(children);
+      allChildren = await db.select().from(children).where(isNull(children.archivedAt));
     }
     const [docCount] = await db.select({ count: count() }).from(documents);
     return {
