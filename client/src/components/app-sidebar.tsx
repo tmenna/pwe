@@ -181,10 +181,10 @@ export function AppSidebar() {
             />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-[18px] font-bold tracking-tight leading-tight text-foreground" data-testid="text-app-name">
-              <span className="text-[#2e8b57]">PWE</span> Portal
+            <span className="text-[18px] font-bold tracking-tight leading-tight text-gray-900 dark:text-white" data-testid="text-app-name">
+              PWE Portal
             </span>
-            <span className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#3cba88] mt-0.5">
+            <span className="text-[11px] font-semibold tracking-[0.10em] uppercase text-gray-500 dark:text-gray-400 mt-0.5">
               Child Sponsorship
             </span>
           </div>
