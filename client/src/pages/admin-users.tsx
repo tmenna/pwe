@@ -39,6 +39,7 @@ type ChildSummary = {
   status: string;
   sponsorUserId: string | null;
   sponsorCanComment: boolean | null;
+  organizationId: number | null;
 };
 
 const roleLabels: Record<string, string> = {
@@ -525,7 +526,7 @@ export default function AdminUsers() {
                 <Label className="text-sm font-medium">Role</Label>
                 <Select
                   value={form.role}
-                  onValueChange={(v) => setForm((f) => ({ ...f, role: v, organizationId: v === "sponsor" ? "" : f.organizationId, sponsorChildIds: v !== "sponsor" ? [] : f.sponsorChildIds }))}
+                  onValueChange={(v) => setForm((f) => ({ ...f, role: v, organizationId: v === "admin" ? "" : f.organizationId, sponsorChildIds: v !== "sponsor" ? [] : f.sponsorChildIds, sponsorCommentingMap: v !== "sponsor" ? {} : f.sponsorCommentingMap }))}
                 >
                   <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-new-role">
                     <SelectValue />
@@ -539,29 +540,63 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">{rolePermissionDesc[form.role]}</p>
               </div>
 
-              {form.role !== "sponsor" && form.role !== "admin" && organizations && organizations.length > 0 && (
+              {form.role !== "admin" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  {form.role === "sponsor" ? (
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <Building2 className="h-3.5 w-3.5 text-orange-500" />
+                      Filter by Organization
+                      <span className="text-muted-foreground font-normal">(optional)</span>
+                    </Label>
+                  ) : (
+                    <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  )}
                   <Select
                     value={form.organizationId || "none"}
-                    onValueChange={(v) => setForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}
+                    onValueChange={(v) => {
+                      const newOrgId = v === "none" ? "" : v;
+                      setForm((f) => {
+                        const orgId = newOrgId ? parseInt(newOrgId) : null;
+                        const filteredIds = orgId !== null
+                          ? f.sponsorChildIds.filter((id) => {
+                              const c = children?.find((ch) => ch.id === id);
+                              return c?.organizationId === orgId;
+                            })
+                          : f.sponsorChildIds;
+                        const filteredMap = Object.fromEntries(
+                          Object.entries(f.sponsorCommentingMap).filter(([id]) =>
+                            filteredIds.includes(parseInt(id))
+                          )
+                        );
+                        return { ...f, organizationId: newOrgId, sponsorChildIds: filteredIds, sponsorCommentingMap: filteredMap };
+                      });
+                    }}
                   >
                     <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-new-organization">
-                      <SelectValue placeholder="No organization assigned" />
+                      <SelectValue placeholder={form.role === "sponsor" ? "All organizations" : "No organization assigned"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No organization (sees all children)</SelectItem>
+                      <SelectItem value="none">
+                        {form.role === "sponsor" ? "All organizations (show all children)" : "No organization (sees all children)"}
+                      </SelectItem>
                       {organizations.map((org) => (
                         <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {form.role === "sponsor" && (
+                    <p className="text-xs text-muted-foreground">
+                      Selecting an organization will show only that organization's children in the list below.
+                    </p>
+                  )}
                 </div>
               )}
 
               {form.role === "sponsor" && (
                 <SponsorChildPicker
-                  children_={children || []}
+                  children_={(children || []).filter((c) =>
+                    !form.organizationId || c.organizationId === parseInt(form.organizationId)
+                  )}
                   selectedIds={form.sponsorChildIds}
                   commentingMap={form.sponsorCommentingMap}
                   onToggle={(id, checked) => setForm((f) => {
@@ -654,7 +689,7 @@ export default function AdminUsers() {
                   onValueChange={(v) => setEditForm((f) => ({
                     ...f,
                     role: v,
-                    organizationId: v === "sponsor" || v === "admin" ? "" : f.organizationId,
+                    organizationId: v === "admin" ? "" : f.organizationId,
                     sponsorChildIds: v !== "sponsor" ? [] : f.sponsorChildIds,
                     sponsorCommentingMap: v !== "sponsor" ? {} : f.sponsorCommentingMap,
                   }))}
@@ -671,29 +706,63 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">{rolePermissionDesc[editForm.role]}</p>
               </div>
 
-              {editForm.role !== "sponsor" && editForm.role !== "admin" && organizations && organizations.length > 0 && (
+              {editForm.role !== "admin" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  {editForm.role === "sponsor" ? (
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <Building2 className="h-3.5 w-3.5 text-orange-500" />
+                      Filter by Organization
+                      <span className="text-muted-foreground font-normal">(optional)</span>
+                    </Label>
+                  ) : (
+                    <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  )}
                   <Select
                     value={editForm.organizationId || "none"}
-                    onValueChange={(v) => setEditForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}
+                    onValueChange={(v) => {
+                      const newOrgId = v === "none" ? "" : v;
+                      setEditForm((f) => {
+                        const orgId = newOrgId ? parseInt(newOrgId) : null;
+                        const filteredIds = orgId !== null
+                          ? f.sponsorChildIds.filter((id) => {
+                              const c = children?.find((ch) => ch.id === id);
+                              return c?.organizationId === orgId;
+                            })
+                          : f.sponsorChildIds;
+                        const filteredMap = Object.fromEntries(
+                          Object.entries(f.sponsorCommentingMap).filter(([id]) =>
+                            filteredIds.includes(parseInt(id))
+                          )
+                        );
+                        return { ...f, organizationId: newOrgId, sponsorChildIds: filteredIds, sponsorCommentingMap: filteredMap };
+                      });
+                    }}
                   >
                     <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-edit-organization">
-                      <SelectValue placeholder="No organization" />
+                      <SelectValue placeholder={editForm.role === "sponsor" ? "All organizations" : "No organization"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No organization (sees all children)</SelectItem>
+                      <SelectItem value="none">
+                        {editForm.role === "sponsor" ? "All organizations (show all children)" : "No organization (sees all children)"}
+                      </SelectItem>
                       {organizations.map((org) => (
                         <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {editForm.role === "sponsor" && (
+                    <p className="text-xs text-muted-foreground">
+                      Selecting an organization will show only that organization's children in the list below.
+                    </p>
+                  )}
                 </div>
               )}
 
               {editForm.role === "sponsor" && (
                 <SponsorChildPicker
-                  children_={children || []}
+                  children_={(children || []).filter((c) =>
+                    !editForm.organizationId || c.organizationId === parseInt(editForm.organizationId)
+                  )}
                   selectedIds={editForm.sponsorChildIds}
                   commentingMap={editForm.sponsorCommentingMap}
                   onToggle={(id, checked) => toggleSponsorChild(id, checked, setEditForm)}
