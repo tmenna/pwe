@@ -247,7 +247,7 @@ export default function ChildForm() {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="Dale">Dale</SelectItem>
-                      <SelectItem value="Shano">Shano</SelectItem>
+                      <SelectItem value="Shanto">Shanto</SelectItem>
                       <SelectItem value="Boricha">Boricha</SelectItem>
                       <SelectItem value="Addis Ababa">Addis Ababa</SelectItem>
                       <SelectItem value="Hawassa">Hawassa</SelectItem>
