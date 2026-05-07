@@ -33,7 +33,7 @@ const childFormSchema = z.object({
   programEnrollment: z.string().optional().default(""),
   assignedSponsors: z.string().optional(),
   isSponsored: z.boolean().default(false),
-  assignedCaseWorker: z.string().min(1, "Case worker is required"),
+  assignedCaseWorker: z.string().optional().default(""),
   status: z.string().min(1, "Status is required"),
   description: z.string().optional(),
   organizationId: z.coerce.number().optional().nullable(),
@@ -74,10 +74,11 @@ export default function ChildForm() {
 
   const { data: allUsers } = useQuery<SafeUser[]>({
     queryKey: ["/api/users"],
-    enabled: user?.role === "admin",
+    enabled: user?.role === "admin" || user?.role === "case_worker",
   });
 
   const sponsorUsers = allUsers?.filter((u) => u.role === "sponsor") || [];
+  const caseWorkerUsers = allUsers?.filter((u) => u.role === "case_worker") || [];
 
   const form = useForm<ChildFormValues>({
     resolver: zodResolver(childFormSchema),
@@ -275,18 +276,18 @@ export default function ChildForm() {
               {user?.role === "admin" && (
                 <FormField control={form.control} name="sponsorUserId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium">Assigned Sponsor Account</FormLabel>
+                    <FormLabel className="text-sm font-medium">Assigned Sponsor(s)</FormLabel>
                     <Select
                       onValueChange={(val) => field.onChange(val === "none" ? null : val)}
                       value={field.value || "none"}
                     >
                       <FormControl>
                         <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-sponsor-user">
-                          <SelectValue placeholder="No sponsor account assigned" />
+                          <SelectValue placeholder="Select sponsor" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">No sponsor account</SelectItem>
+                        <SelectItem value="none">No sponsor assigned</SelectItem>
                         {sponsorUsers.map((su) => (
                           <SelectItem key={su.id} value={su.id}>
                             {su.firstName && su.lastName ? `${su.firstName} ${su.lastName}` : su.username}
@@ -294,11 +295,6 @@ export default function ChildForm() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {sponsorUsers.length > 0
-                        ? "Link a sponsor user account so they can view this child and send messages"
-                        : "No sponsor accounts exist yet. Create one in User Management first."}
-                    </p>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -307,9 +303,25 @@ export default function ChildForm() {
               <FormField control={form.control} name="assignedCaseWorker" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm font-medium">Assigned Case Worker</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Case worker name" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-case-worker" />
-                  </FormControl>
+                  <Select
+                    onValueChange={(val) => field.onChange(val === "none" ? "" : val)}
+                    value={field.value || "none"}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-case-worker">
+                        <SelectValue placeholder="Select case worker" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">No case worker assigned</SelectItem>
+                      {caseWorkerUsers.map((cw) => {
+                        const name = cw.firstName && cw.lastName ? `${cw.firstName} ${cw.lastName}` : cw.username;
+                        return (
+                          <SelectItem key={cw.id} value={name}>{name}</SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )} />
