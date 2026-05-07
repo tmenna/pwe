@@ -63,7 +63,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 
 ## Database Tables
 - `organizations` - id, name, description, createdAt
-- `children` - id, childId, fullName, age, gender, location, programEnrollment, assignedSponsors, assignedCaseWorker, status, photoUrl, description, isSponsored, sponsorPhotoUrl, organizationId (FK), sponsorUserId (varchar, links to users.id), sponsorCanComment (boolean, default false — admin-controlled), archivedAt (timestamp, nullable — set when archived, null when active)
+- `children` - id, childId, fullName, age, dateOfBirth (text, optional ISO date), gender, location, programEnrollment, assignedSponsors, assignedCaseWorker, status, photoUrl, description, isSponsored, sponsorPhotoUrl, organizationId (FK), sponsorUserId (varchar, links to users.id), sponsorCanComment (boolean, default false — admin-controlled), archivedAt (timestamp, nullable — set when archived, null when active)
 - `documents` - id, childId (FK), documentType, description, fileName, fileUrl, uploadedBy, uploadedAt
 - `timeline_entries` - id, childId (FK), title, description, entryType, createdBy, createdAt
 - `messages` - id, childId (FK), senderName, senderRole, content, status, createdAt

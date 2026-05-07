@@ -646,8 +646,12 @@ export default function ChildProfile() {
         : assignedSponsorUser.username)
     : (child.sponsorUserId ? "Assigned" : "Not linked");
 
+  const dobDisplay = child.dateOfBirth
+    ? new Date(child.dateOfBirth + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
+    : null;
+
   const infoItems = [
-    { icon: Calendar, label: "Age", value: `${child.age} years old` },
+    { icon: Calendar, label: "Date of Birth", value: dobDisplay ? `${dobDisplay} · ${child.age} yrs` : `${child.age} years old` },
     { icon: User, label: "Gender", value: child.gender },
     { icon: MapPin, label: "Location", value: child.location },
     { icon: BookOpen, label: "Program", value: child.programEnrollment },

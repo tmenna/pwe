@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
@@ -24,10 +24,20 @@ type SafeUser = {
   role: string;
 };
 
+function calcAge(dob: string): number {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return Math.max(0, age);
+}
+
 const childFormSchema = z.object({
   childId: z.string().min(1, "Child ID is required"),
   fullName: z.string().min(1, "Full name is required"),
-  age: z.coerce.number().min(0, "Age must be 0 or greater").max(25, "Age must be 25 or less"),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  age: z.coerce.number().min(0).max(100),
   gender: z.string().min(1, "Gender is required"),
   location: z.string().min(1, "Location is required"),
   programEnrollment: z.string().optional().default(""),
@@ -85,6 +95,7 @@ export default function ChildForm() {
     defaultValues: {
       childId: "",
       fullName: "",
+      dateOfBirth: "",
       age: 0,
       gender: "",
       location: "",
@@ -101,6 +112,7 @@ export default function ChildForm() {
       ? {
           childId: existingChild.childId,
           fullName: existingChild.fullName,
+          dateOfBirth: existingChild.dateOfBirth || "",
           age: existingChild.age,
           gender: existingChild.gender,
           location: existingChild.location,
@@ -134,7 +146,15 @@ export default function ChildForm() {
     },
   });
 
-  const onSubmit = (values: ChildFormValues) => mutation.mutate(values);
+  const watchedDob = useWatch({ control: form.control, name: "dateOfBirth" });
+  const computedAge = watchedDob ? calcAge(watchedDob) : null;
+
+  const onSubmit = (values: ChildFormValues) => {
+    if (values.dateOfBirth) {
+      values.age = calcAge(values.dateOfBirth);
+    }
+    mutation.mutate(values);
+  };
 
   if (isEdit && loadingChild) {
     return (
@@ -189,12 +209,26 @@ export default function ChildForm() {
               </div>
 
               <div className="grid gap-6 sm:grid-cols-3">
-                <FormField control={form.control} name="age" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium">Age</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} max={25} className="h-11 rounded-lg border-border/60" {...field} data-testid="input-age" />
-                    </FormControl>
+                <FormField control={form.control} name="dateOfBirth" render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel className="text-sm font-medium">Date of Birth</FormLabel>
+                    <div className="flex items-center gap-3">
+                      <FormControl>
+                        <Input
+                          type="date"
+                          max={new Date().toISOString().split("T")[0]}
+                          className="h-11 rounded-lg border-border/60 flex-1"
+                          {...field}
+                          data-testid="input-date-of-birth"
+                        />
+                      </FormControl>
+                      {computedAge !== null && (
+                        <div className="flex items-center gap-1.5 shrink-0 rounded-lg bg-primary/8 border border-primary/20 px-3 h-11">
+                          <span className="text-lg font-bold text-primary leading-none">{computedAge}</span>
+                          <span className="text-xs text-primary/70 leading-none">yrs</span>
+                        </div>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )} />

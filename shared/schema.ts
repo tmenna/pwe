@@ -17,6 +17,7 @@ export const children = pgTable("children", {
   childId: varchar("child_id", { length: 20 }).notNull().unique(),
   fullName: text("full_name").notNull(),
   age: integer("age").notNull(),
+  dateOfBirth: text("date_of_birth"),
   gender: varchar("gender", { length: 20 }).notNull(),
   location: text("location").notNull(),
   programEnrollment: text("program_enrollment").notNull(),
