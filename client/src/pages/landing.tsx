@@ -231,9 +231,9 @@ export default function LandingPage() {
                     <div className="flex items-start gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20 p-4">
                       <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Reset link sent</p>
+                        <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Temporary password sent</p>
                         <p className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">
-                          If that username has an email on file, you'll receive a link shortly. Check your inbox and spam folder.
+                          If that username has an email on file, a temporary password has been sent. Use it to sign in, then change your password from your profile settings.
                         </p>
                       </div>
                     </div>

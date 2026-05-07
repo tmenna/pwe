@@ -43,7 +43,7 @@ const isAdmin = async (req: any, res: any, next: any) => {
 };
 
 export function registerUserRoutes(app: Express): void {
-  // ── Public: request a password reset link ──────────────────────────────
+  // ── Public: forgot password — generates a temporary password and emails it ─
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
       const { username } = req.body;
@@ -53,17 +53,23 @@ export function registerUserRoutes(app: Express): void {
       if (user) {
         const recipientEmail = user.email || (user.username.includes("@") ? user.username : null);
         if (recipientEmail) {
-          const token = crypto.randomBytes(32).toString("hex");
-          resetTokens.set(token, { userId: user.id, expiry: Date.now() + 60 * 60 * 1000 });
+          const tempPassword = generateRandomPassword();
+          const hashedPassword = await bcrypt.hash(tempPassword, 10);
+          await authStorage.updateUser(user.id, { hashedPassword });
           const name = user.firstName && user.lastName
             ? `${user.firstName} ${user.lastName}`
             : user.username;
-          await sendPasswordResetEmail({ recipientEmail, recipientName: name, resetToken: token });
-          console.log(`[forgot-password] Reset link sent to ${recipientEmail}`);
+          await sendAdminPasswordResetEmail({
+            recipientEmail,
+            recipientName: name,
+            username: user.username,
+            newPassword: tempPassword,
+          });
+          console.log(`[forgot-password] Temporary password sent to ${recipientEmail}`);
         }
       }
       // Always return success — never reveal whether account exists
-      res.json({ message: "If that username has an email address on file, a reset link has been sent." });
+      res.json({ message: "If that username has an email address on file, a temporary password has been sent." });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
