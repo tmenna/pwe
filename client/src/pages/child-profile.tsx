@@ -630,9 +630,10 @@ export default function ChildProfile() {
 
   const initials = child.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2);
 
-  const orgName = child.organizationId && organizations
-    ? organizations.find((o) => o.id === child.organizationId)?.name || "Unknown"
-    : "Not assigned";
+  const orgObject = child.organizationId && organizations
+    ? organizations.find((o) => o.id === child.organizationId) || null
+    : null;
+  const orgName = orgObject ? orgObject.name : "Not assigned";
 
   const assignedSponsorUser = child.sponsorUserId && allUsers
     ? allUsers.find((u) => u.id === child.sponsorUserId)
@@ -849,6 +850,31 @@ export default function ChildProfile() {
               );
             })}
           </div>
+
+          {/* Organization summary */}
+          {orgObject && (
+            <>
+              <Separator className="my-6 opacity-50" />
+              <div className="flex items-start gap-4 rounded-xl border border-orange-100 dark:border-orange-500/20 bg-orange-50/60 dark:bg-orange-500/6 px-5 py-4" data-testid="section-org-summary">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-500/15">
+                  <Building2 className="h-5 w-5 text-orange-500 dark:text-orange-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-orange-500/80 dark:text-orange-400/70 mb-0.5">
+                    Program / Organization
+                  </p>
+                  <p className="text-sm font-semibold text-orange-900 dark:text-orange-200" data-testid="text-org-summary-name">
+                    {orgObject.name}
+                  </p>
+                  {orgObject.description && (
+                    <p className="mt-1 text-sm text-orange-800/70 dark:text-orange-300/70 leading-relaxed" data-testid="text-org-summary-description">
+                      {orgObject.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </Card>
 
         <Tabs defaultValue="documents" className="mt-7" onValueChange={(v) => {
