@@ -260,16 +260,6 @@ export default function ChildForm() {
 
               <div className="h-px bg-border/40" />
 
-              <FormField control={form.control} name="assignedSponsors" render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium">Assigned Sponsor(s)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Optional" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-sponsors" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
               <FormField control={form.control} name="isSponsored" render={({ field }) => (
                 <FormItem className="flex items-center justify-between rounded-lg border border-border/60 p-4">
                   <div>
