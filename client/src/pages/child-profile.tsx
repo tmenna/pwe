@@ -141,9 +141,9 @@ function TimelineIcon({ type }: { type: string }) {
   );
 }
 
-function UploadDocumentDialog({ childId, onClose }: { childId: number; onClose: () => void }) {
+function UploadDocumentDialog({ childId, onClose, photoOnly }: { childId: number; onClose: () => void; photoOnly?: boolean }) {
   const [file, setFile] = useState<File | null>(null);
-  const [docType, setDocType] = useState("");
+  const [docType, setDocType] = useState(photoOnly ? "photos" : "");
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
@@ -191,23 +191,24 @@ function UploadDocumentDialog({ childId, onClose }: { childId: number; onClose: 
 
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Document Type</Label>
-        <Select value={docType} onValueChange={setDocType}>
-          <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-doc-type">
-            <SelectValue placeholder="Select type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="education">Education</SelectItem>
-            <SelectItem value="report_cards">Report Cards</SelectItem>
-            <SelectItem value="attendance">Attendance Records</SelectItem>
-            <SelectItem value="case_notes">Case Notes</SelectItem>
-            <SelectItem value="social_worker_notes">Social Worker Notes</SelectItem>
-            <SelectItem value="follow_up_reports">Follow-up Reports</SelectItem>
-            <SelectItem value="photos">Photos</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {!photoOnly && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Document Type</Label>
+          <Select value={docType} onValueChange={setDocType}>
+            <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-doc-type">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="education">Education</SelectItem>
+              <SelectItem value="report_cards">Report Cards</SelectItem>
+              <SelectItem value="attendance">Attendance Records</SelectItem>
+              <SelectItem value="case_notes">Case Notes</SelectItem>
+              <SelectItem value="social_worker_notes">Social Worker Notes</SelectItem>
+              <SelectItem value="follow_up_reports">Follow-up Reports</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="space-y-2">
         <Label className="text-sm font-medium">File</Label>
         <Input
@@ -361,6 +362,7 @@ export default function ChildProfile() {
   const [, navigate] = useLocation();
   const childId = params?.id;
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadPhotoOpen, setUploadPhotoOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -889,9 +891,9 @@ export default function ChildProfile() {
               <FileText className="mr-2 h-4 w-4" />
               Documents
             </TabsTrigger>
-            <TabsTrigger value="timeline" className="rounded-md" data-testid="tab-timeline">
-              <Clock className="mr-2 h-4 w-4" />
-              Timeline
+            <TabsTrigger value="photos" className="rounded-md" data-testid="tab-photos">
+              <Image className="mr-2 h-4 w-4" />
+              Photos
             </TabsTrigger>
             <TabsTrigger value="messages" className="rounded-md" data-testid="tab-messages">
               <MessageSquare className="mr-2 h-4 w-4" />
@@ -901,6 +903,10 @@ export default function ChildProfile() {
                   {unreadCommentCount}
                 </span>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="rounded-md" data-testid="tab-timeline">
+              <Clock className="mr-2 h-4 w-4" />
+              Timeline
             </TabsTrigger>
           </TabsList>
 
@@ -932,7 +938,7 @@ export default function ChildProfile() {
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
               </div>
-            ) : !documents?.length ? (
+            ) : !documents?.filter(d => d.documentType !== "photos").length ? (
               <Card className="flex flex-col items-center justify-center p-14 text-center border-border/50">
                 <FileText className="mb-3 h-10 w-10 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
@@ -944,7 +950,7 @@ export default function ChildProfile() {
               </Card>
             ) : (
               <div className="space-y-2.5">
-                {documents.map((doc) => (
+                {documents.filter(d => d.documentType !== "photos").map((doc) => (
                   <Card key={doc.id} className="flex items-center gap-4 p-4 border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`doc-item-${doc.id}`}>
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
                       <DocumentIcon type={doc.documentType} />
@@ -1004,6 +1010,100 @@ export default function ChildProfile() {
                       )}
                     </div>
                   </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="photos" className="mt-5">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
+                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
+                Photos
+              </h2>
+              {canEdit && (
+                <Dialog open={uploadPhotoOpen} onOpenChange={setUploadPhotoOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="rounded-lg shadow-sm" data-testid="button-upload-photo-doc">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Photo
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Upload Photo</DialogTitle>
+                    </DialogHeader>
+                    <UploadDocumentDialog childId={child.id} onClose={() => setUploadPhotoOpen(false)} photoOnly />
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+
+            {docsLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[...Array(6)].map((_, i) => <Skeleton key={i} className="aspect-square rounded-xl" />)}
+              </div>
+            ) : !documents?.filter(d => d.documentType === "photos").length ? (
+              <Card className="flex flex-col items-center justify-center p-14 text-center border-border/50">
+                <Image className="mb-3 h-10 w-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">No photos uploaded yet</p>
+                {canEdit && (
+                  <Button variant="outline" size="sm" className="mt-4 rounded-lg" onClick={() => setUploadPhotoOpen(true)}>
+                    Upload First Photo
+                  </Button>
+                )}
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {documents.filter(d => d.documentType === "photos").map((doc) => (
+                  <div key={doc.id} className="group relative aspect-square rounded-xl overflow-hidden border border-border/50 bg-muted/30" data-testid={`photo-item-${doc.id}`}>
+                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={doc.fileUrl}
+                        alt={doc.description || doc.fileName}
+                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                          (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = "flex";
+                        }}
+                      />
+                      <div className="hidden h-full w-full items-center justify-center">
+                        <Image className="h-8 w-8 text-muted-foreground/40" />
+                      </div>
+                    </a>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-xs text-white truncate">{doc.description || doc.fileName}</p>
+                    </div>
+                    {canEdit && (
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg bg-black/40 hover:bg-destructive text-white" data-testid={`button-delete-photo-${doc.id}`}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently remove <strong>{doc.fileName}</strong>. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="rounded-lg">Keep it</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteMutation.mutate(doc.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg"
+                                data-testid={`button-confirm-delete-photo-${doc.id}`}
+                              >
+                                Yes, delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
