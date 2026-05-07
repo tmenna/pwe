@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
+import ResetPasswordPage from "@/pages/reset-password";
 import Dashboard from "@/pages/dashboard";
 import ChildrenList from "@/pages/children-list";
 import ChildForm from "@/pages/child-form";
@@ -99,6 +100,9 @@ function AppContent() {
   }
 
   if (!user) {
+    if (location.startsWith("/reset-password")) {
+      return <ResetPasswordPage />;
+    }
     return <LandingPage />;
   }
 

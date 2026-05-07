@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Lock, AlertCircle, ArrowRight, Heart } from "lucide-react";
+import { Shield, Lock, AlertCircle, ArrowRight, Heart, Mail, CheckCircle2, ArrowLeft } from "lucide-react";
 import pweLogo from "@assets/pwe-large-logo_1772038246752.jpg";
 
 declare global {
@@ -53,8 +53,33 @@ function useRecaptcha() {
 export default function LandingPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState("");
   const queryClient = useQueryClient();
   const { siteKey, getToken } = useRecaptcha();
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    setForgotLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: forgotEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Request failed");
+      setForgotSent(true);
+    } catch (err: any) {
+      setForgotError(err.message);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -129,54 +154,140 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {loginMutation.isError && (
-                <div className="flex items-center gap-2.5 rounded-xl bg-destructive/8 p-3.5 text-sm text-destructive border border-destructive/10" data-testid="text-login-error">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{loginMutation.error?.message}</span>
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm font-medium">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your email address"
-                  required
-                  autoFocus
-                  className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4"
-                  data-testid="input-username"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                  className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4"
-                  data-testid="input-password"
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full h-11 rounded-lg text-[15px] font-medium shadow-md hover:shadow-lg transition-all bg-[#66DAB5] hover:bg-[#55c9a4] text-white"
-                disabled={loginMutation.isPending}
-                data-testid="button-login"
-              >
-                {loginMutation.isPending ? "Signing in..." : (
-                  <>
-                    Sign In
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
+            {!showForgot ? (
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {loginMutation.isError && (
+                  <div className="flex items-center gap-2.5 rounded-xl bg-destructive/8 p-3.5 text-sm text-destructive border border-destructive/10" data-testid="text-login-error">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <span>{loginMutation.error?.message}</span>
+                  </div>
                 )}
-              </Button>
-            </form>
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-sm font-medium">Username</Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your email address"
+                    required
+                    autoFocus
+                    className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4"
+                    data-testid="input-username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                    <button
+                      type="button"
+                      onClick={() => { setShowForgot(true); setForgotEmail(username); }}
+                      className="text-xs text-[#4ec9a0] hover:text-[#3ab88f] transition-colors font-medium"
+                      data-testid="button-forgot-password"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4"
+                    data-testid="input-password"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full h-11 rounded-lg text-[15px] font-medium shadow-md hover:shadow-lg transition-all bg-[#66DAB5] hover:bg-[#55c9a4] text-white"
+                  disabled={loginMutation.isPending}
+                  data-testid="button-login"
+                >
+                  {loginMutation.isPending ? "Signing in..." : (
+                    <>
+                      Sign In
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-5">
+                {/* Header */}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#66DAB5]/12">
+                    <Mail className="h-4 w-4 text-[#4ec9a0]" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-semibold">Reset your password</h3>
+                    <p className="text-xs text-muted-foreground">We'll send a reset link to your email</p>
+                  </div>
+                </div>
+
+                {forgotSent ? (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20 p-4">
+                      <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Reset link sent</p>
+                        <p className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">
+                          If that username has an email on file, you'll receive a link shortly. Check your inbox and spam folder.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setShowForgot(false); setForgotSent(false); setForgotEmail(""); }}
+                      className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      data-testid="button-back-to-login"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      Back to login
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotSubmit} className="space-y-4">
+                    {forgotError && (
+                      <div className="flex items-center gap-2.5 rounded-xl bg-destructive/8 p-3.5 text-sm text-destructive border border-destructive/10">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                        <span>{forgotError}</span>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Username or Email</Label>
+                      <Input
+                        type="text"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="Enter your username or email"
+                        required
+                        autoFocus
+                        className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4"
+                        data-testid="input-forgot-email"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full h-11 rounded-lg text-[15px] font-medium shadow-md hover:shadow-lg transition-all bg-[#66DAB5] hover:bg-[#55c9a4] text-white"
+                      disabled={forgotLoading}
+                      data-testid="button-send-reset-link"
+                    >
+                      {forgotLoading ? "Sending..." : "Send Reset Link"}
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowForgot(false); setForgotError(""); }}
+                      className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      Back to login
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

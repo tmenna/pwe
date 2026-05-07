@@ -3,8 +3,19 @@ import { authStorage } from "./storage";
 import { isAuthenticated } from "./session";
 import { createUserSchema, updateUserSchema } from "@shared/models/auth";
 import bcrypt from "bcryptjs";
-import { sendUserWelcomeEmail, sendAdminPasswordResetEmail, sendTestEmail } from "../services/email";
+import crypto from "crypto";
+import { sendUserWelcomeEmail, sendAdminPasswordResetEmail, sendTestEmail, sendPasswordResetEmail } from "../services/email";
 import { jobQueue } from "../services/jobs";
+
+// In-memory store for password reset tokens: token → { userId, expiry }
+const resetTokens = new Map<string, { userId: string; expiry: number }>();
+// Clean up expired tokens every 15 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of resetTokens.entries()) {
+    if (data.expiry < now) resetTokens.delete(token);
+  }
+}, 15 * 60 * 1000);
 
 function generateRandomPassword(): string {
   const upper  = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -32,6 +43,54 @@ const isAdmin = async (req: any, res: any, next: any) => {
 };
 
 export function registerUserRoutes(app: Express): void {
+  // ── Public: request a password reset link ──────────────────────────────
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { username } = req.body;
+      if (!username) return res.status(400).json({ message: "Username is required" });
+
+      const user = await authStorage.getUserByUsername(username.trim());
+      if (user) {
+        const recipientEmail = user.email || (user.username.includes("@") ? user.username : null);
+        if (recipientEmail) {
+          const token = crypto.randomBytes(32).toString("hex");
+          resetTokens.set(token, { userId: user.id, expiry: Date.now() + 60 * 60 * 1000 });
+          const name = user.firstName && user.lastName
+            ? `${user.firstName} ${user.lastName}`
+            : user.username;
+          await sendPasswordResetEmail({ recipientEmail, recipientName: name, resetToken: token });
+          console.log(`[forgot-password] Reset link sent to ${recipientEmail}`);
+        }
+      }
+      // Always return success — never reveal whether account exists
+      res.json({ message: "If that username has an email address on file, a reset link has been sent." });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ── Public: complete password reset with token ─────────────────────────
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) return res.status(400).json({ message: "Token and new password are required" });
+      if (newPassword.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters" });
+
+      const data = resetTokens.get(token);
+      if (!data || data.expiry < Date.now()) {
+        return res.status(400).json({ message: "This reset link is invalid or has expired. Please request a new one." });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await authStorage.updateUser(data.userId, { hashedPassword });
+      resetTokens.delete(token);
+      console.log(`[reset-password] Password reset successfully for userId ${data.userId}`);
+      res.json({ message: "Password reset successfully. You can now log in with your new password." });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Self-service: any logged-in user can update their own username and/or password
   app.patch("/api/auth/profile", isAuthenticated, async (req: any, res) => {
     try {
