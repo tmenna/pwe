@@ -9,11 +9,11 @@ export async function seedDatabase() {
   if (Number(existingOrgs[0].count) === 0) {
     console.log("Seeding organizations...");
     await db.insert(organizations).values([
-      { name: "Bright Future", description: null },
+      { name: "Bridging opportunity for all", description: null },
       { name: "I Care", description: null },
       { name: "Hope Sponsorship", description: null },
     ]);
-    console.log("Organizations seeded (Bright Future, I Care, Hope Sponsorship)");
+    console.log("Organizations seeded (Bridging opportunity for all, I Care, Hope Sponsorship)");
   }
 
   const existingUsers = await db.select({ count: sql<number>`count(*)` }).from(users);
