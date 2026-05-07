@@ -30,7 +30,7 @@ const childFormSchema = z.object({
   age: z.coerce.number().min(0, "Age must be 0 or greater").max(25, "Age must be 25 or less"),
   gender: z.string().min(1, "Gender is required"),
   location: z.string().min(1, "Location is required"),
-  programEnrollment: z.string().min(1, "Program enrollment is required"),
+  programEnrollment: z.string().optional().default(""),
   assignedSponsors: z.string().optional(),
   isSponsored: z.boolean().default(false),
   assignedCaseWorker: z.string().min(1, "Case worker is required"),
@@ -239,19 +239,21 @@ export default function ChildForm() {
               <FormField control={form.control} name="location" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm font-medium">Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Region / City" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-location" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <FormField control={form.control} name="programEnrollment" render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium">Program Enrollment</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Primary School, Accelerated Learning" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-program" />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-location">
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Dale">Dale</SelectItem>
+                      <SelectItem value="Shano">Shano</SelectItem>
+                      <SelectItem value="Boricha">Boricha</SelectItem>
+                      <SelectItem value="Addis Ababa">Addis Ababa</SelectItem>
+                      <SelectItem value="Hawassa">Hawassa</SelectItem>
+                      <SelectItem value="Gillo Bisare">Gillo Bisare</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -322,30 +324,37 @@ export default function ChildForm() {
                 </FormItem>
               )} />
 
-              {organizations && organizations.length > 0 && (
-                <FormField control={form.control} name="organizationId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium">Organization</FormLabel>
-                    <Select
-                      onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))}
-                      value={field.value ? String(field.value) : "none"}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-organization">
-                          <SelectValue placeholder="Select organization" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">No Organization</SelectItem>
-                        {organizations.map((org) => (
-                          <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              )}
+              <FormField control={form.control} name="organizationId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">Program Enrollment</FormLabel>
+                  <Select
+                    onValueChange={(val) => {
+                      if (val === "none") {
+                        field.onChange(null);
+                        form.setValue("programEnrollment", "");
+                      } else {
+                        field.onChange(parseInt(val));
+                        const org = organizations?.find((o) => o.id === parseInt(val));
+                        if (org) form.setValue("programEnrollment", org.name);
+                      }
+                    }}
+                    value={field.value ? String(field.value) : "none"}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-organization">
+                        <SelectValue placeholder="Select program" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">No Program</SelectItem>
+                      {(organizations || []).map((org) => (
+                        <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
 
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem>
