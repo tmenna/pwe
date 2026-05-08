@@ -918,7 +918,7 @@ export default function ChildProfile() {
                     {orgObject.name}
                   </p>
                   {orgObject.description && (
-                    <p className="mt-1 text-sm text-orange-800/70 dark:text-orange-300/70 leading-relaxed" data-testid="text-org-summary-description">
+                    <p className="mt-1 text-sm text-orange-800/70 dark:text-orange-300/70 leading-relaxed line-clamp-2" data-testid="text-org-summary-description">
                       {orgObject.description}
                     </p>
                   )}
