@@ -391,30 +391,34 @@ function ChildPortal({ child }: { child: Child }) {
           </Card>
         </div>
 
-        {/* Tabs: Progress / Documents / Messages */}
-        <Tabs defaultValue="progress" className="space-y-4">
+        {/* Tabs: Documents / Photos / Comments / Timeline */}
+        <Tabs defaultValue="documents" className="space-y-4">
           <TabsList className="rounded-lg border border-border/50 bg-muted/40 p-1 h-auto gap-1">
-            <TabsTrigger value="progress" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-progress">
-              <Milestone className="mr-2 h-3.5 w-3.5" />
-              Progress
-            </TabsTrigger>
             <TabsTrigger value="documents" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-documents">
               <FileText className="mr-2 h-3.5 w-3.5" />
               Documents
+            </TabsTrigger>
+            <TabsTrigger value="photos" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-photos">
+              <Image className="mr-2 h-3.5 w-3.5" />
+              Photos
             </TabsTrigger>
             <TabsTrigger value="messages" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-messages">
               <MessageSquare className="mr-2 h-3.5 w-3.5" />
               Comments
             </TabsTrigger>
+            <TabsTrigger value="timeline" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-timeline">
+              <Milestone className="mr-2 h-3.5 w-3.5" />
+              Timeline
+            </TabsTrigger>
           </TabsList>
 
-          {/* Progress Tab */}
-          <TabsContent value="progress">
+          {/* Timeline Tab */}
+          <TabsContent value="timeline">
             <Card className="border-border/50">
               <div className="p-6">
                 <h3 className="text-[15px] font-semibold flex items-center gap-2.5 mb-5">
                   <span className="inline-block w-1 h-5 rounded-full bg-emerald-500" />
-                  Progress &amp; Updates
+                  Progress Timeline
                 </h3>
                 {timelineLoading ? (
                   <div className="space-y-4">
@@ -468,7 +472,7 @@ function ChildPortal({ child }: { child: Child }) {
                   <div className="space-y-3">
                     {[1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
                   </div>
-                ) : !documents?.length ? (
+                ) : !documents?.filter(d => d.documentType !== "photos").length ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted mb-3">
                       <FileText className="h-5 w-5 text-muted-foreground" />
@@ -478,7 +482,7 @@ function ChildPortal({ child }: { child: Child }) {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {documents.map((doc) => (
+                    {documents.filter(d => d.documentType !== "photos").map((doc) => (
                       <a
                         key={doc.id}
                         href={doc.fileUrl}
@@ -503,6 +507,70 @@ function ChildPortal({ child }: { child: Child }) {
                           {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                         </p>
                       </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Photos Tab */}
+          <TabsContent value="photos">
+            <Card className="border-border/50">
+              <div className="p-6">
+                <h3 className="text-[15px] font-semibold flex items-center gap-2.5 mb-5">
+                  <span className="inline-block w-1 h-5 rounded-full bg-primary" />
+                  Photos
+                </h3>
+                {docsLoading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="aspect-video rounded-xl" />)}
+                  </div>
+                ) : !documents?.filter(d => d.documentType === "photos").length ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted mb-3">
+                      <Image className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">No photos yet</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Photos will appear here as the care team uploads them</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {documents.filter(d => d.documentType === "photos").map((doc) => (
+                      <div key={doc.id} className="rounded-xl overflow-hidden border border-border/50 hover:shadow-md transition-shadow duration-150" data-testid={`photo-item-${doc.id}`}>
+                        <div className="relative aspect-video bg-muted/30">
+                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="block h-full w-full">
+                            <img
+                              src={doc.fileUrl}
+                              alt={doc.description || doc.fileName}
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display = "none";
+                                (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = "flex";
+                              }}
+                            />
+                            <div className="hidden h-full w-full items-center justify-center">
+                              <Image className="h-8 w-8 text-muted-foreground/40" />
+                            </div>
+                          </a>
+                          {doc.uploadedAt && (
+                            <div className="absolute bottom-0 inset-x-0 px-2.5 py-2 pointer-events-none">
+                              <span className="inline-flex items-center rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground shadow">
+                                Update {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }).replace(/\//g, "-")}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <User className="h-3 w-3 shrink-0" />
+                            <span className="truncate">Uploaded by {doc.uploadedBy}</span>
+                          </div>
+                          {doc.description && (
+                            <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/40 pt-1.5">{doc.description}</p>
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}

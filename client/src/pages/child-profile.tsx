@@ -659,7 +659,6 @@ export default function ChildProfile() {
     { icon: User, label: "Sponsor(s)", value: child.assignedSponsors || "None assigned" },
     { icon: Heart, label: "Sponsor", value: assignedSponsorName, color: child.sponsorUserId ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground" },
     { icon: Heart, label: "Sponsored", value: child.isSponsored ? "Yes" : "No", color: child.isSponsored ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground" },
-    { icon: Building2, label: "Organization", value: orgName, color: child.organizationId ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground" },
   ];
 
   const archivedAt = child.archivedAt ? new Date(child.archivedAt as unknown as string) : null;
