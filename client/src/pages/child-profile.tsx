@@ -870,7 +870,7 @@ export default function ChildProfile() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-orange-500/80 dark:text-orange-400/70 mb-0.5">
-                    Program / Organization
+                    Program
                   </p>
                   <p className="text-sm font-semibold text-orange-900 dark:text-orange-200" data-testid="text-org-summary-name">
                     {orgObject.name}

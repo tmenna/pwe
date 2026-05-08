@@ -52,7 +52,7 @@ const navItems: NavItem[] = [
 
 const adminNavItems: NavItem[] = [
   {
-    title: "Organizations",
+    title: "Programs",
     url: "/organizations",
     icon: Building2,
     iconBg: "bg-orange-50 dark:bg-orange-500/12",
