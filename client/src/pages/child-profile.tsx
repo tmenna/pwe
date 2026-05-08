@@ -1080,6 +1080,15 @@ export default function ChildProfile() {
                           <Image className="h-8 w-8 text-muted-foreground/40" />
                         </div>
                       </a>
+                      {/* Date overlay at bottom */}
+                      {doc.uploadedAt && (
+                        <div className="absolute bottom-0 inset-x-0 px-2.5 py-2 pointer-events-none">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground shadow">
+                            Update {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }).replace(/\//g, "-")}
+                          </span>
+                        </div>
+                      )}
+
                       {canEdit && (
                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <AlertDialog>
@@ -1114,11 +1123,8 @@ export default function ChildProfile() {
                     {/* Metadata + description */}
                     <div className="p-3 space-y-2.5">
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <Calendar className="h-3 w-3 shrink-0" />
-                        <span>{doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—"}</span>
-                        <span className="mx-0.5">·</span>
                         <User className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{doc.uploadedBy}</span>
+                        <span className="truncate">Uploaded by {doc.uploadedBy}</span>
                       </div>
                       <div className="border-t border-border/40 pt-2.5">
                         <InlineEditableText
