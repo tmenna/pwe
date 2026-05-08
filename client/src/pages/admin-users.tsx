@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2,
   Shield, Eye, Heart, Users, Baby, MessageSquare, Search, X, Check,
-  KeyRound, Copy, CheckCheck, Mail, MailX, SendHorizonal,
+  KeyRound, Copy, CheckCheck, Mail, MailX, SendHorizonal, Download, MapPin,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
@@ -28,6 +28,9 @@ type SafeUser = {
   email: string | null;
   role: string;
   organizationId: number | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -75,6 +78,9 @@ type EditForm = {
   organizationId: string;
   sponsorChildIds: number[];
   sponsorCommentingMap: Record<number, boolean>;
+  city: string;
+  state: string;
+  zipCode: string;
 };
 
 type CreateForm = {
@@ -86,16 +92,21 @@ type CreateForm = {
   organizationId: string;
   sponsorChildIds: number[];
   sponsorCommentingMap: Record<number, boolean>;
+  city: string;
+  state: string;
+  zipCode: string;
 };
 
 const emptyCreate: CreateForm = {
   username: "", password: "", firstName: "", lastName: "",
   role: "case_worker", organizationId: "", sponsorChildIds: [], sponsorCommentingMap: {},
+  city: "", state: "", zipCode: "",
 };
 
 const emptyEdit: EditForm = {
   username: "", firstName: "", lastName: "", role: "case_worker",
   password: "", organizationId: "", sponsorChildIds: [], sponsorCommentingMap: {},
+  city: "", state: "", zipCode: "",
 };
 
 export default function AdminUsers() {
@@ -107,6 +118,9 @@ export default function AdminUsers() {
   const [resetUser, setResetUser] = useState<SafeUser | null>(null);
   const [resetResult, setResetResult] = useState<{ newPassword: string; emailSent: boolean; emailError?: string; email: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
+  const [exportPending, setExportPending] = useState(false);
 
   const testEmailMutation = useMutation({
     mutationFn: async () => {
@@ -159,6 +173,9 @@ export default function AdminUsers() {
         email: form.username || null,
         role: form.role,
         organizationId: form.organizationId ? parseInt(form.organizationId) : null,
+        city: form.city || null,
+        state: form.state || null,
+        zipCode: form.zipCode || null,
       });
       const newUser = await res.json();
 
@@ -194,6 +211,9 @@ export default function AdminUsers() {
         email: editForm.username || null,
         role: editForm.role,
         organizationId: editForm.organizationId ? parseInt(editForm.organizationId) : null,
+        city: editForm.city || null,
+        state: editForm.state || null,
+        zipCode: editForm.zipCode || null,
       };
       if (editForm.password) body.password = editForm.password;
       await apiRequest("PATCH", `/api/users/${editUser!.id}`, body);
@@ -279,6 +299,9 @@ export default function AdminUsers() {
       organizationId: u.organizationId ? String(u.organizationId) : "",
       sponsorChildIds: assignedChildren.map((c) => c.id),
       sponsorCommentingMap: commentingMap,
+      city: u.city || "",
+      state: u.state || "",
+      zipCode: u.zipCode || "",
     });
   };
 
@@ -320,6 +343,16 @@ export default function AdminUsers() {
             >
               <SendHorizonal className="mr-1.5 h-3.5 w-3.5" />
               {testEmailMutation.isPending ? "Sending..." : "Test Email"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-lg h-9 px-3 border-border/60"
+              onClick={() => setExportOpen(true)}
+              data-testid="button-export-sponsors"
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Export Sponsors
             </Button>
             <Button
               size="sm"
@@ -520,6 +553,47 @@ export default function AdminUsers() {
                 </div>
               </div>
 
+              {form.role === "sponsor" && (
+                <div className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-4">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Address <span className="font-normal">(optional)</span>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">City</Label>
+                    <Input
+                      value={form.city}
+                      onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                      placeholder="e.g. Nashville"
+                      className="h-11 rounded-lg border-border/60"
+                      data-testid="input-new-city"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">State</Label>
+                      <Input
+                        value={form.state}
+                        onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
+                        placeholder="e.g. Tennessee"
+                        className="h-11 rounded-lg border-border/60"
+                        data-testid="input-new-state"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Zip Code</Label>
+                      <Input
+                        value={form.zipCode}
+                        onChange={(e) => setForm((f) => ({ ...f, zipCode: e.target.value }))}
+                        placeholder="e.g. 37201"
+                        className="h-11 rounded-lg border-border/60"
+                        data-testid="input-new-zipcode"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <Separator className="opacity-50" />
 
               <div className="space-y-2">
@@ -679,6 +753,47 @@ export default function AdminUsers() {
                   />
                 </div>
               </div>
+
+              {editForm.role === "sponsor" && (
+                <div className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-4">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Address <span className="font-normal">(optional)</span>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">City</Label>
+                    <Input
+                      value={editForm.city}
+                      onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+                      placeholder="e.g. Nashville"
+                      className="h-11 rounded-lg border-border/60"
+                      data-testid="input-edit-city"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">State</Label>
+                      <Input
+                        value={editForm.state}
+                        onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))}
+                        placeholder="e.g. Tennessee"
+                        className="h-11 rounded-lg border-border/60"
+                        data-testid="input-edit-state"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Zip Code</Label>
+                      <Input
+                        value={editForm.zipCode}
+                        onChange={(e) => setEditForm((f) => ({ ...f, zipCode: e.target.value }))}
+                        placeholder="e.g. 37201"
+                        className="h-11 rounded-lg border-border/60"
+                        data-testid="input-edit-zipcode"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <Separator className="opacity-50" />
 
@@ -925,6 +1040,69 @@ export default function AdminUsers() {
                 data-testid="button-confirm-delete-user"
               >
                 {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Export Sponsors dialog ────────────────── */}
+        <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Download className="h-4 w-4 text-primary" />
+                Export Sponsors
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Download a spreadsheet of all sponsors including their address and assigned children's profile data.
+              </p>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Format</Label>
+                <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "xlsx" | "csv")}>
+                  <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-export-format">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="xlsx">Excel (.xlsx)</SelectItem>
+                    <SelectItem value="csv">CSV (.csv)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" className="rounded-lg" onClick={() => setExportOpen(false)}>Cancel</Button>
+              <Button
+                className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={exportPending}
+                data-testid="button-confirm-export-sponsors"
+                onClick={async () => {
+                  setExportPending(true);
+                  try {
+                    const res = await fetch("/api/export/sponsors", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ format: exportFormat }),
+                    });
+                    if (!res.ok) throw new Error("Export failed");
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `sponsors-export.${exportFormat}`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    setExportOpen(false);
+                  } catch (err: any) {
+                    toast({ title: "Export failed", description: err.message, variant: "destructive" });
+                  } finally {
+                    setExportPending(false);
+                  }
+                }}
+              >
+                {exportPending ? "Exporting..." : "Download"}
               </Button>
             </DialogFooter>
           </DialogContent>

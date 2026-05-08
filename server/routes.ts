@@ -714,6 +714,74 @@ export async function registerRoutes(
     }
   });
 
+  // --- Export: Sponsors ---
+  app.post("/api/export/sponsors", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.currentUser?.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const { format = "xlsx" } = req.body;
+      const { db } = await import("./db");
+      const { users: usersTable } = await import("@shared/models/auth");
+      const { eq } = await import("drizzle-orm");
+
+      const sponsors = await db.select().from(usersTable).then((all) =>
+        all.filter((u) => u.role === "sponsor")
+      );
+      const allChildren = await storage.getChildren();
+
+      const rows: string[][] = [];
+      const headers = [
+        "First Name", "Last Name", "Email", "City", "State", "Zip Code",
+        "Assigned Children", "Child Ages", "Child Locations", "Child Programs", "Child Statuses",
+      ];
+
+      for (const sponsor of sponsors) {
+        const assigned = allChildren.filter((c) => c.sponsorUserId === sponsor.id);
+        rows.push([
+          sponsor.firstName || "",
+          sponsor.lastName || "",
+          sponsor.email || sponsor.username,
+          sponsor.city || "",
+          sponsor.state || "",
+          sponsor.zipCode || "",
+          assigned.map((c) => c.fullName).join("; "),
+          assigned.map((c) => String(c.age)).join("; "),
+          assigned.map((c) => c.location).join("; "),
+          assigned.map((c) => c.programEnrollment || "").join("; "),
+          assigned.map((c) => c.status).join("; "),
+        ]);
+      }
+
+      if (format === "csv") {
+        const escapeCsv = (val: string) => {
+          if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+            return `"${val.replace(/"/g, '""')}"`;
+          }
+          return val;
+        };
+        const csvContent = [
+          headers.map(escapeCsv).join(","),
+          ...rows.map((row) => row.map(escapeCsv).join(",")),
+        ].join("\n");
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", "attachment; filename=sponsors-export.csv");
+        res.send(csvContent);
+      } else {
+        const XLSX = await import("xlsx");
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sponsors");
+        const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", "attachment; filename=sponsors-export.xlsx");
+        res.send(buffer);
+      }
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // --- Admin: test email endpoint ---
   app.post("/api/admin/test-email", isAuthenticated, async (req: any, res) => {
     try {

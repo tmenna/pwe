@@ -23,6 +23,9 @@ export const users = pgTable("users", {
   role: varchar("role", { length: 20 }).default("case_worker").notNull(),
   organizationId: integer("organization_id"),
   photoUrl: varchar("photo_url"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  zipCode: varchar("zip_code", { length: 20 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -47,6 +50,9 @@ export const createUserSchema = z.object({
   email: z.string().email().optional().nullable(),
   role: z.enum(["admin", "case_worker", "sponsor"]),
   organizationId: z.coerce.number().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  zipCode: z.string().optional().nullable(),
 });
 
 export const updateUserSchema = z.object({
@@ -57,6 +63,9 @@ export const updateUserSchema = z.object({
   role: z.enum(["admin", "case_worker", "sponsor"]).optional(),
   password: z.string().min(6).optional(),
   organizationId: z.coerce.number().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  zipCode: z.string().optional().nullable(),
 });
 
 export type UpsertUser = typeof users.$inferInsert;
