@@ -7,7 +7,7 @@ import {
   type Message, type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, count, and, isNull, isNotNull, lt } from "drizzle-orm";
+import { eq, desc, sql, count, and, isNull, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   getOrganizations(): Promise<Organization[]>;
@@ -24,7 +24,6 @@ export interface IStorage {
   deleteChild(id: number): Promise<void>;
   archiveChild(id: number): Promise<Child | undefined>;
   unarchiveChild(id: number): Promise<Child | undefined>;
-  purgeExpiredArchivedChildren(): Promise<number>;
 
   getDocumentsByChild(childId: number): Promise<Document[]>;
   getDocumentById(id: number): Promise<Document | undefined>;
@@ -128,15 +127,6 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  async purgeExpiredArchivedChildren(): Promise<number> {
-    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const expired = await db.select({ id: children.id }).from(children)
-      .where(and(isNotNull(children.archivedAt), lt(children.archivedAt, cutoff)));
-    for (const { id } of expired) {
-      await db.delete(children).where(eq(children.id, id));
-    }
-    return expired.length;
-  }
 
   async getDocumentsByChild(childId: number): Promise<Document[]> {
     return db.select().from(documents).where(eq(documents.childId, childId)).orderBy(desc(documents.uploadedAt));

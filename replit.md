@@ -25,7 +25,7 @@ A secure internal case-management portal for Partners with Ethiopia (PWE) to sto
 - **Export**: xlsx package for CSV/XLSX spreadsheet generation
 
 ## Key Features
-- Child Profiles (CRUD with status tracking: active/paused/exited, profile photo, sponsor photo, inline-editable description, archive with 30-day soft-delete)
+- Child Profiles (CRUD with status tracking: active/paused/exited, profile photo, sponsor photo, inline-editable description, permanent archive — hidden from active list until admin deletes or restores)
 - Sponsored/Non-Sponsored categorization with filtering and dashboard stats
 - Document Management (upload files linked to child profiles, 7 categories, delete confirmation dialog)
 - Progress Timeline (chronological feed of milestones and events)

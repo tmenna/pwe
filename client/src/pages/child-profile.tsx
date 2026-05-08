@@ -418,7 +418,7 @@ export default function ChildProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children", childId] });
       queryClient.invalidateQueries({ queryKey: ["/api/children"] });
-      toast({ title: "Profile archived", description: "This profile will be permanently deleted in 30 days. You can restore it at any time." });
+      toast({ title: "Profile archived", description: "This profile has been moved to the archive. It will remain there until an admin removes it." });
     },
     onError: (error: Error) => toast({ title: "Archive failed", description: error.message, variant: "destructive" }),
   });
@@ -662,9 +662,6 @@ export default function ChildProfile() {
   ];
 
   const archivedAt = child.archivedAt ? new Date(child.archivedAt as unknown as string) : null;
-  const daysLeft = archivedAt
-    ? Math.max(0, Math.ceil((archivedAt.getTime() + 30 * 24 * 60 * 60 * 1000 - Date.now()) / (24 * 60 * 60 * 1000)))
-    : null;
 
   return (
     <div className="flex-1 overflow-auto p-5 sm:p-8">
@@ -682,9 +679,7 @@ export default function ChildProfile() {
               <div>
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">This profile is archived</p>
                 <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
-                  {daysLeft === 0
-                    ? "Scheduled for permanent deletion today"
-                    : `Permanently deleted in ${daysLeft} day${daysLeft === 1 ? "" : "s"} · Archived on ${archivedAt!.toLocaleDateString()}`}
+                  Archived on {archivedAt!.toLocaleDateString()} · Only an admin can permanently delete this profile
                 </p>
               </div>
             </div>

@@ -135,16 +135,6 @@ export async function registerRoutes(
     }
   });
 
-  // --- Archive cleanup scheduler (runs every 6 hours) ---
-  setInterval(async () => {
-    try {
-      const purged = await storage.purgeExpiredArchivedChildren();
-      if (purged > 0) console.log(`[archive] Purged ${purged} expired archived child profile(s)`);
-    } catch (err: any) {
-      console.error("[archive] Purge job failed:", err?.message);
-    }
-  }, 6 * 60 * 60 * 1000);
-
   // --- Children ---
   app.get("/api/children/archived", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
@@ -166,7 +156,7 @@ export async function registerRoutes(
       await storage.createTimelineEntry({
         childId: id,
         title: "Profile archived",
-        description: `Archived by ${getUserName(req)} — will be permanently deleted after 30 days`,
+        description: `Archived by ${getUserName(req)}`,
         entryType: "status_change",
         createdBy: getUserName(req),
       });

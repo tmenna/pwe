@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "wouter";
-import { Plus, Search, Users, MapPin, Download, Heart, Building2, Archive, ArchiveRestore, Clock } from "lucide-react";
+import { Plus, Search, Users, MapPin, Download, Heart, Building2, Archive, ArchiveRestore } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,12 +30,6 @@ const EXPORT_FIELDS = [
   { key: "isSponsored", label: "Sponsored" },
 ] as const;
 
-function daysUntilDeletion(archivedAt: string | null): number {
-  if (!archivedAt) return 30;
-  const archived = new Date(archivedAt).getTime();
-  const deleteAt = archived + 30 * 24 * 60 * 60 * 1000;
-  return Math.max(0, Math.ceil((deleteAt - Date.now()) / (24 * 60 * 60 * 1000)));
-}
 
 function ExportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [selectedFields, setSelectedFields] = useState<string[]>(EXPORT_FIELDS.map((f) => f.key));
@@ -324,9 +318,9 @@ export default function ChildrenList() {
         {/* Archive notice */}
         {view === "archived" && (
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50 dark:bg-amber-500/8 dark:border-amber-500/20 px-4 py-3">
-            <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <Archive className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <p className="text-sm text-amber-800 dark:text-amber-300">
-              Archived profiles are kept for <strong>30 days</strong> before being permanently deleted. Restore a profile at any time to cancel deletion.
+              Archived profiles are hidden from the active list and preserved indefinitely. Only an admin can permanently delete or restore them.
             </p>
           </div>
         )}
@@ -419,7 +413,6 @@ export default function ChildrenList() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
               {filteredArchived.map((child) => {
-                const days = daysUntilDeletion(child.archivedAt as unknown as string);
                 return (
                   <Card key={child.id} className="p-5 border-border/50 opacity-80" data-testid={`card-archived-${child.id}`}>
                     <div className="flex items-start gap-3">
@@ -437,17 +430,9 @@ export default function ChildrenList() {
                       </div>
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <div className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${
-                        days <= 3
-                          ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400"
-                          : days <= 7
-                          ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
-                          : "bg-muted text-muted-foreground"
-                      }`} data-testid={`badge-days-${child.id}`}>
-                        <Clock className="h-3 w-3" />
-                        {days === 0 ? "Deletes today" : `${days}d until deletion`}
-                      </div>
+                    <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground" data-testid={`badge-archived-date-${child.id}`}>
+                      <Archive className="h-3 w-3 shrink-0" />
+                      Archived {child.archivedAt ? new Date(child.archivedAt as unknown as string).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
                     </div>
 
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
