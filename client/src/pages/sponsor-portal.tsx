@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Heart, FileText, Image, StickyNote, GraduationCap, Clock, MessageSquare,
   Milestone, RefreshCw, MapPin, BookOpen, User, Calendar, Send, Mail,
-  Inbox, MessageCircleOff, ThumbsUp, CornerDownRight, Reply, X,
+  Inbox, MessageCircleOff, ThumbsUp, CornerDownRight, Reply, X, Camera,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -150,9 +150,51 @@ function ChildPortal({ child }: { child: Child }) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [myReactions, setMyReactions] = useState<Set<string>>(new Set());
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const sponsorName = user?.firstName && user?.lastName
     ? `${user.firstName} ${user.lastName}`
     : user?.username || "Sponsor";
+
+  const profilePhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      setPhotoUploading(true);
+      try {
+        // Step 1: Request upload slot
+        const slotRes = await fetch("/api/uploads/request-url", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+        });
+        if (!slotRes.ok) throw new Error("Failed to get upload URL");
+        const { uploadURL, objectPath } = await slotRes.json();
+        // Step 2: Upload file
+        const putRes = await fetch(uploadURL, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+        });
+        if (!putRes.ok) throw new Error("File upload failed");
+        // Step 3: Save to user profile
+        const saveRes = await fetch("/api/auth/profile/photo", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ objectPath }),
+        });
+        if (!saveRes.ok) throw new Error("Failed to save profile photo");
+        return saveRes.json();
+      } finally {
+        setPhotoUploading(false);
+      }
+    },
+    onSuccess: () => {
+      qClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Profile photo updated", description: "Your photo has been saved." });
+    },
+    onError: (e: Error) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
+  });
 
   const { data: timeline, isLoading: timelineLoading } = useQuery<TimelineEntry[]>({
     queryKey: ["/api/children", String(childId), "timeline"],
@@ -252,13 +294,56 @@ function ChildPortal({ child }: { child: Child }) {
 
         {/* Welcome Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]" data-testid="text-sponsor-welcome">
-              Welcome, {user?.firstName || sponsorName}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Here is the latest update from <span className="font-medium text-foreground">{child.fullName}</span>
-            </p>
+          <div className="flex items-center gap-4">
+            {/* Sponsor profile photo */}
+            <div className="relative shrink-0 group">
+              <Avatar className="h-14 w-14 ring-2 ring-border/40 shadow-sm">
+                {user?.photoUrl ? (
+                  <AvatarImage
+                    src={user.photoUrl.startsWith("/objects") ? user.photoUrl : `/objects/${user.photoUrl}`}
+                    alt={sponsorName}
+                    className="object-cover"
+                  />
+                ) : null}
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
+                  {sponsorName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <button
+                type="button"
+                onClick={() => profilePhotoInputRef.current?.click()}
+                disabled={photoUploading}
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                aria-label="Upload profile photo"
+                data-testid="button-upload-profile-photo"
+              >
+                {photoUploading ? (
+                  <RefreshCw className="h-4 w-4 text-white animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4 text-white" />
+                )}
+              </button>
+              <input
+                ref={profilePhotoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) profilePhotoMutation.mutate(file);
+                  e.target.value = "";
+                }}
+                data-testid="input-profile-photo"
+              />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]" data-testid="text-sponsor-welcome">
+                Welcome, {user?.firstName || sponsorName}
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Here is the latest update from <span className="font-medium text-foreground">{child.fullName}</span>
+              </p>
+            </div>
           </div>
           {child.sponsorCanComment ? (
             <SendMessageDialog childId={childId} sponsorName={sponsorName} onClose={() => {}} />

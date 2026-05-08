@@ -145,6 +145,21 @@ export function registerUserRoutes(app: Express): void {
     }
   });
 
+  // Self-service: any logged-in user can update their own profile photo
+  app.patch("/api/auth/profile/photo", isAuthenticated, async (req: any, res) => {
+    try {
+      const { objectPath } = req.body;
+      if (!objectPath) return res.status(400).json({ message: "objectPath is required" });
+      const photoUrl = objectPath.startsWith("/objects/") ? objectPath : `/objects/${objectPath}`;
+      const updated = await authStorage.updateUser(req.currentUser.id, { photoUrl });
+      if (!updated) return res.status(404).json({ message: "User not found" });
+      const { hashedPassword, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
       const { hashedPassword, ...safeUser } = req.currentUser;

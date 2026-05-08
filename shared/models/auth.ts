@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   email: varchar("email"),
   role: varchar("role", { length: 20 }).default("case_worker").notNull(),
   organizationId: integer("organization_id"),
+  photoUrl: varchar("photo_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
