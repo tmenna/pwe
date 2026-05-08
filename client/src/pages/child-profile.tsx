@@ -651,7 +651,7 @@ export default function ChildProfile() {
     : null;
 
   const infoItems = [
-    { icon: Calendar, label: "Date of Birth", value: dobDisplay ? `${dobDisplay} · ${child.age} yrs` : `${child.age} years old` },
+    { icon: Calendar, label: "Date of Birth", value: dobDisplay || `${child.age} years old`, subValue: dobDisplay ? `${child.age} yrs old` : undefined },
     { icon: User, label: "Gender", value: child.gender },
     { icon: MapPin, label: "Location", value: child.location },
     { icon: BookOpen, label: "Program", value: child.programEnrollment },
@@ -851,6 +851,9 @@ export default function ChildProfile() {
                   <div>
                     <p className="text-xs text-muted-foreground">{item.label}</p>
                     <p className={`text-sm font-medium capitalize mt-0.5 ${"color" in item && item.color ? item.color : ""}`}>{item.value}</p>
+                    {"subValue" in item && item.subValue && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.subValue}</p>
+                    )}
                   </div>
                 </div>
               );
