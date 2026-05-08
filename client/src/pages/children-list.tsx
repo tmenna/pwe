@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "wouter";
-import { Plus, Search, Users, MapPin, Download, Heart, Building2, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Search, Users, MapPin, Download, Heart, Building2, Archive, ArchiveRestore, Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "./dashboard";
@@ -129,6 +129,322 @@ function ExportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
   );
 }
 
+// ---------------------------------------------------------------------------
+// Column mapping from template headers → internal field keys
+// ---------------------------------------------------------------------------
+const HEADER_MAP: Record<string, string> = {
+  "full name": "fullName",
+  "date of birth (yyyy-mm-dd)": "dateOfBirth",
+  "age": "age",
+  "gender (male/female)": "gender",
+  "location": "location",
+  "program enrollment": "programEnrollment",
+  "assigned sponsors": "assignedSponsors",
+  "assigned case worker": "assignedCaseWorker",
+  "status (active/paused/exited)": "status",
+  "is sponsored (yes/no)": "isSponsored",
+  "description": "description",
+};
+
+interface ParsedRow {
+  [key: string]: string;
+}
+
+interface ImportResult {
+  success: number;
+  failed: number;
+  errors: string[];
+}
+
+function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [rows, setRows] = useState<ParsedRow[]>([]);
+  const [fileName, setFileName] = useState("");
+  const [parseError, setParseError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const reset = () => {
+    setRows([]);
+    setFileName("");
+    setParseError("");
+    setResult(null);
+    setDragging(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleClose = (v: boolean) => {
+    if (!v) reset();
+    onOpenChange(v);
+  };
+
+  const parseFile = async (file: File) => {
+    setParseError("");
+    setRows([]);
+    setResult(null);
+    setFileName(file.name);
+
+    try {
+      const XLSX = (await import("xlsx")).default ?? await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as string[][];
+
+      if (raw.length < 2) {
+        setParseError("The file appears to be empty or has only a header row.");
+        return;
+      }
+
+      // Row 0 = headers, Row 1 = notes (template) or data, Row 2+ = data
+      const headerRow = raw[0].map((h: string) => String(h).toLowerCase().trim());
+      const fieldKeys = headerRow.map((h) => HEADER_MAP[h] || h);
+
+      // Detect if row 1 is a notes/instructions row (starts with "REQUIRED" or "Optional")
+      const row1First = String(raw[1]?.[0] || "").trim().toUpperCase();
+      const dataStartRow = row1First.startsWith("REQUIRED") || row1First.startsWith("OPTIONAL") ? 2 : 1;
+
+      const parsed: ParsedRow[] = [];
+      for (let i = dataStartRow; i < raw.length; i++) {
+        const cells = raw[i];
+        if (cells.every((c: string) => String(c).trim() === "")) continue; // skip blank rows
+        const entry: ParsedRow = {};
+        fieldKeys.forEach((key, idx) => {
+          entry[key] = String(cells[idx] ?? "").trim();
+        });
+        parsed.push(entry);
+      }
+
+      if (parsed.length === 0) {
+        setParseError("No data rows found in the file.");
+        return;
+      }
+      setRows(parsed);
+    } catch (err: any) {
+      setParseError("Could not parse file: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) parseFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) parseFile(file);
+  };
+
+  const rowErrors = (row: ParsedRow) => {
+    const errs: string[] = [];
+    if (!row.fullName) errs.push("Full Name required");
+    if (!row.location) errs.push("Location required");
+    const age = parseInt(row.age);
+    if (isNaN(age) || age < 0) errs.push("Invalid age");
+    if (!["male", "female"].includes((row.gender || "").toLowerCase())) errs.push("Gender must be male or female");
+    if (!["active", "paused", "exited"].includes((row.status || "").toLowerCase())) errs.push("Status must be active, paused, or exited");
+    return errs;
+  };
+
+  const validRows = rows.filter((r) => rowErrors(r).length === 0);
+  const invalidRows = rows.filter((r) => rowErrors(r).length > 0);
+
+  const handleImport = async () => {
+    if (validRows.length === 0) return;
+    setImporting(true);
+    try {
+      const res = await apiRequest("POST", "/api/children/import", { rows: validRows });
+      const data: ImportResult = await res.json();
+      setResult(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      if (data.success > 0) {
+        toast({ title: "Import complete", description: `${data.success} child${data.success !== 1 ? "ren" : ""} added successfully.` });
+      }
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const previewCols = ["fullName", "age", "gender", "location", "status", "isSponsored"];
+  const previewLabels: Record<string, string> = {
+    fullName: "Full Name", age: "Age", gender: "Gender", location: "Location", status: "Status", isSponsored: "Sponsored",
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+            Bulk Import Children
+          </DialogTitle>
+        </DialogHeader>
+
+        {!result ? (
+          <div className="space-y-5">
+            {/* Upload area */}
+            {rows.length === 0 && (
+              <div
+                className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${
+                  dragging ? "border-primary bg-primary/5" : "border-border/60 hover:border-primary/50 hover:bg-muted/30"
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="import-drop-zone"
+              >
+                <Upload className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-sm font-medium mb-1">Drop your Excel or CSV file here</p>
+                <p className="text-xs text-muted-foreground">or click to browse — .xlsx, .xls, .csv supported</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={handleFileChange}
+                  data-testid="input-import-file"
+                />
+              </div>
+            )}
+
+            {parseError && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                {parseError}
+              </div>
+            )}
+
+            {/* Preview table */}
+            {rows.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{fileName}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {rows.length} row{rows.length !== 1 ? "s" : ""} found
+                      {invalidRows.length > 0 && (
+                        <span className="text-amber-600 ml-1">· {invalidRows.length} with errors (will be skipped)</span>
+                      )}
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="rounded-lg text-xs" onClick={reset} data-testid="button-import-reset">
+                    Change file
+                  </Button>
+                </div>
+
+                <div className="rounded-lg border border-border/50 overflow-auto max-h-64">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground w-8">#</th>
+                        {previewCols.map((col) => (
+                          <th key={col} className="text-left px-3 py-2 font-medium text-muted-foreground">{previewLabels[col]}</th>
+                        ))}
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Issues</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, i) => {
+                        const errs = rowErrors(row);
+                        const hasError = errs.length > 0;
+                        return (
+                          <tr key={i} className={`border-t border-border/30 ${hasError ? "bg-destructive/5" : "hover:bg-muted/20"}`}>
+                            <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
+                            {previewCols.map((col) => (
+                              <td key={col} className={`px-3 py-2 ${hasError ? "text-muted-foreground" : ""}`}>
+                                {row[col] || <span className="text-muted-foreground/40 italic">—</span>}
+                              </td>
+                            ))}
+                            <td className="px-3 py-2">
+                              {hasError
+                                ? <span className="text-destructive">{errs.join("; ")}</span>
+                                : <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                              }
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {invalidRows.length > 0 && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 text-xs">
+                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>Rows with errors will be skipped. Fix them in the spreadsheet and re-upload, or proceed to import only the valid rows.</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" className="rounded-lg" onClick={() => handleClose(false)} data-testid="button-import-cancel">
+                Cancel
+              </Button>
+              {rows.length > 0 && (
+                <Button
+                  className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={handleImport}
+                  disabled={importing || validRows.length === 0}
+                  data-testid="button-import-confirm"
+                >
+                  {importing ? "Importing..." : `Import ${validRows.length} Child${validRows.length !== 1 ? "ren" : ""}`}
+                </Button>
+              )}
+            </DialogFooter>
+          </div>
+        ) : (
+          /* Result screen */
+          <div className="space-y-5">
+            <div className={`rounded-lg p-5 border ${result.success > 0 ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800" : "bg-destructive/5 border-destructive/20"}`}>
+              <div className="flex items-center gap-3">
+                {result.success > 0
+                  ? <CheckCircle2 className="h-8 w-8 text-emerald-600 shrink-0" />
+                  : <AlertCircle className="h-8 w-8 text-destructive shrink-0" />
+                }
+                <div>
+                  <p className="font-semibold text-base">
+                    {result.success > 0 ? `${result.success} child${result.success !== 1 ? "ren" : ""} imported successfully` : "Import failed"}
+                  </p>
+                  {result.failed > 0 && (
+                    <p className="text-sm text-muted-foreground mt-0.5">{result.failed} row{result.failed !== 1 ? "s" : ""} failed</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {result.errors.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Errors</p>
+                <div className="rounded-lg border border-border/50 divide-y divide-border/30 max-h-48 overflow-auto">
+                  {result.errors.map((err, i) => (
+                    <div key={i} className="px-3 py-2 text-xs text-destructive">{err}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button className="rounded-lg shadow-sm" onClick={() => handleClose(false)} data-testid="button-import-done">
+                Done
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ChildrenList() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -146,6 +462,25 @@ export default function ChildrenList() {
   const [sponsoredFilter, setSponsoredFilter] = useState(initialSponsored);
   const [orgFilter, setOrgFilter] = useState("all");
   const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await fetch("/api/children/template", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to download template");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "children-import-template.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message, variant: "destructive" });
+    }
+  };
 
   const { data: organizations } = useQuery<Organization[]>({
     queryKey: ["/api/organizations"],
@@ -248,12 +583,22 @@ export default function ChildrenList() {
                   Export
                 </Button>
                 {canEdit && (
-                  <Button asChild size="sm" className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="button-add-child-list">
-                    <Link href="/children/new">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Child
-                    </Link>
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" className="rounded-lg" onClick={handleDownloadTemplate} data-testid="button-download-template">
+                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                      Template
+                    </Button>
+                    <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setImportOpen(true)} data-testid="button-import-open">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import
+                    </Button>
+                    <Button asChild size="sm" className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="button-add-child-list">
+                      <Link href="/children/new">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Child
+                      </Link>
+                    </Button>
+                  </>
                 )}
               </>
             )}
@@ -470,6 +815,7 @@ export default function ChildrenList() {
           )
         )}
         <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
+        <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
       </div>
     </div>
   );

@@ -215,6 +215,136 @@ export async function registerRoutes(
     }
   });
 
+  // --- Children: Excel import template ---
+  app.get("/api/children/template", isAuthenticated, async (_req, res) => {
+    try {
+      const XLSX = await import("xlsx");
+
+      const headers = [
+        "Full Name",
+        "Date of Birth (YYYY-MM-DD)",
+        "Age",
+        "Gender (male/female)",
+        "Location",
+        "Program Enrollment",
+        "Assigned Sponsors",
+        "Assigned Case Worker",
+        "Status (active/paused/exited)",
+        "Is Sponsored (Yes/No)",
+        "Description",
+      ];
+
+      const notes = [
+        "REQUIRED — child's full name",
+        "Optional — e.g. 2015-03-22",
+        "REQUIRED — whole number",
+        "REQUIRED — male or female",
+        "REQUIRED — town/region",
+        "Optional — program name",
+        "Optional — sponsor name(s)",
+        "Optional — case worker name",
+        "REQUIRED — active, paused, or exited",
+        "Optional — Yes or No (default: No)",
+        "Optional — free text bio",
+      ];
+
+      const sample = [
+        "Abebe Girma",
+        "2014-06-15",
+        "10",
+        "male",
+        "Boricha, Sidama Region, Ethiopia",
+        "Primary School - Grade 4",
+        "Johnson Family",
+        "Dawit Bekele",
+        "active",
+        "Yes",
+        "Abebe is an enthusiastic learner who excels in mathematics.",
+      ];
+
+      const wsData = [headers, notes, sample];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Style the header row (bold) and notes row (italic/gray) via column widths
+      ws["!cols"] = headers.map(() => ({ wch: 28 }));
+
+      // Mark row 2 as a note row so importers can skip it
+      if (!ws["!rows"]) ws["!rows"] = [];
+      ws["!rows"][1] = { hidden: false };
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Children Import");
+      const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", "attachment; filename=children-import-template.xlsx");
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Children: Bulk import ---
+  app.post("/api/children/import", isAuthenticated, isNotReadOnly, async (req: any, res) => {
+    try {
+      const rows: any[] = req.body.rows;
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ message: "No rows provided" });
+      }
+
+      const results: { success: number; failed: number; errors: string[] } = {
+        success: 0, failed: 0, errors: [],
+      };
+
+      const createdBy = req.currentUser
+        ? `${req.currentUser.firstName || ""} ${req.currentUser.lastName || ""}`.trim() || req.currentUser.username
+        : "Import";
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        try {
+          const childId = `C${Date.now().toString(36).toUpperCase().slice(-6)}${i}`;
+          const parsed = {
+            childId,
+            fullName: String(row.fullName || "").trim(),
+            dateOfBirth: row.dateOfBirth ? String(row.dateOfBirth).trim() : null,
+            age: parseInt(String(row.age)) || 0,
+            gender: String(row.gender || "").toLowerCase().trim(),
+            location: String(row.location || "").trim(),
+            programEnrollment: row.programEnrollment ? String(row.programEnrollment).trim() : "",
+            assignedSponsors: row.assignedSponsors ? String(row.assignedSponsors).trim() : null,
+            assignedCaseWorker: row.assignedCaseWorker ? String(row.assignedCaseWorker).trim() : "",
+            status: (["active", "paused", "exited"].includes(String(row.status).toLowerCase())
+              ? String(row.status).toLowerCase()
+              : "active") as "active" | "paused" | "exited",
+            isSponsored: String(row.isSponsored || "").toLowerCase() === "yes",
+            description: row.description ? String(row.description).trim() : "",
+          };
+
+          if (!parsed.fullName) throw new Error("Full Name is required");
+          if (!parsed.location) throw new Error("Location is required");
+
+          const child = await storage.createChild(parsed as any);
+          await storage.createTimelineEntry({
+            childId: child.id,
+            title: "Child profile created",
+            description: `${child.fullName} was enrolled via bulk import`,
+            entryType: "milestone",
+            createdBy,
+          });
+          results.success++;
+        } catch (err: any) {
+          results.failed++;
+          results.errors.push(`Row ${i + 2}: ${err.message}`);
+        }
+      }
+
+      res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/children", isAuthenticated, isNotReadOnly, async (req: any, res) => {
     try {
       const parsed = insertChildSchema.parse(req.body);
