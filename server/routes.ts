@@ -204,17 +204,6 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/children/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const child = await storage.getChild(parseInt(req.params.id));
-      if (!child) return res.status(404).json({ message: "Child not found" });
-      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
-      res.json(child);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
   // --- Children: Excel import template ---
   app.get("/api/children/template", isAuthenticated, async (_req, res) => {
     try {
@@ -340,6 +329,17 @@ export async function registerRoutes(
       }
 
       res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/children/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const child = await storage.getChild(parseInt(req.params.id));
+      if (!child) return res.status(404).json({ message: "Child not found" });
+      if (!canAccessChild(req, child)) return res.status(403).json({ message: "Access denied" });
+      res.json(child);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
