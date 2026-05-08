@@ -122,7 +122,7 @@ export default function Organizations() {
               <Building2 className="h-5 w-5 text-orange-500 dark:text-orange-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight" data-testid="text-organizations-title">Organizations</h1>
+              <h1 className="text-2xl font-bold tracking-tight" data-testid="text-organizations-title">PWE Programs</h1>
               <p className="text-sm text-muted-foreground mt-0.5">Manage partner organizations and group assignments</p>
             </div>
           </div>
