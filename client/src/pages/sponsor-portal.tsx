@@ -276,8 +276,6 @@ function ChildPortal({ child }: { child: Child }) {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const latestMilestone = timeline?.find((e) => e.entryType === "milestone");
-  const latestDocument = documents?.[0];
   const photoUrl = child.photoUrl?.startsWith("/objects") ? child.photoUrl : child.photoUrl ? `/objects/${child.photoUrl}` : null;
   const sponsorPhotoUrl = child.sponsorPhotoUrl?.startsWith("/objects") ? child.sponsorPhotoUrl : child.sponsorPhotoUrl ? `/objects/${child.sponsorPhotoUrl}` : null;
 
@@ -419,62 +417,6 @@ function ChildPortal({ child }: { child: Child }) {
             </div>
           </div>
         </Card>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="border-border/50 p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                <Milestone className="h-3.5 w-3.5 text-emerald-600" />
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Latest Milestone</p>
-            </div>
-            {timelineLoading ? (
-              <Skeleton className="h-10 w-full" />
-            ) : latestMilestone ? (
-              <div>
-                <p className="text-sm font-medium leading-snug" data-testid="text-latest-milestone">{latestMilestone.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{latestMilestone.description}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">No milestones yet</p>
-            )}
-          </Card>
-
-          <Card className="border-border/50 p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                <FileText className="h-3.5 w-3.5 text-blue-500" />
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Latest Document</p>
-            </div>
-            {docsLoading ? (
-              <Skeleton className="h-10 w-full" />
-            ) : latestDocument ? (
-              <div>
-                <p className="text-sm font-medium leading-snug" data-testid="text-latest-doc">{latestDocument.fileName}</p>
-                <p className="mt-1 text-xs text-muted-foreground capitalize">{docTypeLabels[latestDocument.documentType] || latestDocument.documentType}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">No documents yet</p>
-            )}
-          </Card>
-
-          <Card className="border-border/50 p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-500/10">
-                <Heart className="h-3.5 w-3.5 text-pink-500" />
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sponsorship</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium" data-testid="text-sponsorship-status">Active Sponsor</p>
-              {child.assignedSponsors && (
-                <p className="mt-1 text-xs text-muted-foreground">{child.assignedSponsors}</p>
-              )}
-            </div>
-          </Card>
-        </div>
 
         {/* Tabs: Documents / Photos / Comments / Timeline */}
         <Tabs defaultValue="documents" className="space-y-4">
