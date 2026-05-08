@@ -5,7 +5,7 @@ import {
   ArrowLeft, Edit, Upload, Plus, FileText, Image, StickyNote,
   GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2, Camera, Check, X, Pencil,
   Milestone, MessageSquare, RefreshCw, Heart, Mail, Send, MoreHorizontal, Building2, MessageCircle,
-  ThumbsUp, CornerDownRight, Reply, Archive, ArchiveRestore,
+  ThumbsUp, CornerDownRight, Reply, Archive, ArchiveRestore, Hash,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -664,6 +664,7 @@ export default function ChildProfile() {
     : null;
 
   const infoItems = [
+    { icon: Hash, label: "Child ID", value: child.childId || "—" },
     { icon: Calendar, label: "Date of Birth", value: dobDisplay || `${child.age} years old`, subValue: dobDisplay ? `${child.age} yrs old` : undefined },
     { icon: User, label: "Gender", value: child.gender },
     { icon: MapPin, label: "Location", value: child.location },

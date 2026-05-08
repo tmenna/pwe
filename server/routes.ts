@@ -210,6 +210,7 @@ export async function registerRoutes(
       const XLSX = await import("xlsx");
 
       const headers = [
+        "Child ID",
         "Full Name",
         "Date of Birth (YYYY-MM-DD)",
         "Age",
@@ -224,6 +225,7 @@ export async function registerRoutes(
       ];
 
       const notes = [
+        "Optional — leave blank to auto-generate",
         "REQUIRED — child's full name",
         "Optional — e.g. 2015-03-22",
         "REQUIRED — whole number",
@@ -238,6 +240,7 @@ export async function registerRoutes(
       ];
 
       const sample = [
+        "CHD-001",
         "Abebe Girma",
         "2014-06-15",
         "10",
@@ -292,7 +295,9 @@ export async function registerRoutes(
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         try {
-          const childId = `C${Date.now().toString(36).toUpperCase().slice(-6)}${i}`;
+          const childId = (row.childId && String(row.childId).trim())
+            ? String(row.childId).trim()
+            : `C${Date.now().toString(36).toUpperCase().slice(-6)}${i}`;
           const parsed = {
             childId,
             fullName: String(row.fullName || "").trim(),

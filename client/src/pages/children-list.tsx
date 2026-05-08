@@ -133,6 +133,7 @@ function ExportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
 // Column mapping from template headers → internal field keys
 // ---------------------------------------------------------------------------
 const HEADER_MAP: Record<string, string> = {
+  "child id": "childId",
   "full name": "fullName",
   "date of birth (yyyy-mm-dd)": "dateOfBirth",
   "age": "age",
