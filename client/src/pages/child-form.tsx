@@ -34,7 +34,6 @@ function calcAge(dob: string): number {
 }
 
 const childFormSchema = z.object({
-  childId: z.string().min(1, "Child ID is required"),
   fullName: z.string().min(1, "Full name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   age: z.coerce.number().min(0).max(100),
@@ -93,7 +92,6 @@ export default function ChildForm() {
   const form = useForm<ChildFormValues>({
     resolver: zodResolver(childFormSchema),
     defaultValues: {
-      childId: "",
       fullName: "",
       dateOfBirth: "",
       age: 0,
@@ -110,7 +108,6 @@ export default function ChildForm() {
     },
     values: existingChild
       ? {
-          childId: existingChild.childId,
           fullName: existingChild.fullName,
           dateOfBirth: existingChild.dateOfBirth || "",
           age: existingChild.age,
@@ -188,15 +185,6 @@ export default function ChildForm() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid gap-6 sm:grid-cols-2">
-                <FormField control={form.control} name="childId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium">Child ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. CHD-001" className="h-11 rounded-lg border-border/60" {...field} data-testid="input-child-id" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
                 <FormField control={form.control} name="fullName" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium">Full Name</FormLabel>

@@ -969,7 +969,6 @@ function SponsorChildPicker({
     ? sorted.filter(
         (c) =>
           normalise(c.fullName).includes(q) ||
-          normalise(c.childId).includes(q) ||
           normalise(c.status).includes(q)
       )
     : sorted;
@@ -1145,7 +1144,7 @@ function SponsorChildPicker({
                   <div className="flex-1 min-w-0 select-none">
                     <p className="text-sm font-medium leading-none truncate">{c.fullName}</p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {c.childId} · <span className="capitalize">{c.status}</span>
+                      <span className="capitalize">{c.status}</span>
                     </p>
                   </div>
                   {showCommentingToggles && isSelected && (

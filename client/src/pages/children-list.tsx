@@ -18,7 +18,6 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Child, Organization } from "@shared/schema";
 
 const EXPORT_FIELDS = [
-  { key: "childId", label: "Child ID" },
   { key: "fullName", label: "Full Name" },
   { key: "age", label: "Age" },
   { key: "gender", label: "Gender" },
@@ -191,7 +190,6 @@ export default function ChildrenList() {
   const filtered = children?.filter((c) => {
     const matchesSearch =
       c.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      c.childId.toLowerCase().includes(search.toLowerCase()) ||
       c.location.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     const matchesSponsored =
@@ -203,7 +201,6 @@ export default function ChildrenList() {
 
   const filteredArchived = archivedChildren?.filter((c) =>
     c.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    c.childId.toLowerCase().includes(search.toLowerCase()) ||
     c.location.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -366,7 +363,7 @@ export default function ChildrenList() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="overflow-hidden">
                             <p className="truncate font-medium">{child.fullName}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{child.childId}</p>
+
                           </div>
                           <StatusBadge status={child.status} />
                         </div>
@@ -423,7 +420,7 @@ export default function ChildrenList() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="overflow-hidden">
                             <p className="truncate font-medium">{child.fullName}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{child.childId}</p>
+
                           </div>
                           <StatusBadge status={child.status} />
                         </div>

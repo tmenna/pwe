@@ -380,7 +380,6 @@ function ChildPortal({ child }: { child: Child }) {
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
                     <h2 className="text-xl font-bold tracking-tight" data-testid="text-child-name">{child.fullName}</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">{child.childId}</p>
                   </div>
                   {sponsorPhotoUrl && (
                     <div className="flex flex-col items-center gap-1.5">

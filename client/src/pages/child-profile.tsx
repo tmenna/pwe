@@ -782,7 +782,6 @@ export default function ChildProfile() {
                   <h1 className="text-xl font-bold tracking-tight" data-testid="text-child-name">{child.fullName}</h1>
                   <StatusBadge status={child.status} />
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground" data-testid="text-child-id">ID: {child.childId}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">

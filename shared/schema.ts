@@ -103,6 +103,8 @@ export const insertOrganizationSchema = createInsertSchema(organizations).omit({
 
 export const insertChildSchema = createInsertSchema(children).omit({
   id: true,
+}).extend({
+  childId: z.string().optional(),
 });
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({
