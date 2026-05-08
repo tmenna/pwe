@@ -437,6 +437,19 @@ export default function ChildProfile() {
     onError: (error: Error) => toast({ title: "Restore failed", description: error.message, variant: "destructive" }),
   });
 
+  const deleteChildMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/children/${childId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/children/archived"] });
+      toast({ title: "Profile deleted", description: `${child?.fullName}'s profile has been permanently deleted.` });
+      navigate("/children");
+    },
+    onError: (error: Error) => toast({ title: "Delete failed", description: error.message, variant: "destructive" }),
+  });
+
   const toggleSponsorCommentMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
       return apiRequest("PATCH", `/api/children/${childId}`, { sponsorCanComment: enabled });
@@ -800,9 +813,7 @@ export default function ChildProfile() {
                         Archive Profile
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        <strong>{child.fullName}</strong>'s profile will be moved to the archive. It will remain accessible for <strong>30 days</strong>, then permanently deleted — including all documents, timeline entries, and comments.
-                        <br /><br />
-                        You can restore it at any time before the 30-day period ends.
+                        <strong>{child.fullName}</strong>'s profile will be moved to the archive and hidden from the active list. It will stay there indefinitely until an admin permanently deletes or restores it.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -814,6 +825,43 @@ export default function ChildProfile() {
                       >
                         <Archive className="mr-2 h-4 w-4" />
                         Archive Profile
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              {user?.role === "admin" && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="rounded-lg gap-1.5 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5"
+                      disabled={deleteChildMutation.isPending}
+                      data-testid="button-delete-child"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                        Permanently Delete Profile
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete <strong>{child.fullName}</strong>'s entire profile — including all documents, photos, timeline entries, and comments. This action <strong>cannot be undone</strong>.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="rounded-lg bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-sm"
+                        onClick={() => deleteChildMutation.mutate()}
+                        data-testid="button-confirm-delete-child"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {deleteChildMutation.isPending ? "Deleting..." : "Delete Permanently"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
