@@ -1061,56 +1061,79 @@ export default function ChildProfile() {
                 )}
               </Card>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {documents.filter(d => d.documentType === "photos").map((doc) => (
-                  <div key={doc.id} className="group relative aspect-square rounded-xl overflow-hidden border border-border/50 bg-muted/30" data-testid={`photo-item-${doc.id}`}>
-                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={doc.fileUrl}
-                        alt={doc.description || doc.fileName}
-                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                          (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = "flex";
-                        }}
-                      />
-                      <div className="hidden h-full w-full items-center justify-center">
-                        <Image className="h-8 w-8 text-muted-foreground/40" />
-                      </div>
-                    </a>
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <p className="text-xs text-white truncate">{doc.description || doc.fileName}</p>
+                  <Card key={doc.id} className="overflow-hidden border-border/50 hover:shadow-md transition-shadow duration-150" data-testid={`photo-item-${doc.id}`}>
+                    {/* Image */}
+                    <div className="group relative aspect-video bg-muted/30">
+                      <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="block h-full w-full">
+                        <img
+                          src={doc.fileUrl}
+                          alt={doc.description || doc.fileName}
+                          className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = "none";
+                            (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = "flex";
+                          }}
+                        />
+                        <div className="hidden h-full w-full items-center justify-center">
+                          <Image className="h-8 w-8 text-muted-foreground/40" />
+                        </div>
+                      </a>
+                      {canEdit && (
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg bg-black/40 hover:bg-destructive text-white" data-testid={`button-delete-photo-${doc.id}`}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently remove <strong>{doc.fileName}</strong>. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="rounded-lg">Keep it</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteMutation.mutate(doc.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg"
+                                  data-testid={`button-confirm-delete-photo-${doc.id}`}
+                                >
+                                  Yes, delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      )}
                     </div>
-                    {canEdit && (
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg bg-black/40 hover:bg-destructive text-white" data-testid={`button-delete-photo-${doc.id}`}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently remove <strong>{doc.fileName}</strong>. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="rounded-lg">Keep it</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteMutation.mutate(doc.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg"
-                                data-testid={`button-confirm-delete-photo-${doc.id}`}
-                              >
-                                Yes, delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+
+                    {/* Metadata + description */}
+                    <div className="p-3 space-y-2.5">
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Calendar className="h-3 w-3 shrink-0" />
+                        <span>{doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—"}</span>
+                        <span className="mx-0.5">·</span>
+                        <User className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{doc.uploadedBy}</span>
                       </div>
-                    )}
-                  </div>
+                      <div className="border-t border-border/40 pt-2.5">
+                        <InlineEditableText
+                          value={doc.description || ""}
+                          canEdit={canEdit}
+                          placeholder="Add a description…"
+                          testIdPrefix={`photo-desc-${doc.id}`}
+                          onSave={async (newDesc) => {
+                            await apiRequest("PATCH", `/api/documents/${doc.id}`, { description: newDesc });
+                            queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "documents"] });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </Card>
                 ))}
               </div>
             )}
