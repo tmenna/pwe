@@ -23,9 +23,12 @@ export const users = pgTable("users", {
   role: varchar("role", { length: 20 }).default("case_worker").notNull(),
   organizationId: integer("organization_id"),
   photoUrl: varchar("photo_url"),
+  streetAddress1: varchar("street_address_1", { length: 255 }),
+  streetAddress2: varchar("street_address_2", { length: 255 }),
   city: varchar("city", { length: 100 }),
   state: varchar("state", { length: 100 }),
   zipCode: varchar("zip_code", { length: 20 }),
+  country: varchar("country", { length: 100 }),
   sponsoredPrograms: text("sponsored_programs"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -51,9 +54,12 @@ export const createUserSchema = z.object({
   email: z.string().email().optional().nullable(),
   role: z.enum(["admin", "case_worker", "sponsor"]),
   organizationId: z.coerce.number().optional().nullable(),
+  streetAddress1: z.string().optional().nullable(),
+  streetAddress2: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
   zipCode: z.string().optional().nullable(),
+  country: z.string().optional().nullable(),
   sponsoredPrograms: z.string().optional().nullable(),
 });
 
@@ -65,9 +71,12 @@ export const updateUserSchema = z.object({
   role: z.enum(["admin", "case_worker", "sponsor"]).optional(),
   password: z.string().min(6).optional(),
   organizationId: z.coerce.number().optional().nullable(),
+  streetAddress1: z.string().optional().nullable(),
+  streetAddress2: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
   zipCode: z.string().optional().nullable(),
+  country: z.string().optional().nullable(),
   sponsoredPrograms: z.string().optional().nullable(),
 });
 

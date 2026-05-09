@@ -196,9 +196,12 @@ export function registerUserRoutes(app: Express): void {
         email: parsed.email || null,
         role: parsed.role,
         organizationId: parsed.organizationId || null,
+        streetAddress1: parsed.streetAddress1 || null,
+        streetAddress2: parsed.streetAddress2 || null,
         city: parsed.city || null,
         state: parsed.state || null,
         zipCode: parsed.zipCode || null,
+        country: parsed.country || null,
         sponsoredPrograms: parsed.sponsoredPrograms || null,
       });
       const { hashedPassword: _, ...safeUser } = user;
@@ -241,9 +244,12 @@ export function registerUserRoutes(app: Express): void {
       if (parsed.email !== undefined) updateData.email = parsed.email;
       if (parsed.role !== undefined) updateData.role = parsed.role;
       if (parsed.organizationId !== undefined) updateData.organizationId = parsed.organizationId;
+      if (parsed.streetAddress1 !== undefined) updateData.streetAddress1 = parsed.streetAddress1;
+      if (parsed.streetAddress2 !== undefined) updateData.streetAddress2 = parsed.streetAddress2;
       if (parsed.city !== undefined) updateData.city = parsed.city;
       if (parsed.state !== undefined) updateData.state = parsed.state;
       if (parsed.zipCode !== undefined) updateData.zipCode = parsed.zipCode;
+      if (parsed.country !== undefined) updateData.country = parsed.country;
       if (parsed.sponsoredPrograms !== undefined) updateData.sponsoredPrograms = parsed.sponsoredPrograms;
       if (parsed.password) {
         updateData.hashedPassword = await bcrypt.hash(parsed.password, 10);

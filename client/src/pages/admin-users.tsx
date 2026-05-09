@@ -28,9 +28,12 @@ type SafeUser = {
   email: string | null;
   role: string;
   organizationId: number | null;
+  streetAddress1: string | null;
+  streetAddress2: string | null;
   city: string | null;
   state: string | null;
   zipCode: string | null;
+  country: string | null;
   sponsoredPrograms: string | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -79,9 +82,12 @@ type EditForm = {
   organizationId: string;
   sponsorChildIds: number[];
   sponsorCommentingMap: Record<number, boolean>;
+  streetAddress1: string;
+  streetAddress2: string;
   city: string;
   state: string;
   zipCode: string;
+  country: string;
   sponsoredPrograms: string[];
 };
 
@@ -94,22 +100,25 @@ type CreateForm = {
   organizationId: string;
   sponsorChildIds: number[];
   sponsorCommentingMap: Record<number, boolean>;
+  streetAddress1: string;
+  streetAddress2: string;
   city: string;
   state: string;
   zipCode: string;
+  country: string;
   sponsoredPrograms: string[];
 };
 
 const emptyCreate: CreateForm = {
   username: "", password: "", firstName: "", lastName: "",
   role: "case_worker", organizationId: "", sponsorChildIds: [], sponsorCommentingMap: {},
-  city: "", state: "", zipCode: "", sponsoredPrograms: [],
+  streetAddress1: "", streetAddress2: "", city: "", state: "", zipCode: "", country: "", sponsoredPrograms: [],
 };
 
 const emptyEdit: EditForm = {
   username: "", firstName: "", lastName: "", role: "case_worker",
   password: "", organizationId: "", sponsorChildIds: [], sponsorCommentingMap: {},
-  city: "", state: "", zipCode: "", sponsoredPrograms: [],
+  streetAddress1: "", streetAddress2: "", city: "", state: "", zipCode: "", country: "", sponsoredPrograms: [],
 };
 
 export default function AdminUsers() {
@@ -176,9 +185,12 @@ export default function AdminUsers() {
         email: form.username || null,
         role: form.role,
         organizationId: form.organizationId ? parseInt(form.organizationId) : null,
+        streetAddress1: form.streetAddress1 || null,
+        streetAddress2: form.streetAddress2 || null,
         city: form.city || null,
         state: form.state || null,
         zipCode: form.zipCode || null,
+        country: form.country || null,
         sponsoredPrograms: form.sponsoredPrograms.length > 0 ? form.sponsoredPrograms.join(",") : null,
       });
       const newUser = await res.json();
@@ -215,9 +227,12 @@ export default function AdminUsers() {
         email: editForm.username || null,
         role: editForm.role,
         organizationId: editForm.organizationId ? parseInt(editForm.organizationId) : null,
+        streetAddress1: editForm.streetAddress1 || null,
+        streetAddress2: editForm.streetAddress2 || null,
         city: editForm.city || null,
         state: editForm.state || null,
         zipCode: editForm.zipCode || null,
+        country: editForm.country || null,
         sponsoredPrograms: editForm.sponsoredPrograms.length > 0 ? editForm.sponsoredPrograms.join(",") : null,
       };
       if (editForm.password) body.password = editForm.password;
@@ -304,9 +319,12 @@ export default function AdminUsers() {
       organizationId: u.organizationId ? String(u.organizationId) : "",
       sponsorChildIds: assignedChildren.map((c) => c.id),
       sponsorCommentingMap: commentingMap,
+      streetAddress1: u.streetAddress1 || "",
+      streetAddress2: u.streetAddress2 || "",
       city: u.city || "",
       state: u.state || "",
       zipCode: u.zipCode || "",
+      country: u.country || "",
       sponsoredPrograms: u.sponsoredPrograms ? u.sponsoredPrograms.split(",").map((s) => s.trim()).filter(Boolean) : [],
     });
   };
@@ -566,6 +584,28 @@ export default function AdminUsers() {
                     Address
                   </div>
                   <div className="space-y-2">
+                    <Label className="text-sm font-medium">Street Address Line 1</Label>
+                    <Input
+                      value={form.streetAddress1}
+                      onChange={(e) => setForm((f) => ({ ...f, streetAddress1: e.target.value }))}
+                      placeholder="e.g. 123 Main Street"
+                      className="h-11 rounded-lg border-border/60"
+                      data-testid="input-new-street1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Street Address Line 2 <span className="font-normal text-muted-foreground">(optional)</span>
+                    </Label>
+                    <Input
+                      value={form.streetAddress2}
+                      onChange={(e) => setForm((f) => ({ ...f, streetAddress2: e.target.value }))}
+                      placeholder="e.g. Apt 4B, Suite 100"
+                      className="h-11 rounded-lg border-border/60"
+                      data-testid="input-new-street2"
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium">City</Label>
                     <Input
                       value={form.city}
@@ -577,7 +617,7 @@ export default function AdminUsers() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">State</Label>
+                      <Label className="text-sm font-medium">State / Province</Label>
                       <Input
                         value={form.state}
                         onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
@@ -587,7 +627,7 @@ export default function AdminUsers() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Zip Code</Label>
+                      <Label className="text-sm font-medium">ZIP / Postal Code</Label>
                       <Input
                         value={form.zipCode}
                         onChange={(e) => setForm((f) => ({ ...f, zipCode: e.target.value }))}
@@ -596,6 +636,16 @@ export default function AdminUsers() {
                         data-testid="input-new-zipcode"
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Country</Label>
+                    <Input
+                      value={form.country}
+                      onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
+                      placeholder="e.g. United States"
+                      className="h-11 rounded-lg border-border/60"
+                      data-testid="input-new-country"
+                    />
                   </div>
                 </div>
               )}
@@ -773,6 +823,28 @@ export default function AdminUsers() {
                     Address
                   </div>
                   <div className="space-y-2">
+                    <Label className="text-sm font-medium">Street Address Line 1</Label>
+                    <Input
+                      value={editForm.streetAddress1}
+                      onChange={(e) => setEditForm((f) => ({ ...f, streetAddress1: e.target.value }))}
+                      placeholder="e.g. 123 Main Street"
+                      className="h-11 rounded-lg border-border/60"
+                      data-testid="input-edit-street1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Street Address Line 2 <span className="font-normal text-muted-foreground">(optional)</span>
+                    </Label>
+                    <Input
+                      value={editForm.streetAddress2}
+                      onChange={(e) => setEditForm((f) => ({ ...f, streetAddress2: e.target.value }))}
+                      placeholder="e.g. Apt 4B, Suite 100"
+                      className="h-11 rounded-lg border-border/60"
+                      data-testid="input-edit-street2"
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium">City</Label>
                     <Input
                       value={editForm.city}
@@ -784,7 +856,7 @@ export default function AdminUsers() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">State</Label>
+                      <Label className="text-sm font-medium">State / Province</Label>
                       <Input
                         value={editForm.state}
                         onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))}
@@ -794,7 +866,7 @@ export default function AdminUsers() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Zip Code</Label>
+                      <Label className="text-sm font-medium">ZIP / Postal Code</Label>
                       <Input
                         value={editForm.zipCode}
                         onChange={(e) => setEditForm((f) => ({ ...f, zipCode: e.target.value }))}
@@ -803,6 +875,16 @@ export default function AdminUsers() {
                         data-testid="input-edit-zipcode"
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Country</Label>
+                    <Input
+                      value={editForm.country}
+                      onChange={(e) => setEditForm((f) => ({ ...f, country: e.target.value }))}
+                      placeholder="e.g. United States"
+                      className="h-11 rounded-lg border-border/60"
+                      data-testid="input-edit-country"
+                    />
                   </div>
                 </div>
               )}
