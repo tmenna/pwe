@@ -674,7 +674,7 @@ export default function AdminUsers() {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-1.5">
                     <BookOpen className="h-3.5 w-3.5 text-pink-500" />
-                    Programs Sponsored
+                    Select a Program
                   </Label>
                   <div className="rounded-lg border border-border/60 divide-y divide-border/30" data-testid="programs-checkbox-list-new">
                     {organizations.map((org) => {
@@ -919,7 +919,7 @@ export default function AdminUsers() {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-1.5">
                     <BookOpen className="h-3.5 w-3.5 text-pink-500" />
-                    Programs Sponsored
+                    Select a Program
                   </Label>
                   <div className="rounded-lg border border-border/60 divide-y divide-border/30" data-testid="programs-checkbox-list-edit">
                     {organizations.map((org) => {
