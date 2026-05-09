@@ -2,7 +2,9 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, ShieldAlert } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, ShieldAlert, Heart } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient as qc } from "@/lib/queryClient";
@@ -90,6 +93,25 @@ export default function ChildForm() {
   const sponsorUsers = allUsers?.filter((u) => u.role === "sponsor") || [];
   const caseWorkerUsers = allUsers?.filter((u) => u.role === "case_worker") || [];
 
+  const [selectedSponsorIds, setSelectedSponsorIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!existingChild || !allUsers) return;
+    const ids = existingChild.assignedSponsors
+      ? existingChild.assignedSponsors.split(",").map((s) => s.trim()).filter(Boolean)
+      : existingChild.sponsorUserId
+      ? [existingChild.sponsorUserId]
+      : [];
+    const validIds = ids.filter((id) => allUsers.some((u) => u.id === id));
+    setSelectedSponsorIds(validIds.length > 0 ? validIds : existingChild.sponsorUserId ? [existingChild.sponsorUserId] : []);
+  }, [existingChild?.id, allUsers?.length]);
+
+  const toggleSponsor = (id: string, checked: boolean) => {
+    setSelectedSponsorIds((prev) =>
+      checked ? [...prev, id] : prev.filter((x) => x !== id)
+    );
+  };
+
   const form = useForm<ChildFormValues>({
     resolver: zodResolver(childFormSchema),
     defaultValues: {
@@ -153,6 +175,8 @@ export default function ChildForm() {
     if (values.dateOfBirth) {
       values.age = calcAge(values.dateOfBirth);
     }
+    values.assignedSponsors = selectedSponsorIds.length > 0 ? selectedSponsorIds.join(",") : null;
+    values.sponsorUserId = selectedSponsorIds[0] || null;
     mutation.mutate(values);
   };
 
@@ -313,30 +337,43 @@ export default function ChildForm() {
               )} />
 
               {user?.role === "admin" && (
-                <FormField control={form.control} name="sponsorUserId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium">Assigned Sponsor(s)</FormLabel>
-                    <Select
-                      onValueChange={(val) => field.onChange(val === "none" ? null : val)}
-                      value={field.value || "none"}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-sponsor-user">
-                          <SelectValue placeholder="Select sponsor" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">No sponsor assigned</SelectItem>
-                        {sponsorUsers.map((su) => (
-                          <SelectItem key={su.id} value={su.id}>
-                            {su.firstName && su.lastName ? `${su.firstName} ${su.lastName}` : su.username}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Assigned Sponsor(s)</Label>
+                  {sponsorUsers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">No sponsor accounts found. Create sponsor users first.</p>
+                  ) : (
+                    <div className="rounded-lg border border-border/60 divide-y divide-border/30 max-h-48 overflow-y-auto" data-testid="sponsor-checkbox-list">
+                      {sponsorUsers.map((su) => {
+                        const name = su.firstName && su.lastName ? `${su.firstName} ${su.lastName}` : su.username;
+                        const checked = selectedSponsorIds.includes(su.id);
+                        return (
+                          <label
+                            key={su.id}
+                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${checked ? "bg-pink-50/60 dark:bg-pink-500/8" : "hover:bg-muted/30"}`}
+                            data-testid={`checkbox-sponsor-${su.id}`}
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => toggleSponsor(su.id, !!v)}
+                              className="data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
+                            />
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-500/20">
+                                <Heart className="h-3 w-3 text-pink-600 dark:text-pink-400" />
+                              </div>
+                              <span className="text-sm font-medium truncate">{name}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {selectedSponsorIds.length > 0 && (
+                    <p className="text-xs text-muted-foreground pt-0.5">
+                      {selectedSponsorIds.length} sponsor{selectedSponsorIds.length !== 1 ? "s" : ""} selected
+                    </p>
+                  )}
+                </div>
               )}
 
               <FormField control={form.control} name="assignedCaseWorker" render={({ field }) => (

@@ -650,14 +650,23 @@ export default function ChildProfile() {
     : null;
   const orgName = orgObject ? orgObject.name : "Not assigned";
 
-  const assignedSponsorUser = child.sponsorUserId && allUsers
-    ? allUsers.find((u) => u.id === child.sponsorUserId)
-    : null;
-  const assignedSponsorName = assignedSponsorUser
-    ? (assignedSponsorUser.firstName && assignedSponsorUser.lastName
-        ? `${assignedSponsorUser.firstName} ${assignedSponsorUser.lastName}`
-        : assignedSponsorUser.username)
-    : (child.sponsorUserId ? "Assigned" : "Not linked");
+  const sponsorDisplayValue = (() => {
+    if (!allUsers) return child.assignedSponsors || (child.sponsorUserId ? "Assigned" : "Not linked");
+    const ids = child.assignedSponsors
+      ? child.assignedSponsors.split(",").map((s) => s.trim()).filter(Boolean)
+      : child.sponsorUserId
+      ? [child.sponsorUserId]
+      : [];
+    if (ids.length === 0) return "Not linked";
+    const names = ids
+      .map((id) => {
+        const u = allUsers.find((u) => u.id === id);
+        return u ? (u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username) : null;
+      })
+      .filter(Boolean);
+    return names.length > 0 ? names.join(", ") : "Assigned";
+  })();
+  const hasSponsor = !!(child.assignedSponsors || child.sponsorUserId);
 
   const dobDisplay = child.dateOfBirth
     ? new Date(child.dateOfBirth + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
@@ -670,8 +679,7 @@ export default function ChildProfile() {
     { icon: MapPin, label: "Location", value: child.location },
     { icon: BookOpen, label: "Program", value: child.programEnrollment },
     { icon: User, label: "Case Worker", value: child.assignedCaseWorker },
-    { icon: User, label: "Sponsor(s)", value: child.assignedSponsors || "None assigned" },
-    { icon: Heart, label: "Sponsor", value: assignedSponsorName, color: child.sponsorUserId ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground" },
+    { icon: Heart, label: "Sponsor(s)", value: sponsorDisplayValue, color: hasSponsor ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground" },
     { icon: Heart, label: "Sponsored", value: child.isSponsored ? "Yes" : "No", color: child.isSponsored ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground" },
   ];
 
