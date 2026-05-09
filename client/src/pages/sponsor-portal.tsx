@@ -395,21 +395,29 @@ function ChildPortal({ child }: { child: Child }) {
 
         {/* Tabs: Documents / Photos / Comments / Timeline */}
         <Tabs defaultValue="documents" className="space-y-4">
-          <TabsList className="rounded-lg border border-border/50 bg-muted/40 p-1 h-auto gap-1">
-            <TabsTrigger value="documents" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-documents">
-              <FileText className="mr-2 h-3.5 w-3.5" />
+          <TabsList className="rounded-lg border border-border/50 bg-muted/40 p-1 h-auto gap-1 flex-wrap">
+            <TabsTrigger value="documents" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 gap-2" data-testid="tab-documents">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-100 dark:bg-blue-500/20">
+                <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+              </span>
               Documents
             </TabsTrigger>
-            <TabsTrigger value="photos" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-photos">
-              <Image className="mr-2 h-3.5 w-3.5" />
+            <TabsTrigger value="photos" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 gap-2" data-testid="tab-photos">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-pink-100 dark:bg-pink-500/20">
+                <Image className="h-3 w-3 text-pink-600 dark:text-pink-400" />
+              </span>
               Photos
             </TabsTrigger>
-            <TabsTrigger value="messages" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-messages">
-              <MessageSquare className="mr-2 h-3.5 w-3.5" />
+            <TabsTrigger value="messages" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 gap-2" data-testid="tab-messages">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-emerald-100 dark:bg-emerald-500/20">
+                <MessageSquare className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+              </span>
               Comments
             </TabsTrigger>
-            <TabsTrigger value="newsletters" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-newsletters">
-              <Newspaper className="mr-2 h-3.5 w-3.5" />
+            <TabsTrigger value="newsletters" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 gap-2" data-testid="tab-newsletters">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-violet-100 dark:bg-violet-500/20">
+                <Newspaper className="h-3 w-3 text-violet-600 dark:text-violet-400" />
+              </span>
               News Letters
             </TabsTrigger>
           </TabsList>
