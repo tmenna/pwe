@@ -48,6 +48,7 @@ type ChildSummary = {
   sponsorUserId: string | null;
   sponsorCanComment: boolean | null;
   organizationId: number | null;
+  programEnrollment: string;
 };
 
 const roleLabels: Record<string, string> = {
@@ -734,6 +735,7 @@ export default function AdminUsers() {
               {form.role === "sponsor" && (
                 <SponsorChildPicker
                   children_={(children || [])}
+                  selectedPrograms={form.sponsoredPrograms}
                   selectedIds={form.sponsorChildIds}
                   commentingMap={form.sponsorCommentingMap}
                   onToggle={(id, checked) => setForm((f) => {
@@ -979,6 +981,7 @@ export default function AdminUsers() {
               {editForm.role === "sponsor" && (
                 <SponsorChildPicker
                   children_={(children || [])}
+                  selectedPrograms={editForm.sponsoredPrograms}
                   selectedIds={editForm.sponsorChildIds}
                   commentingMap={editForm.sponsorCommentingMap}
                   onToggle={(id, checked) => toggleSponsorChild(id, checked, setEditForm)}
@@ -1222,6 +1225,7 @@ function SponsorChildPicker({
   onToggle,
   onToggleCommenting,
   showCommentingToggles = false,
+  selectedPrograms = [],
 }: {
   children_: ChildSummary[];
   selectedIds: number[];
@@ -1229,14 +1233,20 @@ function SponsorChildPicker({
   onToggle: (id: number, checked: boolean) => void;
   onToggleCommenting?: (id: number, value: boolean) => void;
   showCommentingToggles?: boolean;
+  selectedPrograms?: string[];
 }) {
   const [query, setQuery] = useState("");
 
   const normalise = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
   const q = normalise(query);
 
+  // Filter by selected programs when any are checked
+  const programFiltered = selectedPrograms.length > 0
+    ? children_.filter((c) => selectedPrograms.includes(c.programEnrollment))
+    : children_;
+
   // Selected children always shown first, then alphabetical
-  const sorted = [...children_].sort((a, b) => {
+  const sorted = [...programFiltered].sort((a, b) => {
     const aSelected = selectedIds.includes(a.id);
     const bSelected = selectedIds.includes(b.id);
     if (aSelected && !bSelected) return -1;
@@ -1258,7 +1268,7 @@ function SponsorChildPicker({
       <div className="flex items-center justify-between">
         <Label className="text-sm font-medium flex items-center gap-1.5">
           <Baby className="h-3.5 w-3.5 text-pink-500" />
-          Assigned Child
+          Assign a Child
           {selectedIds.length > 0 && (
             <Badge
               variant="outline"
