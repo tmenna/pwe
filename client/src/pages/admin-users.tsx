@@ -555,9 +555,9 @@ export default function AdminUsers() {
 
               {form.role === "sponsor" && (
                 <div className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-4">
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                     <MapPin className="h-3.5 w-3.5" />
-                    Address <span className="font-normal">(optional)</span>
+                    Address
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">City</Label>
@@ -756,9 +756,9 @@ export default function AdminUsers() {
 
               {editForm.role === "sponsor" && (
                 <div className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-4">
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                     <MapPin className="h-3.5 w-3.5" />
-                    Address <span className="font-normal">(optional)</span>
+                    Address
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">City</Label>

@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import { useState, useEffect } from "react";
-import { ArrowLeft, ShieldAlert, Heart } from "lucide-react";
+import { ArrowLeft, ShieldAlert, Heart, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,7 @@ export default function ChildForm() {
   const caseWorkerUsers = allUsers?.filter((u) => u.role === "case_worker") || [];
 
   const [selectedSponsorIds, setSelectedSponsorIds] = useState<string[]>([]);
+  const [sponsorSearch, setSponsorSearch] = useState("");
 
   useEffect(() => {
     if (!existingChild || !allUsers) return;
@@ -338,34 +339,58 @@ export default function ChildForm() {
 
               {user?.role === "admin" && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Assigned Sponsor(s)</Label>
+                  <Label className="text-sm font-medium">Sponsor(s)</Label>
                   {sponsorUsers.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-2">No sponsor accounts found. Create sponsor users first.</p>
                   ) : (
-                    <div className="rounded-lg border border-border/60 divide-y divide-border/30 max-h-48 overflow-y-auto" data-testid="sponsor-checkbox-list">
-                      {sponsorUsers.map((su) => {
-                        const name = su.firstName && su.lastName ? `${su.firstName} ${su.lastName}` : su.username;
-                        const checked = selectedSponsorIds.includes(su.id);
-                        return (
-                          <label
-                            key={su.id}
-                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${checked ? "bg-pink-50/60 dark:bg-pink-500/8" : "hover:bg-muted/30"}`}
-                            data-testid={`checkbox-sponsor-${su.id}`}
-                          >
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={(v) => toggleSponsor(su.id, !!v)}
-                              className="data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
-                            />
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-500/20">
-                                <Heart className="h-3 w-3 text-pink-600 dark:text-pink-400" />
-                              </div>
-                              <span className="text-sm font-medium truncate">{name}</span>
-                            </div>
-                          </label>
-                        );
-                      })}
+                    <div className="rounded-lg border border-border/60 overflow-hidden" data-testid="sponsor-checkbox-list">
+                      <div className="relative border-b border-border/40">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                        <input
+                          type="text"
+                          value={sponsorSearch}
+                          onChange={(e) => setSponsorSearch(e.target.value)}
+                          placeholder="Search sponsors…"
+                          className="w-full pl-8 pr-3 py-2.5 text-sm bg-muted/20 outline-none placeholder:text-muted-foreground/60"
+                          data-testid="input-sponsor-search"
+                        />
+                      </div>
+                      <div className="divide-y divide-border/30 max-h-44 overflow-y-auto">
+                        {sponsorUsers
+                          .filter((su) => {
+                            const name = su.firstName && su.lastName ? `${su.firstName} ${su.lastName}` : su.username;
+                            return name.toLowerCase().includes(sponsorSearch.toLowerCase());
+                          })
+                          .map((su) => {
+                            const name = su.firstName && su.lastName ? `${su.firstName} ${su.lastName}` : su.username;
+                            const checked = selectedSponsorIds.includes(su.id);
+                            return (
+                              <label
+                                key={su.id}
+                                className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${checked ? "bg-pink-50/60 dark:bg-pink-500/10" : "hover:bg-muted/30"}`}
+                                data-testid={`checkbox-sponsor-${su.id}`}
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(v) => toggleSponsor(su.id, !!v)}
+                                  className="data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
+                                />
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-500/20">
+                                    <Heart className="h-3 w-3 text-pink-600 dark:text-pink-400" />
+                                  </div>
+                                  <span className="text-sm font-medium truncate">{name}</span>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        {sponsorUsers.filter((su) => {
+                          const name = su.firstName && su.lastName ? `${su.firstName} ${su.lastName}` : su.username;
+                          return name.toLowerCase().includes(sponsorSearch.toLowerCase());
+                        }).length === 0 && (
+                          <p className="px-4 py-3 text-sm text-muted-foreground">No sponsors match your search.</p>
+                        )}
+                      </div>
                     </div>
                   )}
                   {selectedSponsorIds.length > 0 && (
