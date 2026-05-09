@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation, Link } from "wouter";
 import {
   ArrowLeft, Edit, Upload, Plus, FileText, Image, StickyNote,
-  GraduationCap, Calendar, User, MapPin, BookOpen, Clock, Trash2, Camera, Check, X, Pencil,
-  Milestone, MessageSquare, RefreshCw, Heart, Mail, Send, MoreHorizontal, Building2, MessageCircle,
-  ThumbsUp, CornerDownRight, Reply, Archive, ArchiveRestore, Hash,
+  GraduationCap, Calendar, User, MapPin, BookOpen, Trash2, Camera, Check, X, Pencil,
+  MessageSquare, Heart, Mail, Send, MoreHorizontal, Building2, MessageCircle,
+  ThumbsUp, CornerDownRight, Reply, Archive, ArchiveRestore, Hash, Newspaper, Download,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import { StatusBadge } from "./dashboard";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Child, Document, TimelineEntry, Message, Organization } from "@shared/schema";
+import type { Child, Document, Message, Organization, Newsletter } from "@shared/schema";
 
 type SafeUser = {
   id: string;
@@ -116,30 +116,6 @@ function InlineEditableText({
   );
 }
 
-const timelineColors: Record<string, { bg: string; icon: string }> = {
-  milestone: { bg: "bg-emerald-500/10", icon: "text-emerald-600" },
-  document: { bg: "bg-blue-500/10", icon: "text-blue-500" },
-  status_change: { bg: "bg-amber-500/10", icon: "text-amber-500" },
-  note: { bg: "bg-violet-500/10", icon: "text-violet-500" },
-  manual: { bg: "bg-slate-500/10", icon: "text-slate-500" },
-};
-
-function TimelineIcon({ type }: { type: string }) {
-  const color = timelineColors[type] || timelineColors.manual;
-  const icons: Record<string, any> = {
-    milestone: Milestone,
-    document: FileText,
-    status_change: RefreshCw,
-    note: MessageSquare,
-    manual: Clock,
-  };
-  const Icon = icons[type] || Clock;
-  return (
-    <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${color.bg}`}>
-      <Icon className={`h-3.5 w-3.5 ${color.icon}`} />
-    </div>
-  );
-}
 
 function UploadDocumentDialog({ childId, onClose, photoOnly }: { childId: number; onClose: () => void; photoOnly?: boolean }) {
   const [file, setFile] = useState<File | null>(null);
@@ -238,60 +214,6 @@ function UploadDocumentDialog({ childId, onClose, photoOnly }: { childId: number
   );
 }
 
-function AddTimelineDialog({ childId, onClose }: { childId: number; onClose: () => void }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [entryType, setEntryType] = useState("milestone");
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", `/api/children/${childId}/timeline`, { title, description, entryType });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/children", String(childId), "timeline"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/timeline/recent"] });
-      toast({ title: "Timeline entry added" });
-      onClose();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-
-  return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Entry Type</Label>
-        <Select value={entryType} onValueChange={setEntryType}>
-          <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-timeline-type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="milestone">Milestone</SelectItem>
-            <SelectItem value="note">Note</SelectItem>
-            <SelectItem value="status_change">Status Change</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Title</Label>
-        <Input className="h-11 rounded-lg border-border/60" placeholder="e.g. Completed literacy milestone" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="input-timeline-title" />
-      </div>
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Description (optional)</Label>
-        <Textarea className="rounded-lg border-border/60" placeholder="Additional details" value={description} onChange={(e) => setDescription(e.target.value)} data-testid="input-timeline-description" />
-      </div>
-      <div className="flex justify-end gap-3 pt-1">
-        <Button variant="outline" className="rounded-lg" onClick={onClose}>Cancel</Button>
-        <Button className="rounded-lg shadow-sm" onClick={() => mutation.mutate()} disabled={mutation.isPending || !title} data-testid="button-confirm-timeline">
-          {mutation.isPending ? "Adding..." : "Add Entry"}
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 function InlineDescription({ child, canEdit }: { child: Child; canEdit: boolean }) {
   const [editing, setEditing] = useState(false);
@@ -363,7 +285,6 @@ export default function ChildProfile() {
   const childId = params?.id;
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadPhotoOpen, setUploadPhotoOpen] = useState(false);
-  const [timelineOpen, setTimelineOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -388,8 +309,8 @@ export default function ChildProfile() {
     enabled: !!childId,
   });
 
-  const { data: timeline, isLoading: timelineLoading } = useQuery<TimelineEntry[]>({
-    queryKey: ["/api/children", childId, "timeline"],
+  const { data: newsletters, isLoading: newslettersLoading } = useQuery<Newsletter[]>({
+    queryKey: ["/api/newsletters"],
     enabled: !!childId,
   });
 
@@ -943,27 +864,35 @@ export default function ChildProfile() {
               setLastCommentVisit(now);
             }
           }}>
-          <TabsList className="rounded-lg" data-testid="tabs-profile">
-            <TabsTrigger value="documents" className="rounded-md" data-testid="tab-documents">
-              <FileText className="mr-2 h-4 w-4" />
+          <TabsList className="rounded-lg border border-border/50 bg-muted/40 p-1 h-auto gap-1 flex-wrap" data-testid="tabs-profile">
+            <TabsTrigger value="documents" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 gap-2" data-testid="tab-documents">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-100 dark:bg-blue-500/20">
+                <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+              </span>
               Documents
             </TabsTrigger>
-            <TabsTrigger value="photos" className="rounded-md" data-testid="tab-photos">
-              <Image className="mr-2 h-4 w-4" />
+            <TabsTrigger value="photos" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 gap-2" data-testid="tab-photos">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-pink-100 dark:bg-pink-500/20">
+                <Image className="h-3 w-3 text-pink-600 dark:text-pink-400" />
+              </span>
               Photos
             </TabsTrigger>
-            <TabsTrigger value="messages" className="rounded-md" data-testid="tab-messages">
-              <MessageSquare className="mr-2 h-4 w-4" />
+            <TabsTrigger value="messages" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 gap-2" data-testid="tab-messages">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-emerald-100 dark:bg-emerald-500/20">
+                <MessageSquare className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+              </span>
               Comments
               {unreadCommentCount > 0 && (
-                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-semibold min-w-[16px] h-4 px-1 leading-none" data-testid="badge-unread-comments">
+                <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-semibold min-w-[16px] h-4 px-1 leading-none" data-testid="badge-unread-comments">
                   {unreadCommentCount}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="timeline" className="rounded-md" data-testid="tab-timeline">
-              <Clock className="mr-2 h-4 w-4" />
-              Timeline
+            <TabsTrigger value="newsletters" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 gap-2" data-testid="tab-newsletters">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-violet-100 dark:bg-violet-500/20">
+                <Newspaper className="h-3 w-3 text-violet-600 dark:text-violet-400" />
+              </span>
+              News Letters
             </TabsTrigger>
           </TabsList>
 
@@ -1195,80 +1124,47 @@ export default function ChildProfile() {
             )}
           </TabsContent>
 
-          <TabsContent value="timeline" className="mt-5">
+          <TabsContent value="newsletters" className="mt-5">
             <div className="mb-5 flex items-center justify-between gap-4">
               <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
-                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
-                Progress Timeline
+                <span className="inline-block w-1 h-5 rounded-full bg-violet-500" />
+                News Letters
               </h2>
-              {canEdit && (
-                <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="rounded-lg shadow-sm" data-testid="button-add-timeline">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Entry
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Timeline Entry</DialogTitle>
-                    </DialogHeader>
-                    <AddTimelineDialog childId={child.id} onClose={() => setTimelineOpen(false)} />
-                  </DialogContent>
-                </Dialog>
-              )}
             </div>
 
-            {timelineLoading ? (
+            {newslettersLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
               </div>
-            ) : !timeline?.length ? (
+            ) : !newsletters?.length ? (
               <Card className="flex flex-col items-center justify-center p-14 text-center border-border/50">
-                <Clock className="mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">No timeline entries yet</p>
-                {canEdit && (
-                  <Button variant="outline" size="sm" className="mt-4 rounded-lg" onClick={() => setTimelineOpen(true)}>
-                    Add First Entry
-                  </Button>
-                )}
+                <Newspaper className="mb-3 h-10 w-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">No newsletters yet</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Newsletters uploaded by admins will appear here</p>
               </Card>
             ) : (
-              <div className="space-y-1.5">
-                {timeline.map((entry, index) => (
-                  <div key={entry.id} className="flex gap-4" data-testid={`timeline-item-${entry.id}`}>
-                    <div className="flex flex-col items-center pt-2">
-                      <TimelineIcon type={entry.entryType} />
-                      {index < timeline.length - 1 && <div className="mt-1.5 w-px flex-1 bg-border/50" />}
+              <div className="space-y-2">
+                {newsletters.map((nl) => (
+                  <a
+                    key={nl.id}
+                    href={nl.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-xl border border-violet-200/60 bg-violet-50/40 dark:bg-violet-500/5 dark:border-violet-500/20 p-4 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors group"
+                    data-testid={`newsletter-item-${nl.id}`}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/20">
+                      <Newspaper className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                     </div>
-                    <Card className="mb-2 flex-1 p-4 border-border/50 transition-all duration-150 hover:shadow-sm">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{entry.title}</p>
-                          <div className="mt-1">
-                            <InlineEditableText
-                              value={entry.description || ""}
-                              canEdit={canEdit}
-                              placeholder="Add description..."
-                              testIdPrefix={`timeline-desc-${entry.id}`}
-                              onSave={async (newDesc) => {
-                                await apiRequest("PATCH", `/api/timeline/${entry.id}`, { description: newDesc });
-                                queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "timeline"] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/timeline/recent"] });
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="border-border/60 capitalize text-xs rounded-md">
-                          {entry.entryType.replace("_", " ")}
-                        </Badge>
-                      </div>
-                      <div className="mt-2.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                        <span>{entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}</span>
-                        <span>by {entry.createdBy}</span>
-                      </div>
-                    </Card>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{nl.title}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {new Date(nl.createdAt!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        {nl.fileName && <span className="ml-2 opacity-60">· {nl.fileName}</span>}
+                      </p>
+                    </div>
+                    <Download className="h-4 w-4 text-muted-foreground group-hover:text-violet-600 transition-colors shrink-0" />
+                  </a>
                 ))}
               </div>
             )}
