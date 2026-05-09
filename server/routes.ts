@@ -936,6 +936,53 @@ export async function registerRoutes(
     }
   });
 
+  // --- Newsletters ---
+  app.get("/api/newsletters", isAuthenticated, async (_req, res) => {
+    try {
+      const items = await storage.getNewsletters();
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/newsletters", isAuthenticated, isAdmin, express.json(), async (req: any, res) => {
+    try {
+      const { objectPath, fileName, title, contentType, fileSize } = req.body;
+      if (!objectPath || !fileName || !title) {
+        return res.status(400).json({ message: "objectPath, fileName and title are required" });
+      }
+      const fileKey = objectPath.startsWith("/objects/") ? objectPath.slice("/objects/".length) : null;
+      const nl = await storage.createNewsletter({
+        title,
+        fileName,
+        fileUrl: objectPath,
+        fileKey: fileKey || null,
+        mimeType: contentType || null,
+        fileSize: fileSize ? parseInt(fileSize) : null,
+        uploadedBy: getUserName(req),
+      });
+      res.status(201).json(nl);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/newsletters/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const items = await storage.getNewsletters();
+      const nl = items.find((n) => n.id === id);
+      if (nl?.fileKey) {
+        jobQueue.add("delete-file", () => deleteFile(nl.fileKey!));
+      }
+      await storage.deleteNewsletter(id);
+      res.json({ message: "Deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // --- Stats ---
   app.get("/api/stats", isAuthenticated, async (req: any, res) => {
     try {

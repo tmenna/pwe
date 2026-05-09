@@ -1,9 +1,9 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Heart, FileText, Image, StickyNote, GraduationCap, Clock, MessageSquare,
-  Milestone, RefreshCw, MapPin, BookOpen, User, Calendar, Send, Mail,
-  Inbox, MessageCircleOff, ThumbsUp, CornerDownRight, Reply, X, Camera,
+  Heart, FileText, Image, StickyNote, GraduationCap, MessageSquare,
+  MapPin, BookOpen, User, Calendar, Send, Mail,
+  Inbox, MessageCircleOff, ThumbsUp, CornerDownRight, Reply, X, Camera, Newspaper, Download,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
-import type { Child, Document, TimelineEntry, Message } from "@shared/schema";
+import type { Child, Document, Message, Newsletter } from "@shared/schema";
 
 function DocumentIcon({ type }: { type: string }) {
   switch (type) {
@@ -49,30 +49,6 @@ const docTypeColors: Record<string, string> = {
   photos: "bg-pink-50 text-pink-700 border-pink-200/60 dark:bg-pink-500/10 dark:text-pink-300",
 };
 
-const timelineColors: Record<string, { bg: string; icon: string }> = {
-  milestone: { bg: "bg-emerald-500/10", icon: "text-emerald-600" },
-  document: { bg: "bg-blue-500/10", icon: "text-blue-500" },
-  status_change: { bg: "bg-amber-500/10", icon: "text-amber-500" },
-  note: { bg: "bg-violet-500/10", icon: "text-violet-500" },
-  manual: { bg: "bg-slate-500/10", icon: "text-slate-500" },
-};
-
-function TimelineIcon({ type }: { type: string }) {
-  const color = timelineColors[type] || timelineColors.manual;
-  const icons: Record<string, any> = {
-    milestone: Milestone,
-    document: FileText,
-    status_change: RefreshCw,
-    note: MessageSquare,
-    manual: Clock,
-  };
-  const Icon = icons[type] || Clock;
-  return (
-    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${color.bg}`}>
-      <Icon className={`h-3.5 w-3.5 ${color.icon}`} />
-    </div>
-  );
-}
 
 function SendMessageDialog({ childId, sponsorName, onClose }: { childId: number; sponsorName: string; onClose: () => void }) {
   const [content, setContent] = useState("");
@@ -196,11 +172,11 @@ function ChildPortal({ child }: { child: Child }) {
     onError: (e: Error) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
   });
 
-  const { data: timeline, isLoading: timelineLoading } = useQuery<TimelineEntry[]>({
-    queryKey: ["/api/children", String(childId), "timeline"],
+  const { data: newsletters, isLoading: newslettersLoading } = useQuery<Newsletter[]>({
+    queryKey: ["/api/newsletters"],
     queryFn: async () => {
-      const res = await fetch(`/api/children/${childId}/timeline`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch timeline");
+      const res = await fetch("/api/newsletters", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch newsletters");
       return res.json();
     },
   });
@@ -432,53 +408,55 @@ function ChildPortal({ child }: { child: Child }) {
               <MessageSquare className="mr-2 h-3.5 w-3.5" />
               Comments
             </TabsTrigger>
-            <TabsTrigger value="timeline" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-timeline">
-              <Milestone className="mr-2 h-3.5 w-3.5" />
-              Timeline
+            <TabsTrigger value="newsletters" className="rounded-md text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5" data-testid="tab-newsletters">
+              <Newspaper className="mr-2 h-3.5 w-3.5" />
+              News Letters
             </TabsTrigger>
           </TabsList>
 
-          {/* Timeline Tab */}
-          <TabsContent value="timeline">
+          {/* News Letters Tab */}
+          <TabsContent value="newsletters">
             <Card className="border-border/50">
               <div className="p-6">
                 <h3 className="text-[15px] font-semibold flex items-center gap-2.5 mb-5">
-                  <span className="inline-block w-1 h-5 rounded-full bg-emerald-500" />
-                  Progress Timeline
+                  <span className="inline-block w-1 h-5 rounded-full bg-violet-500" />
+                  News Letters
                 </h3>
-                {timelineLoading ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+                {newslettersLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
                   </div>
-                ) : !timeline?.length ? (
+                ) : !newsletters?.length ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted mb-3">
-                      <Milestone className="h-5 w-5 text-muted-foreground" />
+                      <Newspaper className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <p className="text-sm font-medium text-muted-foreground">No progress entries yet</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">Updates will appear here as the care team adds them</p>
+                    <p className="text-sm font-medium text-muted-foreground">No newsletters yet</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Newsletters from the care team will appear here</p>
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    {timeline.map((entry, idx) => (
-                      <div key={entry.id}>
-                        <div className="flex items-start gap-3 py-3" data-testid={`timeline-entry-${entry.id}`}>
-                          <TimelineIcon type={entry.entryType} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 flex-wrap">
-                              <p className="text-sm font-medium leading-snug">{entry.title}</p>
-                              <p className="text-[11px] text-muted-foreground shrink-0">
-                                {new Date(entry.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                              </p>
-                            </div>
-                            {entry.description && (
-                              <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">{entry.description}</p>
-                            )}
-                            <p className="mt-1 text-[11px] text-muted-foreground/60">By {entry.createdBy}</p>
-                          </div>
+                  <div className="space-y-2">
+                    {newsletters.map((nl) => (
+                      <a
+                        key={nl.id}
+                        href={nl.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 rounded-xl border border-violet-200/60 bg-violet-50/40 dark:bg-violet-500/5 dark:border-violet-500/20 p-4 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors group"
+                        data-testid={`newsletter-item-${nl.id}`}
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/20">
+                          <Newspaper className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                         </div>
-                        {idx < timeline.length - 1 && <Separator className="opacity-50" />}
-                      </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{nl.title}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {new Date(nl.createdAt!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            {nl.fileName && <span className="ml-2 opacity-60">· {nl.fileName}</span>}
+                          </p>
+                        </div>
+                        <Download className="h-4 w-4 text-muted-foreground group-hover:text-violet-600 transition-colors shrink-0" />
+                      </a>
                     ))}
                   </div>
                 )}

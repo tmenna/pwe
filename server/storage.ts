@@ -1,10 +1,11 @@
 import {
-  children, documents, timelineEntries, organizations, messages,
+  children, documents, timelineEntries, organizations, messages, newsletters,
   type Child, type InsertChild,
   type Document, type InsertDocument,
   type TimelineEntry, type InsertTimelineEntry,
   type Organization, type InsertOrganization,
   type Message, type InsertMessage,
+  type Newsletter, type InsertNewsletter,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, count, and, isNull, isNotNull } from "drizzle-orm";
@@ -44,6 +45,10 @@ export interface IStorage {
   reactToMessage(id: number, type: "like" | "love", action: "react" | "unreact"): Promise<Message | undefined>;
 
   getStats(organizationId?: number): Promise<{ totalChildren: number; active: number; paused: number; exited: number; totalDocuments: number; sponsored: number; nonSponsored: number }>;
+
+  getNewsletters(): Promise<Newsletter[]>;
+  createNewsletter(nl: InsertNewsletter): Promise<Newsletter>;
+  deleteNewsletter(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -219,6 +224,19 @@ export class DatabaseStorage implements IStorage {
       sponsored: allChildren.filter((c) => c.isSponsored).length,
       nonSponsored: allChildren.filter((c) => !c.isSponsored).length,
     };
+  }
+
+  async getNewsletters(): Promise<Newsletter[]> {
+    return db.select().from(newsletters).orderBy(desc(newsletters.createdAt));
+  }
+
+  async createNewsletter(nl: InsertNewsletter): Promise<Newsletter> {
+    const [created] = await db.insert(newsletters).values(nl).returning();
+    return created;
+  }
+
+  async deleteNewsletter(id: number): Promise<void> {
+    await db.delete(newsletters).where(eq(newsletters.id, id));
   }
 }
 

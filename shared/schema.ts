@@ -73,6 +73,18 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const newsletters = pgTable("newsletters", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileKey: text("file_key"),
+  mimeType: varchar("mime_type", { length: 100 }),
+  fileSize: integer("file_size"),
+  uploadedBy: text("uploaded_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   children: many(children),
 }));
@@ -132,3 +144,10 @@ export type InsertTimelineEntry = z.infer<typeof insertTimelineEntrySchema>;
 export type TimelineEntry = typeof timelineEntries.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+export const insertNewsletterSchema = createInsertSchema(newsletters).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertNewsletter = z.infer<typeof insertNewsletterSchema>;
+export type Newsletter = typeof newsletters.$inferSelect;
