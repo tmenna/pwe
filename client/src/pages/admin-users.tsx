@@ -1258,7 +1258,7 @@ function SponsorChildPicker({
       <div className="flex items-center justify-between">
         <Label className="text-sm font-medium flex items-center gap-1.5">
           <Baby className="h-3.5 w-3.5 text-pink-500" />
-          Assigned Child Profiles
+          Assigned Child
           {selectedIds.length > 0 && (
             <Badge
               variant="outline"
