@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2,
   Shield, Eye, Heart, Users, Baby, MessageSquare, Search, X, Check,
-  KeyRound, Copy, CheckCheck, Mail, MailX, SendHorizonal, Download, MapPin,
+  KeyRound, Copy, CheckCheck, Mail, MailX, SendHorizonal, Download, MapPin, BookOpen,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
@@ -31,6 +31,7 @@ type SafeUser = {
   city: string | null;
   state: string | null;
   zipCode: string | null;
+  sponsoredPrograms: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -81,6 +82,7 @@ type EditForm = {
   city: string;
   state: string;
   zipCode: string;
+  sponsoredPrograms: string[];
 };
 
 type CreateForm = {
@@ -95,18 +97,19 @@ type CreateForm = {
   city: string;
   state: string;
   zipCode: string;
+  sponsoredPrograms: string[];
 };
 
 const emptyCreate: CreateForm = {
   username: "", password: "", firstName: "", lastName: "",
   role: "case_worker", organizationId: "", sponsorChildIds: [], sponsorCommentingMap: {},
-  city: "", state: "", zipCode: "",
+  city: "", state: "", zipCode: "", sponsoredPrograms: [],
 };
 
 const emptyEdit: EditForm = {
   username: "", firstName: "", lastName: "", role: "case_worker",
   password: "", organizationId: "", sponsorChildIds: [], sponsorCommentingMap: {},
-  city: "", state: "", zipCode: "",
+  city: "", state: "", zipCode: "", sponsoredPrograms: [],
 };
 
 export default function AdminUsers() {
@@ -176,6 +179,7 @@ export default function AdminUsers() {
         city: form.city || null,
         state: form.state || null,
         zipCode: form.zipCode || null,
+        sponsoredPrograms: form.sponsoredPrograms.length > 0 ? form.sponsoredPrograms.join(",") : null,
       });
       const newUser = await res.json();
 
@@ -214,6 +218,7 @@ export default function AdminUsers() {
         city: editForm.city || null,
         state: editForm.state || null,
         zipCode: editForm.zipCode || null,
+        sponsoredPrograms: editForm.sponsoredPrograms.length > 0 ? editForm.sponsoredPrograms.join(",") : null,
       };
       if (editForm.password) body.password = editForm.password;
       await apiRequest("PATCH", `/api/users/${editUser!.id}`, body);
@@ -302,6 +307,7 @@ export default function AdminUsers() {
       city: u.city || "",
       state: u.state || "",
       zipCode: u.zipCode || "",
+      sponsoredPrograms: u.sponsoredPrograms ? u.sponsoredPrograms.split(",").map((s) => s.trim()).filter(Boolean) : [],
     });
   };
 
@@ -614,63 +620,69 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">{rolePermissionDesc[form.role]}</p>
               </div>
 
-              {form.role !== "admin" && organizations && organizations.length > 0 && (
+              {form.role === "sponsor" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
-                  {form.role === "sponsor" ? (
-                    <Label className="text-sm font-medium flex items-center gap-1.5">
-                      <Building2 className="h-3.5 w-3.5 text-orange-500" />
-                      Filter by Organization
-                      <span className="text-muted-foreground font-normal">(optional)</span>
-                    </Label>
-                  ) : (
-                    <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                  )}
-                  <Select
-                    value={form.organizationId || "none"}
-                    onValueChange={(v) => {
-                      const newOrgId = v === "none" ? "" : v;
-                      setForm((f) => {
-                        const orgId = newOrgId ? parseInt(newOrgId) : null;
-                        const filteredIds = orgId !== null
-                          ? f.sponsorChildIds.filter((id) => {
-                              const c = children?.find((ch) => ch.id === id);
-                              return c?.organizationId === orgId;
-                            })
-                          : f.sponsorChildIds;
-                        const filteredMap = Object.fromEntries(
-                          Object.entries(f.sponsorCommentingMap).filter(([id]) =>
-                            filteredIds.includes(parseInt(id))
-                          )
-                        );
-                        return { ...f, organizationId: newOrgId, sponsorChildIds: filteredIds, sponsorCommentingMap: filteredMap };
-                      });
-                    }}
-                  >
-                    <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-new-organization">
-                      <SelectValue placeholder={form.role === "sponsor" ? "All organizations" : "No organization assigned"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">
-                        {form.role === "sponsor" ? "All organizations (show all children)" : "No organization (sees all children)"}
-                      </SelectItem>
-                      {organizations.map((org) => (
-                        <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.role === "sponsor" && (
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <BookOpen className="h-3.5 w-3.5 text-pink-500" />
+                    Programs Sponsored
+                  </Label>
+                  <div className="rounded-lg border border-border/60 divide-y divide-border/30" data-testid="programs-checkbox-list-new">
+                    {organizations.map((org) => {
+                      const checked = form.sponsoredPrograms.includes(org.name);
+                      return (
+                        <label
+                          key={org.id}
+                          className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${checked ? "bg-pink-50/60 dark:bg-pink-500/10" : "hover:bg-muted/30"}`}
+                          data-testid={`checkbox-program-new-${org.id}`}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) =>
+                              setForm((f) => ({
+                                ...f,
+                                sponsoredPrograms: v
+                                  ? [...f.sponsoredPrograms.filter((p) => p !== org.name), org.name]
+                                  : f.sponsoredPrograms.filter((p) => p !== org.name),
+                              }))
+                            }
+                            className="data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
+                          />
+                          <span className="text-sm font-medium">{org.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {form.sponsoredPrograms.length > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      Selecting an organization will show only that organization's children in the list below.
+                      {form.sponsoredPrograms.length} program{form.sponsoredPrograms.length !== 1 ? "s" : ""} selected
                     </p>
                   )}
                 </div>
               )}
 
+              {form.role === "case_worker" && organizations && organizations.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <Select
+                    value={form.organizationId || "none"}
+                    onValueChange={(v) => setForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}
+                  >
+                    <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-new-organization">
+                      <SelectValue placeholder="No organization assigned" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No organization (sees all children)</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {form.role === "sponsor" && (
                 <SponsorChildPicker
-                  children_={(children || []).filter((c) =>
-                    !form.organizationId || c.organizationId === parseInt(form.organizationId)
-                  )}
+                  children_={(children || [])}
                   selectedIds={form.sponsorChildIds}
                   commentingMap={form.sponsorCommentingMap}
                   onToggle={(id, checked) => setForm((f) => {
@@ -821,63 +833,69 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">{rolePermissionDesc[editForm.role]}</p>
               </div>
 
-              {editForm.role !== "admin" && organizations && organizations.length > 0 && (
+              {editForm.role === "sponsor" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
-                  {editForm.role === "sponsor" ? (
-                    <Label className="text-sm font-medium flex items-center gap-1.5">
-                      <Building2 className="h-3.5 w-3.5 text-orange-500" />
-                      Filter by Organization
-                      <span className="text-muted-foreground font-normal">(optional)</span>
-                    </Label>
-                  ) : (
-                    <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                  )}
-                  <Select
-                    value={editForm.organizationId || "none"}
-                    onValueChange={(v) => {
-                      const newOrgId = v === "none" ? "" : v;
-                      setEditForm((f) => {
-                        const orgId = newOrgId ? parseInt(newOrgId) : null;
-                        const filteredIds = orgId !== null
-                          ? f.sponsorChildIds.filter((id) => {
-                              const c = children?.find((ch) => ch.id === id);
-                              return c?.organizationId === orgId;
-                            })
-                          : f.sponsorChildIds;
-                        const filteredMap = Object.fromEntries(
-                          Object.entries(f.sponsorCommentingMap).filter(([id]) =>
-                            filteredIds.includes(parseInt(id))
-                          )
-                        );
-                        return { ...f, organizationId: newOrgId, sponsorChildIds: filteredIds, sponsorCommentingMap: filteredMap };
-                      });
-                    }}
-                  >
-                    <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-edit-organization">
-                      <SelectValue placeholder={editForm.role === "sponsor" ? "All organizations" : "No organization"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">
-                        {editForm.role === "sponsor" ? "All organizations (show all children)" : "No organization (sees all children)"}
-                      </SelectItem>
-                      {organizations.map((org) => (
-                        <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {editForm.role === "sponsor" && (
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <BookOpen className="h-3.5 w-3.5 text-pink-500" />
+                    Programs Sponsored
+                  </Label>
+                  <div className="rounded-lg border border-border/60 divide-y divide-border/30" data-testid="programs-checkbox-list-edit">
+                    {organizations.map((org) => {
+                      const checked = editForm.sponsoredPrograms.includes(org.name);
+                      return (
+                        <label
+                          key={org.id}
+                          className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${checked ? "bg-pink-50/60 dark:bg-pink-500/10" : "hover:bg-muted/30"}`}
+                          data-testid={`checkbox-program-edit-${org.id}`}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) =>
+                              setEditForm((f) => ({
+                                ...f,
+                                sponsoredPrograms: v
+                                  ? [...f.sponsoredPrograms.filter((p) => p !== org.name), org.name]
+                                  : f.sponsoredPrograms.filter((p) => p !== org.name),
+                              }))
+                            }
+                            className="data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
+                          />
+                          <span className="text-sm font-medium">{org.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {editForm.sponsoredPrograms.length > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      Selecting an organization will show only that organization's children in the list below.
+                      {editForm.sponsoredPrograms.length} program{editForm.sponsoredPrograms.length !== 1 ? "s" : ""} selected
                     </p>
                   )}
                 </div>
               )}
 
+              {editForm.role === "case_worker" && organizations && organizations.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <Select
+                    value={editForm.organizationId || "none"}
+                    onValueChange={(v) => setEditForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}
+                  >
+                    <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-edit-organization">
+                      <SelectValue placeholder="No organization" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No organization (sees all children)</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {editForm.role === "sponsor" && (
                 <SponsorChildPicker
-                  children_={(children || []).filter((c) =>
-                    !editForm.organizationId || c.organizationId === parseInt(editForm.organizationId)
-                  )}
+                  children_={(children || [])}
                   selectedIds={editForm.sponsorChildIds}
                   commentingMap={editForm.sponsorCommentingMap}
                   onToggle={(id, checked) => toggleSponsorChild(id, checked, setEditForm)}
