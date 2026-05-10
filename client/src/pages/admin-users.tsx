@@ -400,8 +400,8 @@ export default function AdminUsers() {
           <TabsList className="h-10 rounded-lg bg-muted/60 p-1 gap-1">
             <TabsTrigger value="all" className="rounded-md px-4 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background" data-testid="tab-all-users">
               <Users className="mr-1.5 h-3.5 w-3.5" />
-              All Users
-              {users && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium">{users.length}</span>}
+              Admin / Case Worker
+              {users && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium">{users.filter(u => u.role !== "sponsor").length}</span>}
             </TabsTrigger>
             <TabsTrigger value="sponsors" className="rounded-md px-4 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background" data-testid="tab-sponsors">
               <Heart className="mr-1.5 h-3.5 w-3.5 text-pink-500" />
@@ -410,13 +410,15 @@ export default function AdminUsers() {
             </TabsTrigger>
           </TabsList>
 
-          {/* ── All Users tab ────────────────────────── */}
+          {/* ── Admin / Case Worker tab ──────────────── */}
           <TabsContent value="all" className="space-y-3 mt-0">
-            {users?.map((u) => <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />)}
-            {users?.length === 0 && (
+            {users?.filter(u => u.role !== "sponsor").map((u) => (
+              <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />
+            ))}
+            {users?.filter(u => u.role !== "sponsor").length === 0 && (
               <div className="py-16 text-center text-muted-foreground">
                 <UserCog className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p>No users yet. Add one to get started.</p>
+                <p>No admins or case workers yet. Add one to get started.</p>
               </div>
             )}
           </TabsContent>
