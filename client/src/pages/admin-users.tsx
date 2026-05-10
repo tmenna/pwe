@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,11 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2,
   Shield, Eye, Heart, Users, Baby, MessageSquare, Search, X, Check,
   KeyRound, Copy, CheckCheck, Mail, MailX, SendHorizonal, Download, MapPin, BookOpen,
+  Upload, FileSpreadsheet, CheckCircle2,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
@@ -135,6 +137,15 @@ export default function AdminUsers() {
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
   const [exportPending, setExportPending] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
+  const [sponsorSearch, setSponsorSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importParsing, setImportParsing] = useState(false);
+  const [importPending, setImportPending] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const testEmailMutation = useMutation({
     mutationFn: async () => {
@@ -372,16 +383,6 @@ export default function AdminUsers() {
             </Button>
             <Button
               size="sm"
-              variant="outline"
-              className="rounded-lg h-9 px-3 border-border/60"
-              onClick={() => setExportOpen(true)}
-              data-testid="button-export-sponsors"
-            >
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              Export Sponsors
-            </Button>
-            <Button
-              size="sm"
               className="rounded-lg shadow-sm h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => setCreateOpen(true)}
               data-testid="button-add-user"
@@ -392,133 +393,85 @@ export default function AdminUsers() {
           </div>
         </div>
 
-        {/* User list */}
-        <div className="space-y-3">
-          {users?.map((u) => {
-            const RoleIcon = roleIcons[u.role] || Shield;
-            const assignedChildren = getAssignedChildren(u.id);
-            const assignedOrg = u.organizationId ? organizations?.find((o) => o.id === u.organizationId) : null;
-            const displayName = u.firstName || u.lastName
-              ? `${u.firstName || ""} ${u.lastName || ""}`.trim()
-              : null;
+        {/* ── Tabs ─────────────────────────────────────── */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+          <TabsList className="h-10 rounded-lg bg-muted/60 p-1 gap-1">
+            <TabsTrigger value="all" className="rounded-md px-4 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background" data-testid="tab-all-users">
+              <Users className="mr-1.5 h-3.5 w-3.5" />
+              All Users
+              {users && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium">{users.length}</span>}
+            </TabsTrigger>
+            <TabsTrigger value="sponsors" className="rounded-md px-4 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-background" data-testid="tab-sponsors">
+              <Heart className="mr-1.5 h-3.5 w-3.5 text-pink-500" />
+              Sponsors
+              {users && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium">{users.filter(u => u.role === "sponsor").length}</span>}
+            </TabsTrigger>
+          </TabsList>
 
-            return (
-              <Card key={u.id} className="border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`card-user-${u.id}`}>
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${roleBadgeColors[u.role]?.split(" ").slice(0, 2).join(" ") || "bg-muted text-muted-foreground"}`}>
-                        {(u.firstName?.[0] || u.username?.[0] || "?").toUpperCase()}
-                      </div>
+          {/* ── All Users tab ────────────────────────── */}
+          <TabsContent value="all" className="space-y-3 mt-0">
+            {users?.map((u) => <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />)}
+            {users?.length === 0 && (
+              <div className="py-16 text-center text-muted-foreground">
+                <UserCog className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
+                <p>No users yet. Add one to get started.</p>
+              </div>
+            )}
+          </TabsContent>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-[15px]" data-testid={`text-username-${u.id}`}>
-                            {displayName || u.username}
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className={`${roleBadgeColors[u.role] || ""} text-xs font-medium flex items-center gap-1`}
-                            data-testid={`badge-role-${u.id}`}
-                          >
-                            <RoleIcon className="h-3 w-3" />
-                            {roleLabels[u.role] || u.role}
-                          </Badge>
-                        </div>
-
-                        <p className="text-sm text-muted-foreground mt-0.5" data-testid={`text-user-email-${u.id}`}>
-                          {u.username}
-                        </p>
-
-                        {/* Access summary */}
-                        <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                          {u.role === "sponsor" && (
-                            assignedChildren.length > 0 ? (
-                              <>
-                                {assignedChildren.map((ac) => (
-                                  <div
-                                    key={ac.id}
-                                    className="flex items-center gap-1.5 rounded-md bg-pink-50 dark:bg-pink-500/10 border border-pink-200/60 dark:border-pink-500/20 px-2.5 py-1"
-                                    data-testid={`badge-assigned-child-${u.id}-${ac.id}`}
-                                  >
-                                    <Baby className="h-3.5 w-3.5 text-pink-500 shrink-0" />
-                                    <span className="text-xs font-medium text-pink-700 dark:text-pink-300">
-                                      {ac.fullName}
-                                    </span>
-                                    <div
-                                      className={`flex items-center gap-0.5 ${ac.sponsorCanComment ? "text-emerald-600" : "text-muted-foreground/40"}`}
-                                      title={ac.sponsorCanComment ? "Commenting enabled" : "Commenting disabled"}
-                                    >
-                                      <MessageSquare className="h-3 w-3" />
-                                    </div>
-                                  </div>
-                                ))}
-                              </>
-                            ) : (
-                              <span className="text-xs text-muted-foreground/60 italic" data-testid={`text-no-child-${u.id}`}>
-                                No children assigned yet
-                              </span>
-                            )
-                          )}
-                          {u.role !== "sponsor" && assignedOrg && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/25 text-xs font-medium" data-testid={`badge-org-${u.id}`}>
-                              <Building2 className="mr-1 h-3 w-3" />
-                              {assignedOrg.name}
-                            </Badge>
-                          )}
-                          <span className="text-xs text-muted-foreground/60">
-                            {u.role === "sponsor" && assignedChildren.length > 0
-                              ? `View-only access to ${assignedChildren.length} child profile${assignedChildren.length > 1 ? "s" : ""}`
-                              : rolePermissionDesc[u.role]}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 rounded-lg gap-1.5 text-sm"
-                        onClick={() => openEdit(u)}
-                        data-testid={`button-edit-${u.id}`}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-lg hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-500/10"
-                        onClick={() => setResetUser(u)}
-                        title="Reset password"
-                        data-testid={`button-reset-password-${u.id}`}
-                      >
-                        <KeyRound className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-lg hover:bg-destructive/8 hover:text-destructive"
-                        onClick={() => setDeleteUser(u)}
-                        data-testid={`button-delete-${u.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-          {users?.length === 0 && (
-            <div className="py-16 text-center text-muted-foreground">
-              <UserCog className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-              <p>No users yet. Add one to get started.</p>
+          {/* ── Sponsors tab ─────────────────────────── */}
+          <TabsContent value="sponsors" className="space-y-4 mt-0">
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
+                <Input
+                  value={sponsorSearch}
+                  onChange={(e) => setSponsorSearch(e.target.value)}
+                  placeholder="Search sponsors by name or email…"
+                  className="h-9 pl-9 pr-8 rounded-lg border-border/60 text-sm"
+                  data-testid="input-sponsor-search"
+                />
+                {sponsorSearch && (
+                  <button onClick={() => setSponsorSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <Button size="sm" variant="outline" className="rounded-lg h-9 px-3 border-border/60" onClick={() => setExportOpen(true)} data-testid="button-export-sponsors">
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Export
+              </Button>
+              <Button size="sm" variant="outline" className="rounded-lg h-9 px-3 border-border/60" onClick={() => { setImportResult(null); setImportFile(null); setImportRows([]); setImportOpen(true); }} data-testid="button-import-sponsors">
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                Import
+              </Button>
+              <Button size="sm" variant="ghost" className="rounded-lg h-9 px-3 text-muted-foreground text-xs" onClick={async () => { window.location.href = "/api/sponsors/template"; }} data-testid="button-sponsor-template">
+                <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
+                Template
+              </Button>
             </div>
-          )}
-        </div>
+
+            {/* Sponsor list */}
+            {(() => {
+              const q = sponsorSearch.toLowerCase().trim();
+              const sponsors = (users ?? []).filter(u => u.role === "sponsor").filter(u => {
+                if (!q) return true;
+                const name = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
+                return name.includes(q) || (u.username || "").toLowerCase().includes(q);
+              });
+              if (sponsors.length === 0) return (
+                <div className="py-16 text-center text-muted-foreground">
+                  <Heart className="mx-auto mb-3 h-10 w-10 text-pink-200" />
+                  <p>{sponsorSearch ? "No sponsors match your search." : "No sponsors yet. Add or import sponsors to get started."}</p>
+                </div>
+              );
+              return sponsors.map(u => (
+                <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />
+              ));
+            })()}
+          </TabsContent>
+        </Tabs>
 
         {/* ── Create dialog ─────────────────────────── */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -1212,8 +1165,235 @@ export default function AdminUsers() {
           </DialogContent>
         </Dialog>
 
+        {/* ── Import Sponsors dialog ───────────────── */}
+        <Dialog open={importOpen} onOpenChange={(open) => { setImportOpen(open); if (!open) { setImportResult(null); setImportFile(null); setImportRows([]); } }}>
+          <DialogContent className="sm:max-w-[520px] flex flex-col max-h-[90vh]">
+            <DialogHeader className="shrink-0">
+              <DialogTitle className="flex items-center gap-2">
+                <Upload className="h-4 w-4 text-pink-500" />
+                Import Sponsors
+              </DialogTitle>
+            </DialogHeader>
+
+            {importResult ? (
+              /* ── Result screen ── */
+              <div className="space-y-4 py-2">
+                <div className={`flex items-center gap-3 rounded-lg p-4 ${importResult.failed === 0 ? "bg-emerald-50 dark:bg-emerald-500/10" : "bg-amber-50 dark:bg-amber-500/10"}`}>
+                  <CheckCircle2 className={`h-5 w-5 shrink-0 ${importResult.failed === 0 ? "text-emerald-600" : "text-amber-600"}`} />
+                  <div>
+                    <p className="text-sm font-medium">{importResult.success} sponsor{importResult.success !== 1 ? "s" : ""} imported successfully</p>
+                    {importResult.failed > 0 && <p className="text-xs text-muted-foreground mt-0.5">{importResult.failed} row{importResult.failed !== 1 ? "s" : ""} skipped</p>}
+                  </div>
+                </div>
+                {importResult.errors.length > 0 && (
+                  <ScrollArea className="h-40 rounded-lg border border-border/50 bg-muted/30 p-3">
+                    <div className="space-y-1.5">
+                      {importResult.errors.map((e, i) => (
+                        <p key={i} className="text-xs text-destructive font-mono">{e}</p>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+                <DialogFooter>
+                  <Button className="rounded-lg" onClick={() => { setImportOpen(false); setImportResult(null); setImportFile(null); setImportRows([]); }} data-testid="button-import-done">Done</Button>
+                </DialogFooter>
+              </div>
+            ) : (
+              /* ── Upload screen ── */
+              <div className="space-y-4 py-2 overflow-y-auto">
+                <p className="text-sm text-muted-foreground">
+                  Upload an Excel (.xlsx) or CSV file to bulk-create sponsor accounts. Download the template to see the required format.
+                </p>
+                <div
+                  className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/60 bg-muted/30 py-10 cursor-pointer hover:border-primary/40 hover:bg-muted/50 transition-colors"
+                  onClick={() => importFileRef.current?.click()}
+                  data-testid="drop-zone-import"
+                >
+                  <FileSpreadsheet className="h-10 w-10 text-muted-foreground/40" />
+                  {importFile ? (
+                    <div className="text-center">
+                      <p className="text-sm font-medium">{importFile.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{importRows.length} data row{importRows.length !== 1 ? "s" : ""} detected</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-sm font-medium">Click to choose a file</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">.xlsx or .csv</p>
+                    </div>
+                  )}
+                </div>
+                <input
+                  ref={importFileRef}
+                  type="file"
+                  accept=".xlsx,.csv"
+                  className="hidden"
+                  data-testid="input-import-file"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setImportFile(file);
+                    setImportParsing(true);
+                    try {
+                      const HEADER_MAP: Record<string, string> = {
+                        "email address": "username", "email": "username",
+                        "password": "password",
+                        "first name": "firstName", "firstname": "firstName",
+                        "last name": "lastName", "lastname": "lastName",
+                        "street address 1": "streetAddress1", "street address line 1": "streetAddress1",
+                        "street address 2": "streetAddress2", "street address line 2": "streetAddress2",
+                        "city": "city", "state": "state",
+                        "zip code": "zipCode", "zip": "zipCode", "postal code": "zipCode",
+                        "country": "country",
+                      };
+                      const arrayBuffer = await file.arrayBuffer();
+                      const XLSX = await import("xlsx");
+                      const wb = XLSX.read(arrayBuffer, { type: "array" });
+                      const ws = wb.Sheets[wb.SheetNames[0]];
+                      const raw: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+                      const headerRow = (raw[0] || []).map((h: any) => String(h).trim().toLowerCase());
+                      const dataRows = raw.slice(1).filter((row: any[]) => row.some((cell: any) => String(cell).trim() !== ""));
+                      const mapped = dataRows.map((row: any[]) => {
+                        const obj: any = {};
+                        headerRow.forEach((h, i) => { const key = HEADER_MAP[h]; if (key) obj[key] = String(row[i] ?? "").trim(); });
+                        return obj;
+                      }).filter((r: any) => r.username);
+                      setImportRows(mapped);
+                    } catch {
+                      toast({ title: "Parse error", description: "Could not read the file. Please use the template.", variant: "destructive" });
+                    } finally {
+                      setImportParsing(false);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+                {importRows.length > 0 && (
+                  <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Preview — first 3 rows</p>
+                    <div className="space-y-1.5">
+                      {importRows.slice(0, 3).map((r, i) => (
+                        <div key={i} className="text-xs flex items-center gap-2">
+                          <span className="text-muted-foreground/60 w-5 shrink-0">{i + 1}.</span>
+                          <span className="font-medium truncate">{r.username}</span>
+                          {(r.firstName || r.lastName) && <span className="text-muted-foreground truncate">{[r.firstName, r.lastName].filter(Boolean).join(" ")}</span>}
+                          {r.city && <span className="text-muted-foreground/60 truncate">{r.city}{r.state ? `, ${r.state}` : ""}</span>}
+                        </div>
+                      ))}
+                      {importRows.length > 3 && <p className="text-xs text-muted-foreground/60 pt-1">…and {importRows.length - 3} more</p>}
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" className="rounded-lg" onClick={() => setImportOpen(false)}>Cancel</Button>
+                  <Button
+                    className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                    disabled={importRows.length === 0 || importPending || importParsing}
+                    data-testid="button-confirm-import-sponsors"
+                    onClick={async () => {
+                      setImportPending(true);
+                      try {
+                        const res = await apiRequest("POST", "/api/import/sponsors", { rows: importRows });
+                        const result = await res.json();
+                        if (!res.ok) throw new Error(result.message || "Import failed");
+                        setImportResult(result);
+                        queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+                      } catch (err: any) {
+                        toast({ title: "Import failed", description: err.message, variant: "destructive" });
+                      } finally {
+                        setImportPending(false);
+                      }
+                    }}
+                  >
+                    {importPending ? "Importing…" : importParsing ? "Parsing…" : `Import ${importRows.length > 0 ? importRows.length : ""} Sponsor${importRows.length !== 1 ? "s" : ""}`}
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
       </div>
     </div>
+  );
+}
+
+// ── User card (shared between All Users and Sponsors tabs) ───────────────────
+function UserCard({
+  u, organizations, assignedChildren, onEdit, onReset, onDelete,
+}: {
+  u: SafeUser;
+  organizations: Organization[] | undefined;
+  assignedChildren: ChildSummary[];
+  onEdit: (u: SafeUser) => void;
+  onReset: (u: SafeUser) => void;
+  onDelete: (u: SafeUser) => void;
+}) {
+  const RoleIcon = roleIcons[u.role] || Shield;
+  const assignedOrg = u.organizationId ? organizations?.find((o) => o.id === u.organizationId) : null;
+  const displayName = u.firstName || u.lastName ? `${u.firstName || ""} ${u.lastName || ""}`.trim() : null;
+  return (
+    <Card className="border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`card-user-${u.id}`}>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3.5 flex-1 min-w-0">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${roleBadgeColors[u.role]?.split(" ").slice(0, 2).join(" ") || "bg-muted text-muted-foreground"}`}>
+              {(u.firstName?.[0] || u.username?.[0] || "?").toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-[15px]" data-testid={`text-username-${u.id}`}>{displayName || u.username}</span>
+                <Badge variant="outline" className={`${roleBadgeColors[u.role] || ""} text-xs font-medium flex items-center gap-1`} data-testid={`badge-role-${u.id}`}>
+                  <RoleIcon className="h-3 w-3" />
+                  {roleLabels[u.role] || u.role}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5" data-testid={`text-user-email-${u.id}`}>{u.username}</p>
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                {u.role === "sponsor" && (
+                  assignedChildren.length > 0 ? (
+                    <>
+                      {assignedChildren.map((ac) => (
+                        <div key={ac.id} className="flex items-center gap-1.5 rounded-md bg-pink-50 dark:bg-pink-500/10 border border-pink-200/60 dark:border-pink-500/20 px-2.5 py-1" data-testid={`badge-assigned-child-${u.id}-${ac.id}`}>
+                          <Baby className="h-3.5 w-3.5 text-pink-500 shrink-0" />
+                          <span className="text-xs font-medium text-pink-700 dark:text-pink-300">{ac.fullName}</span>
+                          <div className={`flex items-center gap-0.5 ${ac.sponsorCanComment ? "text-emerald-600" : "text-muted-foreground/40"}`} title={ac.sponsorCanComment ? "Commenting enabled" : "Commenting disabled"}>
+                            <MessageSquare className="h-3 w-3" />
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground/60 italic" data-testid={`text-no-child-${u.id}`}>No children assigned yet</span>
+                  )
+                )}
+                {u.role !== "sponsor" && assignedOrg && (
+                  <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/25 text-xs font-medium" data-testid={`badge-org-${u.id}`}>
+                    <Building2 className="mr-1 h-3 w-3" />
+                    {assignedOrg.name}
+                  </Badge>
+                )}
+                <span className="text-xs text-muted-foreground/60">
+                  {u.role === "sponsor" && assignedChildren.length > 0
+                    ? `View-only access to ${assignedChildren.length} child profile${assignedChildren.length > 1 ? "s" : ""}`
+                    : rolePermissionDesc[u.role]}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="sm" className="h-9 rounded-lg gap-1.5 text-sm" onClick={() => onEdit(u)} data-testid={`button-edit-${u.id}`}>
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-500/10" onClick={() => onReset(u)} title="Reset password" data-testid={`button-reset-password-${u.id}`}>
+              <KeyRound className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-destructive/8 hover:text-destructive" onClick={() => onDelete(u)} data-testid={`button-delete-${u.id}`}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

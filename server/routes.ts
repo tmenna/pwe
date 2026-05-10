@@ -926,6 +926,71 @@ export async function registerRoutes(
     }
   });
 
+  // --- Sponsors: import template ---
+  app.get("/api/sponsors/template", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.currentUser?.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+      const XLSX = await import("xlsx");
+      const headers = ["Email Address", "Password", "First Name", "Last Name", "Street Address 1", "Street Address 2", "City", "State", "Zip Code", "Country"];
+      const notes = ["REQUIRED — used as login username", "REQUIRED — min 6 chars", "Optional", "Optional", "Optional", "Optional", "Optional", "Optional", "Optional", "Optional"];
+      const sample = ["rachel.johnson@example.com", "Welcome1!", "Rachel", "Johnson", "123 Maple St", "", "Nashville", "TN", "37201", "USA"];
+      const ws = XLSX.utils.aoa_to_sheet([headers, notes, sample]);
+      ws["!cols"] = headers.map(() => ({ wch: 26 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sponsor Import");
+      const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", "attachment; filename=sponsors-import-template.xlsx");
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Sponsors: bulk import ---
+  app.post("/api/import/sponsors", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.currentUser?.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+      const rows: any[] = req.body.rows;
+      if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ message: "No rows provided" });
+      const bcrypt = await import("bcryptjs");
+      const results = { success: 0, failed: 0, errors: [] as string[] };
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        try {
+          const username = String(row.username || "").trim();
+          const password = String(row.password || "").trim();
+          if (!username) throw new Error("Email Address is required");
+          if (!password || password.length < 6) throw new Error("Password must be at least 6 characters");
+          const existing = await authStorage.getUserByUsername(username);
+          if (existing) throw new Error(`${username} already exists`);
+          const hashedPassword = await bcrypt.hash(password, 10);
+          await authStorage.createUser({
+            username,
+            hashedPassword,
+            firstName: row.firstName ? String(row.firstName).trim() : null,
+            lastName: row.lastName ? String(row.lastName).trim() : null,
+            email: username,
+            role: "sponsor",
+            streetAddress1: row.streetAddress1 ? String(row.streetAddress1).trim() : null,
+            streetAddress2: row.streetAddress2 ? String(row.streetAddress2).trim() : null,
+            city: row.city ? String(row.city).trim() : null,
+            state: row.state ? String(row.state).trim() : null,
+            zipCode: row.zipCode ? String(row.zipCode).trim() : null,
+            country: row.country ? String(row.country).trim() : null,
+          });
+          results.success++;
+        } catch (err: any) {
+          results.failed++;
+          results.errors.push(`Row ${i + 2}: ${err.message}`);
+        }
+      }
+      res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // --- Admin: test email endpoint ---
   app.post("/api/admin/test-email", isAuthenticated, async (req: any, res) => {
     try {
