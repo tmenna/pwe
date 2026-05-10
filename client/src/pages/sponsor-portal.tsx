@@ -621,30 +621,47 @@ function ChildPortal({ child }: { child: Child }) {
                     <p className="text-xs text-muted-foreground/70 mt-1">Newsletters from the care team will appear here</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {newsletters.map((nl) => (
-                      <a
-                        key={nl.id}
-                        href={nl.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 rounded-xl border border-violet-200/60 bg-violet-50/40 dark:bg-violet-500/5 dark:border-violet-500/20 p-4 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors group"
-                        data-testid={`newsletter-item-${nl.id}`}
-                      >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/20">
-                          <Newspaper className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                  (() => {
+                    const childProgram = child?.programEnrollment ?? null;
+                    const visible = (newsletters ?? []).filter(nl =>
+                      !nl.targetProgram || nl.targetProgram === childProgram
+                    );
+                    return visible.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted mb-3">
+                          <Newspaper className="h-5 w-5 text-muted-foreground" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{nl.title}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {new Date(nl.createdAt!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                            {nl.fileName && <span className="ml-2 opacity-60">· {nl.fileName}</span>}
-                          </p>
-                        </div>
-                        <Download className="h-4 w-4 text-muted-foreground group-hover:text-violet-600 transition-colors shrink-0" />
-                      </a>
-                    ))}
-                  </div>
+                        <p className="text-sm font-medium text-muted-foreground">No newsletters yet</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Newsletters from the care team will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {visible.map((nl) => (
+                          <a
+                            key={nl.id}
+                            href={nl.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 rounded-xl border border-violet-200/60 bg-violet-50/40 dark:bg-violet-500/5 dark:border-violet-500/20 p-4 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors group"
+                            data-testid={`newsletter-item-${nl.id}`}
+                          >
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/20">
+                              <Newspaper className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{nl.title}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {new Date(nl.createdAt!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                {nl.fileName && <span className="ml-2 opacity-60">· {nl.fileName}</span>}
+                                {nl.targetProgram && <span className="ml-2 text-violet-500/70">· {nl.targetProgram}</span>}
+                              </p>
+                            </div>
+                            <Download className="h-4 w-4 text-muted-foreground group-hover:text-violet-600 transition-colors shrink-0" />
+                          </a>
+                        ))}
+                      </div>
+                    );
+                  })()
                 )}
               </div>
             </Card>

@@ -9,7 +9,7 @@ export async function seedDatabase() {
   if (Number(existingOrgs[0].count) === 0) {
     console.log("Seeding organizations...");
     await db.insert(organizations).values([
-      { name: "Bridging opportunity for all", description: "Connecting children with sponsors to create pathways to education and brighter futures." },
+      { name: "Bridging Opportunity For All", description: "Connecting children with sponsors to create pathways to education and brighter futures." },
       { name: "I Care", description: "A dedicated care program supporting children's wellbeing, health, and personal development." },
       { name: "Hope Sponsorship", description: "Providing hope and lasting support through dedicated one-on-one sponsorship partnerships." },
     ]);

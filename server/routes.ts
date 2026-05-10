@@ -1024,7 +1024,7 @@ export async function registerRoutes(
 
   app.post("/api/newsletters", isAuthenticated, isAdmin, express.json(), async (req: any, res) => {
     try {
-      const { objectPath, fileName, title, contentType, fileSize } = req.body;
+      const { objectPath, fileName, title, contentType, fileSize, targetProgram } = req.body;
       if (!objectPath || !fileName || !title) {
         return res.status(400).json({ message: "objectPath, fileName and title are required" });
       }
@@ -1036,6 +1036,7 @@ export async function registerRoutes(
         fileKey: fileKey || null,
         mimeType: contentType || null,
         fileSize: fileSize ? parseInt(fileSize) : null,
+        targetProgram: targetProgram || null,
         uploadedBy: getUserName(req),
       });
       res.status(201).json(nl);

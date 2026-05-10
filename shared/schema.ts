@@ -81,6 +81,7 @@ export const newsletters = pgTable("newsletters", {
   fileKey: text("file_key"),
   mimeType: varchar("mime_type", { length: 100 }),
   fileSize: integer("file_size"),
+  targetProgram: text("target_program"), // null = all programs
   uploadedBy: text("uploaded_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });

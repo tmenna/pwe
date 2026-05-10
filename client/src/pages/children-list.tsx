@@ -477,11 +477,17 @@ function NewsletterDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [targetProgram, setTargetProgram] = useState("__all__");
+
+  const { data: organizations } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/organizations"],
+  });
 
   const reset = () => {
     setTitle("");
     setFile(null);
     setUploading(false);
+    setTargetProgram("__all__");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -528,12 +534,14 @@ function NewsletterDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           title: title.trim(),
           contentType: file.type,
           fileSize: file.size,
+          targetProgram: targetProgram === "__all__" ? null : targetProgram,
         }),
       });
       if (!saveRes.ok) throw new Error("Failed to save newsletter");
 
       await queryClient.invalidateQueries({ queryKey: ["/api/newsletters"] });
-      toast({ title: "Newsletter uploaded", description: `"${title.trim()}" is now available to sponsors.` });
+      const programLabel = targetProgram === "__all__" ? "all sponsors" : `sponsors in "${targetProgram}"`;
+      toast({ title: "Newsletter uploaded", description: `"${title.trim()}" is now visible to ${programLabel}.` });
       handleClose(false);
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
@@ -563,6 +571,38 @@ function NewsletterDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               data-testid="input-newsletter-title"
             />
           </div>
+
+          {/* Program audience selector */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Send to</Label>
+            <div className="grid gap-2">
+              {[{ value: "__all__", label: "All Programs", sub: "Every sponsor sees this newsletter" }, ...(organizations ?? []).map(o => ({ value: o.name, label: o.name, sub: `Only sponsors in ${o.name}` }))].map(opt => {
+                const active = targetProgram === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setTargetProgram(opt.value)}
+                    data-testid={`button-nl-program-${opt.value}`}
+                    className={`flex items-center gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors ${
+                      active
+                        ? "border-violet-400 bg-violet-50 dark:bg-violet-500/10 dark:border-violet-500/40"
+                        : "border-border/60 hover:border-border hover:bg-muted/40"
+                    }`}
+                  >
+                    <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${active ? "border-violet-500 bg-violet-500" : "border-muted-foreground/30"}`}>
+                      {active && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-medium leading-none ${active ? "text-violet-700 dark:text-violet-300" : ""}`}>{opt.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{opt.sub}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">File</Label>
             <div
