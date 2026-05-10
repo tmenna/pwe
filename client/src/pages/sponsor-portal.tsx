@@ -353,20 +353,6 @@ function ChildPortal({ child }: { child: Child }) {
                   <p className="mt-1.5 text-center text-[11px] font-medium text-muted-foreground">Child Photo</p>
                 </div>
 
-                {/* Sponsor Photo */}
-                <div className="flex flex-col items-center">
-                  <div
-                    className="relative h-[120px] w-[120px] sm:h-[140px] sm:w-[140px] rounded-xl border-2 border-rose-200/50 dark:border-rose-500/20 overflow-hidden bg-rose-500/8 flex items-center justify-center"
-                    data-testid="img-sponsor-photo"
-                  >
-                    {sponsorPhotoUrl ? (
-                      <img src={sponsorPhotoUrl} alt="Sponsor" className="h-full w-full object-cover" />
-                    ) : (
-                      <Heart className="h-8 w-8 text-rose-400" />
-                    )}
-                  </div>
-                  <p className="mt-1.5 text-center text-[11px] font-medium text-muted-foreground">Sponsor Photo</p>
-                </div>
               </div>
 
               {/* Child Info */}
