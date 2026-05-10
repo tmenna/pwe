@@ -139,6 +139,8 @@ export default function AdminUsers() {
   const [exportPending, setExportPending] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [sponsorSearch, setSponsorSearch] = useState("");
+  const [selectedSponsorIds, setSelectedSponsorIds] = useState<Set<string>>(new Set());
+  const [exportScope, setExportScope] = useState<"all" | "selected">("selected");
   const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importRows, setImportRows] = useState<any[]>([]);
@@ -422,53 +424,127 @@ export default function AdminUsers() {
           {/* ── Sponsors tab ─────────────────────────── */}
           <TabsContent value="sponsors" className="space-y-4 mt-0">
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
-                <Input
-                  value={sponsorSearch}
-                  onChange={(e) => setSponsorSearch(e.target.value)}
-                  placeholder="Search sponsors by name or email…"
-                  className="h-9 pl-9 pr-8 rounded-lg border-border/60 text-sm"
-                  data-testid="input-sponsor-search"
-                />
-                {sponsorSearch && (
-                  <button onClick={() => setSponsorSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-              <Button size="sm" variant="outline" className="rounded-lg h-9 px-3 border-border/60" onClick={() => setExportOpen(true)} data-testid="button-export-sponsors">
-                <Download className="mr-1.5 h-3.5 w-3.5" />
-                Export
-              </Button>
-              <Button size="sm" variant="outline" className="rounded-lg h-9 px-3 border-border/60" onClick={() => { setImportResult(null); setImportFile(null); setImportRows([]); setImportOpen(true); }} data-testid="button-import-sponsors">
-                <Upload className="mr-1.5 h-3.5 w-3.5" />
-                Import
-              </Button>
-              <Button size="sm" variant="ghost" className="rounded-lg h-9 px-3 text-muted-foreground text-xs" onClick={async () => { window.location.href = "/api/sponsors/template"; }} data-testid="button-sponsor-template">
-                <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
-                Template
-              </Button>
-            </div>
-
-            {/* Sponsor list */}
             {(() => {
               const q = sponsorSearch.toLowerCase().trim();
-              const sponsors = (users ?? []).filter(u => u.role === "sponsor").filter(u => {
+              const allSponsors = (users ?? []).filter(u => u.role === "sponsor");
+              const visibleSponsors = allSponsors.filter(u => {
                 if (!q) return true;
                 const name = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
                 return name.includes(q) || (u.username || "").toLowerCase().includes(q);
               });
-              if (sponsors.length === 0) return (
-                <div className="py-16 text-center text-muted-foreground">
-                  <Heart className="mx-auto mb-3 h-10 w-10 text-pink-200" />
-                  <p>{sponsorSearch ? "No sponsors match your search." : "No sponsors yet. Add or import sponsors to get started."}</p>
-                </div>
+              const allVisibleSelected = visibleSponsors.length > 0 && visibleSponsors.every(u => selectedSponsorIds.has(u.id));
+              const someSelected = selectedSponsorIds.size > 0;
+
+              const toggleAll = () => {
+                if (allVisibleSelected) {
+                  setSelectedSponsorIds(prev => {
+                    const next = new Set(prev);
+                    visibleSponsors.forEach(u => next.delete(u.id));
+                    return next;
+                  });
+                } else {
+                  setSelectedSponsorIds(prev => {
+                    const next = new Set(prev);
+                    visibleSponsors.forEach(u => next.add(u.id));
+                    return next;
+                  });
+                }
+              };
+
+              return (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
+                      <Input
+                        value={sponsorSearch}
+                        onChange={(e) => setSponsorSearch(e.target.value)}
+                        placeholder="Search sponsors by name or email…"
+                        className="h-9 pl-9 pr-8 rounded-lg border-border/60 text-sm"
+                        data-testid="input-sponsor-search"
+                      />
+                      {sponsorSearch && (
+                        <button onClick={() => setSponsorSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={`rounded-lg h-9 px-3 border-border/60 ${someSelected ? "border-pink-300 bg-pink-50 text-pink-700 hover:bg-pink-100 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/30" : ""}`}
+                      onClick={() => setExportOpen(true)}
+                      data-testid="button-export-sponsors"
+                    >
+                      <Download className="mr-1.5 h-3.5 w-3.5" />
+                      Export{someSelected ? ` (${selectedSponsorIds.size} selected)` : ""}
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-lg h-9 px-3 border-border/60" onClick={() => { setImportResult(null); setImportFile(null); setImportRows([]); setImportOpen(true); }} data-testid="button-import-sponsors">
+                      <Upload className="mr-1.5 h-3.5 w-3.5" />
+                      Import
+                    </Button>
+                    <Button size="sm" variant="ghost" className="rounded-lg h-9 px-3 text-muted-foreground text-xs" onClick={() => { window.location.href = "/api/sponsors/template"; }} data-testid="button-sponsor-template">
+                      <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
+                      Template
+                    </Button>
+                  </div>
+
+                  {/* Select-all bar — only when there are sponsors */}
+                  {visibleSponsors.length > 0 && (
+                    <div className="flex items-center gap-3 px-1">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="select-all-sponsors"
+                          checked={allVisibleSelected}
+                          onCheckedChange={toggleAll}
+                          data-testid="checkbox-select-all-sponsors"
+                        />
+                        <label htmlFor="select-all-sponsors" className="text-xs text-muted-foreground cursor-pointer select-none">
+                          {allVisibleSelected ? "Deselect all" : `Select all${visibleSponsors.length !== allSponsors.length ? ` ${visibleSponsors.length} visible` : ""}`}
+                        </label>
+                      </div>
+                      {someSelected && (
+                        <>
+                          <span className="text-muted-foreground/40 text-xs">·</span>
+                          <span className="text-xs text-pink-600 dark:text-pink-400 font-medium">{selectedSponsorIds.size} of {allSponsors.length} selected</span>
+                          <button className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2" onClick={() => setSelectedSponsorIds(new Set())} data-testid="button-clear-selection">
+                            Clear
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Sponsor list */}
+                  {visibleSponsors.length === 0 ? (
+                    <div className="py-16 text-center text-muted-foreground">
+                      <Heart className="mx-auto mb-3 h-10 w-10 text-pink-200" />
+                      <p>{sponsorSearch ? "No sponsors match your search." : "No sponsors yet. Add or import sponsors to get started."}</p>
+                    </div>
+                  ) : (
+                    visibleSponsors.map(u => (
+                      <UserCard
+                        key={u.id}
+                        u={u}
+                        organizations={organizations}
+                        assignedChildren={getAssignedChildren(u.id)}
+                        onEdit={openEdit}
+                        onReset={setResetUser}
+                        onDelete={setDeleteUser}
+                        selectable
+                        selected={selectedSponsorIds.has(u.id)}
+                        onToggleSelect={(id, checked) => {
+                          setSelectedSponsorIds(prev => {
+                            const next = new Set(prev);
+                            checked ? next.add(id) : next.delete(id);
+                            return next;
+                          });
+                        }}
+                      />
+                    ))
+                  )}
+                </>
               );
-              return sponsors.map(u => (
-                <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />
-              ));
             })()}
           </TabsContent>
         </Tabs>
@@ -1103,8 +1179,8 @@ export default function AdminUsers() {
         </Dialog>
 
         {/* ── Export Sponsors dialog ────────────────── */}
-        <Dialog open={exportOpen} onOpenChange={setExportOpen}>
-          <DialogContent className="sm:max-w-[400px]">
+        <Dialog open={exportOpen} onOpenChange={(open) => { setExportOpen(open); }}>
+          <DialogContent className="sm:max-w-[420px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Download className="h-4 w-4 text-primary" />
@@ -1113,8 +1189,40 @@ export default function AdminUsers() {
             </DialogHeader>
             <div className="space-y-4 py-2">
               <p className="text-sm text-muted-foreground">
-                Download a spreadsheet of all sponsors including their address and assigned children's profile data.
+                Download a spreadsheet of sponsors including their address and assigned children's profile data.
               </p>
+
+              {/* Scope selector */}
+              {selectedSponsorIds.size > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Which sponsors</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: "all", label: "All sponsors", sub: `${(users ?? []).filter(u => u.role === "sponsor").length} total` },
+                      { value: "selected", label: "Selected only", sub: `${selectedSponsorIds.size} selected` },
+                    ].map(opt => {
+                      const active = exportScope === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setExportScope(opt.value as "all" | "selected")}
+                          data-testid={`button-export-scope-${opt.value}`}
+                          className={`flex flex-col items-start gap-0.5 rounded-lg border px-4 py-3 text-left transition-colors ${
+                            active
+                              ? "border-primary bg-primary/5 dark:bg-primary/10"
+                              : "border-border/60 hover:border-border hover:bg-muted/40"
+                          }`}
+                        >
+                          <span className={`text-sm font-medium ${active ? "text-primary" : ""}`}>{opt.label}</span>
+                          <span className="text-xs text-muted-foreground">{opt.sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Format</Label>
                 <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "xlsx" | "csv")}>
@@ -1137,11 +1245,15 @@ export default function AdminUsers() {
                 onClick={async () => {
                   setExportPending(true);
                   try {
+                    const body: any = { format: exportFormat };
+                    if (exportScope === "selected" && selectedSponsorIds.size > 0) {
+                      body.userIds = Array.from(selectedSponsorIds);
+                    }
                     const res = await fetch("/api/export/sponsors", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       credentials: "include",
-                      body: JSON.stringify({ format: exportFormat }),
+                      body: JSON.stringify(body),
                     });
                     if (!res.ok) throw new Error("Export failed");
                     const blob = await res.blob();
@@ -1159,7 +1271,7 @@ export default function AdminUsers() {
                   }
                 }}
               >
-                {exportPending ? "Exporting..." : "Download"}
+                {exportPending ? "Exporting..." : exportScope === "selected" && selectedSponsorIds.size > 0 ? `Download ${selectedSponsorIds.size}` : "Download All"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1319,6 +1431,7 @@ export default function AdminUsers() {
 // ── User card (shared between All Users and Sponsors tabs) ───────────────────
 function UserCard({
   u, organizations, assignedChildren, onEdit, onReset, onDelete,
+  selectable = false, selected = false, onToggleSelect,
 }: {
   u: SafeUser;
   organizations: Organization[] | undefined;
@@ -1326,15 +1439,27 @@ function UserCard({
   onEdit: (u: SafeUser) => void;
   onReset: (u: SafeUser) => void;
   onDelete: (u: SafeUser) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string, checked: boolean) => void;
 }) {
   const RoleIcon = roleIcons[u.role] || Shield;
   const assignedOrg = u.organizationId ? organizations?.find((o) => o.id === u.organizationId) : null;
   const displayName = u.firstName || u.lastName ? `${u.firstName || ""} ${u.lastName || ""}`.trim() : null;
   return (
-    <Card className="border-border/50 transition-all duration-150 hover:shadow-sm" data-testid={`card-user-${u.id}`}>
+    <Card className={`border-border/50 transition-all duration-150 hover:shadow-sm ${selected ? "border-pink-300 bg-pink-50/30 dark:bg-pink-500/5 dark:border-pink-500/30" : ""}`} data-testid={`card-user-${u.id}`}>
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3.5 flex-1 min-w-0">
+            {selectable && (
+              <div className="mt-0.5 shrink-0">
+                <Checkbox
+                  checked={selected}
+                  onCheckedChange={(v) => onToggleSelect?.(u.id, !!v)}
+                  data-testid={`checkbox-select-sponsor-${u.id}`}
+                />
+              </div>
+            )}
             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${roleBadgeColors[u.role]?.split(" ").slice(0, 2).join(" ") || "bg-muted text-muted-foreground"}`}>
               {(u.firstName?.[0] || u.username?.[0] || "?").toUpperCase()}
             </div>

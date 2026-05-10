@@ -864,14 +864,16 @@ export async function registerRoutes(
       if (req.currentUser?.role !== "admin") {
         return res.status(403).json({ message: "Admin access required" });
       }
-      const { format = "xlsx" } = req.body;
+      const { format = "xlsx", userIds } = req.body;
       const { db } = await import("./db");
       const { users: usersTable } = await import("@shared/models/auth");
-      const { eq } = await import("drizzle-orm");
 
-      const sponsors = await db.select().from(usersTable).then((all) =>
+      const allSponsors = await db.select().from(usersTable).then((all) =>
         all.filter((u) => u.role === "sponsor")
       );
+      const sponsors = Array.isArray(userIds) && userIds.length > 0
+        ? allSponsors.filter((s) => userIds.includes(s.id))
+        : allSponsors;
       const allChildren = await storage.getChildren();
 
       const rows: string[][] = [];
