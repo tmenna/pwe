@@ -242,12 +242,28 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
     if (file) parseFile(file);
   };
 
+  function calcAgeFromDob(dob: string): number | null {
+    if (!dob) return null;
+    const birth = new Date(dob);
+    if (isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return Math.max(0, age);
+  }
+
+  function resolvedAge(row: ParsedRow): number | null {
+    const fromCol = parseInt(row.age);
+    if (!isNaN(fromCol) && fromCol >= 0) return fromCol;
+    return calcAgeFromDob(row.dateOfBirth);
+  }
+
   const rowErrors = (row: ParsedRow) => {
     const errs: string[] = [];
     if (!row.fullName) errs.push("Full Name required");
     if (!row.location) errs.push("Location required");
-    const age = parseInt(row.age);
-    if (isNaN(age) || age < 0) errs.push("Invalid age");
+    if (resolvedAge(row) === null) errs.push("Invalid age — provide Date of Birth or Age");
     if (!["male", "female"].includes((row.gender || "").toLowerCase())) errs.push("Gender must be male or female");
     if (!["active", "paused", "exited"].includes((row.status || "").toLowerCase())) errs.push("Status must be active, paused, or exited");
     return errs;
@@ -361,11 +377,18 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
                         return (
                           <tr key={i} className={`border-t border-border/30 ${hasError ? "bg-destructive/5" : "hover:bg-muted/20"}`}>
                             <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                            {previewCols.map((col) => (
-                              <td key={col} className={`px-3 py-2 ${hasError ? "text-muted-foreground" : ""}`}>
-                                {row[col] || <span className="text-muted-foreground/40 italic">—</span>}
-                              </td>
-                            ))}
+                            {previewCols.map((col) => {
+                              let display: string | undefined = row[col];
+                              if (col === "age" && (!display || display === "0")) {
+                                const computed = resolvedAge(row);
+                                display = computed !== null ? String(computed) : undefined;
+                              }
+                              return (
+                                <td key={col} className={`px-3 py-2 ${hasError ? "text-muted-foreground" : ""}`}>
+                                  {display || <span className="text-muted-foreground/40 italic">—</span>}
+                                </td>
+                              );
+                            })}
                             <td className="px-3 py-2">
                               {hasError
                                 ? <span className="text-destructive">{errs.join("; ")}</span>

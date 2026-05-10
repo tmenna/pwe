@@ -292,11 +292,26 @@ export async function registerRoutes(
           const childId = (row.childId && String(row.childId).trim())
             ? String(row.childId).trim()
             : `C${Date.now().toString(36).toUpperCase().slice(-6)}${i}`;
+          const dobStr = row.dateOfBirth ? String(row.dateOfBirth).trim() : null;
+          function calcAgeFromDob(dob: string): number {
+            const birth = new Date(dob);
+            if (isNaN(birth.getTime())) return 0;
+            const today = new Date();
+            let age = today.getFullYear() - birth.getFullYear();
+            const m = today.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+            return Math.max(0, age);
+          }
+          const ageFromCol = parseInt(String(row.age));
+          const computedAge = !isNaN(ageFromCol) && ageFromCol > 0
+            ? ageFromCol
+            : dobStr ? calcAgeFromDob(dobStr) : 0;
+
           const parsed = {
             childId,
             fullName: String(row.fullName || "").trim(),
-            dateOfBirth: row.dateOfBirth ? String(row.dateOfBirth).trim() : null,
-            age: parseInt(String(row.age)) || 0,
+            dateOfBirth: dobStr,
+            age: computedAge,
             gender: String(row.gender || "").toLowerCase().trim(),
             location: String(row.location || "").trim(),
             programEnrollment: row.programEnrollment ? String(row.programEnrollment).trim() : "",
