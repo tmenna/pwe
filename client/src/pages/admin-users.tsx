@@ -745,7 +745,7 @@ export default function AdminUsers() {
 
               {form.role === "case_worker" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <Label className="text-sm font-medium">Program <span className="text-muted-foreground font-normal">(optional)</span></Label>
                   <Select
                     value={form.organizationId || "none"}
                     onValueChange={(v) => setForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}
@@ -991,7 +991,7 @@ export default function AdminUsers() {
 
               {editForm.role === "case_worker" && organizations && organizations.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Organization <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <Label className="text-sm font-medium">Program <span className="text-muted-foreground font-normal">(optional)</span></Label>
                   <Select
                     value={editForm.organizationId || "none"}
                     onValueChange={(v) => setEditForm((f) => ({ ...f, organizationId: v === "none" ? "" : v }))}
