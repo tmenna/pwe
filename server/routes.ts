@@ -210,47 +210,41 @@ export async function registerRoutes(
       const XLSX = await import("xlsx");
 
       const headers = [
-        "Child ID",
         "Full Name",
+        "Child ID",
         "Date of Birth (YYYY-MM-DD)",
-        "Age",
         "Gender (male/female)",
-        "Location",
-        "Program Enrollment",
-        "Assigned Sponsors",
-        "Assigned Case Worker",
         "Status (active/paused/exited)",
+        "Location (Dale/Shanto/Boricha/Addis Ababa/Hawassa/Gillo Bisare)",
         "Is Sponsored (Yes/No)",
+        "Assigned Case Worker",
+        "Program Enrollment",
         "Description",
       ];
 
       const notes = [
-        "Optional — leave blank to auto-generate",
         "REQUIRED — child's full name",
-        "Optional — e.g. 2015-03-22",
-        "REQUIRED — whole number",
+        "Optional — leave blank to auto-generate (e.g. C4F2A1)",
+        "REQUIRED — e.g. 2015-03-22 (age is auto-calculated)",
         "REQUIRED — male or female",
-        "REQUIRED — town/region",
-        "Optional — program name",
-        "Optional — sponsor name(s)",
-        "Optional — case worker name",
         "REQUIRED — active, paused, or exited",
+        "REQUIRED — must be one of the listed locations exactly",
         "Optional — Yes or No (default: No)",
-        "Optional — free text bio",
+        "Optional — case worker's full name",
+        "Optional — organization / program name",
+        "Optional — free-text background or notes",
       ];
 
       const sample = [
-        "CHD-001",
         "Abebe Girma",
+        "CHD-001",
         "2014-06-15",
-        "10",
         "male",
-        "Boricha, Sidama Region, Ethiopia",
-        "Primary School - Grade 4",
-        "Johnson Family",
-        "Dawit Bekele",
         "active",
+        "Boricha",
         "Yes",
+        "Dawit Bekele",
+        "Primary School Program",
         "Abebe is an enthusiastic learner who excels in mathematics.",
       ];
 

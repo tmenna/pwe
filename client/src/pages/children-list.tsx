@@ -133,18 +133,19 @@ function ExportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
 // Column mapping from template headers → internal field keys
 // ---------------------------------------------------------------------------
 const HEADER_MAP: Record<string, string> = {
-  "child id": "childId",
   "full name": "fullName",
+  "child id": "childId",
   "date of birth (yyyy-mm-dd)": "dateOfBirth",
-  "age": "age",
   "gender (male/female)": "gender",
-  "location": "location",
-  "program enrollment": "programEnrollment",
-  "assigned sponsors": "assignedSponsors",
-  "assigned case worker": "assignedCaseWorker",
   "status (active/paused/exited)": "status",
+  "location (dale/shanto/boricha/addis ababa/hawassa/gillo bisare)": "location",
+  "location": "location",
   "is sponsored (yes/no)": "isSponsored",
+  "assigned case worker": "assignedCaseWorker",
+  "program enrollment": "programEnrollment",
   "description": "description",
+  "age": "age",
+  "assigned sponsors": "assignedSponsors",
 };
 
 interface ParsedRow {
