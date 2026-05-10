@@ -334,38 +334,54 @@ function ChildPortal({ child }: { child: Child }) {
           <div className="h-2 w-full bg-gradient-to-r from-pink-400 via-rose-400 to-pink-500" />
           <div className="p-6 sm:p-7">
             <div className="flex flex-col sm:flex-row gap-6 items-start">
-              {/* Child Photo */}
-              <div className="flex flex-col items-center gap-3 shrink-0">
-                <Avatar className="h-24 w-24 sm:h-28 sm:w-28 ring-2 ring-border/30 shadow-md">
-                  {photoUrl ? <AvatarImage src={photoUrl} alt={child.fullName} className="object-cover" /> : null}
-                  <AvatarFallback className="text-2xl font-semibold bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-300">
-                    {child.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <Badge
-                  variant="outline"
-                  className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 text-xs font-medium capitalize"
-                  data-testid="badge-child-status"
-                >
-                  {child.status}
-                </Badge>
+              {/* Photos */}
+              <div className="flex gap-4 shrink-0">
+                {/* Child Photo */}
+                <div className="flex flex-col items-center">
+                  <div
+                    className="relative h-[120px] w-[120px] sm:h-[140px] sm:w-[140px] rounded-xl border-2 border-border/40 overflow-hidden bg-primary/8 flex items-center justify-center"
+                    data-testid="img-child-photo"
+                  >
+                    {photoUrl ? (
+                      <img src={photoUrl} alt={child.fullName} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-3xl font-bold text-primary">
+                        {child.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-center text-[11px] font-medium text-muted-foreground">Child Photo</p>
+                </div>
+
+                {/* Sponsor Photo */}
+                <div className="flex flex-col items-center">
+                  <div
+                    className="relative h-[120px] w-[120px] sm:h-[140px] sm:w-[140px] rounded-xl border-2 border-rose-200/50 dark:border-rose-500/20 overflow-hidden bg-rose-500/8 flex items-center justify-center"
+                    data-testid="img-sponsor-photo"
+                  >
+                    {sponsorPhotoUrl ? (
+                      <img src={sponsorPhotoUrl} alt="Sponsor" className="h-full w-full object-cover" />
+                    ) : (
+                      <Heart className="h-8 w-8 text-rose-400" />
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-center text-[11px] font-medium text-muted-foreground">Sponsor Photo</p>
+                </div>
               </div>
 
               {/* Child Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div>
+                  <div className="flex items-center gap-3 flex-wrap">
                     <h2 className="text-xl font-bold tracking-tight" data-testid="text-child-name">{child.fullName}</h2>
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 text-xs font-medium capitalize"
+                      data-testid="badge-child-status"
+                    >
+                      {child.status}
+                    </Badge>
                   </div>
-                  {sponsorPhotoUrl && (
-                    <div className="flex flex-col items-center gap-1.5">
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Your Photo</span>
-                      <Avatar className="h-12 w-12 ring-2 ring-pink-200/60 dark:ring-pink-500/20">
-                        <AvatarImage src={sponsorPhotoUrl} alt="Sponsor photo" className="object-cover" />
-                        <AvatarFallback className="bg-pink-50 text-pink-600 text-xs"><Heart className="h-4 w-4" /></AvatarFallback>
-                      </Avatar>
-                    </div>
-                  )}
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
