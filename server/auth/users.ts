@@ -97,10 +97,10 @@ export function registerUserRoutes(app: Express): void {
     }
   });
 
-  // Self-service: any logged-in user can update their own username and/or password
+  // Self-service: any logged-in user can update their own profile fields
   app.patch("/api/auth/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const { username, currentPassword, newPassword } = req.body;
+      const { username, currentPassword, newPassword, firstName, lastName, email } = req.body;
       const user = req.currentUser;
 
       // If changing password, verify the current password first
@@ -130,6 +130,10 @@ export function registerUserRoutes(app: Express): void {
       if (newPassword) {
         updateData.hashedPassword = await bcrypt.hash(newPassword, 10);
       }
+
+      if (firstName !== undefined) updateData.firstName = firstName || null;
+      if (lastName !== undefined) updateData.lastName = lastName || null;
+      if (email !== undefined) updateData.email = email || null;
 
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No changes provided" });

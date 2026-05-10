@@ -4,6 +4,7 @@ import {
   Heart, FileText, Image, StickyNote, GraduationCap, MessageSquare,
   MapPin, BookOpen, User, Calendar, Send, Mail,
   Inbox, MessageCircleOff, ThumbsUp, CornerDownRight, Reply, X, Camera, Newspaper, Download,
+  Settings, Eye, EyeOff, RefreshCw, Upload,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -131,6 +133,54 @@ function ChildPortal({ child }: { child: Child }) {
   const sponsorName = user?.firstName && user?.lastName
     ? `${user.firstName} ${user.lastName}`
     : user?.username || "Sponsor";
+
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profFirstName, setProfFirstName] = useState("");
+  const [profLastName, setProfLastName] = useState("");
+  const [profEmail, setProfEmail] = useState("");
+  const [profCurrentPw, setProfCurrentPw] = useState("");
+  const [profNewPw, setProfNewPw] = useState("");
+  const [profConfirmPw, setProfConfirmPw] = useState("");
+  const [showCurPw, setShowCurPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+
+  const openProfile = () => {
+    setProfFirstName(user?.firstName || "");
+    setProfLastName(user?.lastName || "");
+    setProfEmail(user?.email || "");
+    setProfCurrentPw("");
+    setProfNewPw("");
+    setProfConfirmPw("");
+    setShowCurPw(false);
+    setShowNewPw(false);
+    setProfileOpen(true);
+  };
+
+  const profileMutation = useMutation({
+    mutationFn: async () => {
+      if (profNewPw && profNewPw !== profConfirmPw) throw new Error("Passwords don't match");
+      if (profNewPw && profNewPw.length < 6) throw new Error("New password must be at least 6 characters");
+      const body: any = {
+        firstName: profFirstName.trim() || null,
+        lastName: profLastName.trim() || null,
+        email: profEmail.trim() || null,
+      };
+      if (profNewPw) {
+        body.currentPassword = profCurrentPw;
+        body.newPassword = profNewPw;
+      }
+      const res = await apiRequest("PATCH", "/api/auth/profile", body);
+      return res.json();
+    },
+    onSuccess: () => {
+      qClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Profile updated", description: "Your details have been saved." });
+      setProfileOpen(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
 
   const profilePhotoMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -267,49 +317,66 @@ function ChildPortal({ child }: { child: Child }) {
       <div className="mx-auto max-w-4xl space-y-6">
 
         {/* Welcome Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {/* Sponsor profile photo */}
-            <div className="relative shrink-0 group">
-              <Avatar className="h-14 w-14 ring-2 ring-border/40 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+          {/* Sponsor profile card */}
+          <Card className="border-border/50 p-5 flex flex-col items-center gap-3 shrink-0 w-full sm:w-auto sm:min-w-[160px]">
+            {/* Photo upload area */}
+            <div className="relative group cursor-pointer" onClick={() => !photoUploading && profilePhotoInputRef.current?.click()} data-testid="button-upload-profile-photo">
+              <div className="relative h-[110px] w-[110px] rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 overflow-hidden flex items-center justify-center transition-colors group-hover:border-primary/60 group-hover:bg-primary/10">
                 {user?.photoUrl ? (
-                  <AvatarImage
+                  <img
                     src={user.photoUrl.startsWith("/objects") ? user.photoUrl : `/objects/${user.photoUrl}`}
                     alt={sponsorName}
-                    className="object-cover"
+                    className="h-full w-full object-cover"
                   />
-                ) : null}
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
-                  {sponsorName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-              <button
-                type="button"
-                onClick={() => profilePhotoInputRef.current?.click()}
-                disabled={photoUploading}
-                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
-                aria-label="Upload profile photo"
-                data-testid="button-upload-profile-photo"
-              >
-                {photoUploading ? (
-                  <RefreshCw className="h-4 w-4 text-white animate-spin" />
                 ) : (
-                  <Camera className="h-4 w-4 text-white" />
+                  <div className="flex flex-col items-center gap-1.5 text-primary/50 group-hover:text-primary transition-colors">
+                    <Upload className="h-7 w-7" />
+                    <span className="text-[10px] font-medium text-center leading-tight">Upload<br/>Photo</span>
+                  </div>
                 )}
-              </button>
-              <input
-                ref={profilePhotoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) profilePhotoMutation.mutate(file);
-                  e.target.value = "";
-                }}
-                data-testid="input-profile-photo"
-              />
+                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {photoUploading
+                    ? <RefreshCw className="h-5 w-5 text-white animate-spin" />
+                    : <Camera className="h-5 w-5 text-white" />}
+                </div>
+              </div>
+              {user?.photoUrl && (
+                <div className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary shadow-sm">
+                  <Camera className="h-3 w-3 text-white" />
+                </div>
+              )}
             </div>
+            <input
+              ref={profilePhotoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) profilePhotoMutation.mutate(file);
+                e.target.value = "";
+              }}
+              data-testid="input-profile-photo"
+            />
+            <div className="text-center">
+              <p className="text-sm font-semibold leading-tight">{sponsorName}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Sponsor</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full rounded-lg h-8 text-xs gap-1.5"
+              onClick={openProfile}
+              data-testid="button-edit-profile"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Edit Profile
+            </Button>
+          </Card>
+
+          {/* Welcome text + comment button */}
+          <div className="flex-1 flex flex-col justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]" data-testid="text-sponsor-welcome">
                 Welcome, {user?.firstName || sponsorName}
@@ -318,16 +385,125 @@ function ChildPortal({ child }: { child: Child }) {
                 Here is the latest update from <span className="font-medium text-foreground">{child.fullName}</span>
               </p>
             </div>
-          </div>
-          {child.sponsorCanComment ? (
-            <SendMessageDialog childId={childId} sponsorName={sponsorName} onClose={() => {}} />
-          ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/40 px-4 py-2.5 text-sm text-muted-foreground" data-testid="text-commenting-disabled">
-              <MessageSquare className="h-4 w-4 shrink-0" />
-              Commenting not currently enabled
+            <div>
+              {child.sponsorCanComment ? (
+                <SendMessageDialog childId={childId} sponsorName={sponsorName} onClose={() => {}} />
+              ) : (
+                <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/40 px-4 py-2.5 text-sm text-muted-foreground w-fit" data-testid="text-commenting-disabled">
+                  <MessageSquare className="h-4 w-4 shrink-0" />
+                  Commenting not currently enabled
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
+
+        {/* My Profile Dialog */}
+        <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-primary" />
+                My Profile
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-5 pt-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">First Name</Label>
+                  <Input
+                    className="h-10 rounded-lg border-border/60"
+                    placeholder="First name"
+                    value={profFirstName}
+                    onChange={(e) => setProfFirstName(e.target.value)}
+                    data-testid="input-profile-first-name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Last Name</Label>
+                  <Input
+                    className="h-10 rounded-lg border-border/60"
+                    placeholder="Last name"
+                    value={profLastName}
+                    onChange={(e) => setProfLastName(e.target.value)}
+                    data-testid="input-profile-last-name"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Email</Label>
+                <Input
+                  className="h-10 rounded-lg border-border/60"
+                  placeholder="your@email.com"
+                  type="email"
+                  value={profEmail}
+                  onChange={(e) => setProfEmail(e.target.value)}
+                  data-testid="input-profile-email"
+                />
+              </div>
+              <Separator />
+              <div>
+                <p className="text-[13px] font-medium text-muted-foreground mb-3">Change Password <span className="text-xs font-normal">(optional)</span></p>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Current Password</Label>
+                    <div className="relative">
+                      <Input
+                        className="h-10 rounded-lg border-border/60 pr-10"
+                        type={showCurPw ? "text" : "password"}
+                        placeholder="Enter current password"
+                        value={profCurrentPw}
+                        onChange={(e) => setProfCurrentPw(e.target.value)}
+                        data-testid="input-profile-current-password"
+                      />
+                      <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowCurPw((v) => !v)}>
+                        {showCurPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">New Password</Label>
+                    <div className="relative">
+                      <Input
+                        className="h-10 rounded-lg border-border/60 pr-10"
+                        type={showNewPw ? "text" : "password"}
+                        placeholder="Min 6 characters"
+                        value={profNewPw}
+                        onChange={(e) => setProfNewPw(e.target.value)}
+                        data-testid="input-profile-new-password"
+                      />
+                      <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowNewPw((v) => !v)}>
+                        {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Confirm New Password</Label>
+                    <Input
+                      className="h-10 rounded-lg border-border/60"
+                      type="password"
+                      placeholder="Repeat new password"
+                      value={profConfirmPw}
+                      onChange={(e) => setProfConfirmPw(e.target.value)}
+                      data-testid="input-profile-confirm-password"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-1">
+                <Button variant="outline" className="rounded-lg" onClick={() => setProfileOpen(false)}>Cancel</Button>
+                <Button
+                  className="rounded-lg shadow-sm"
+                  onClick={() => profileMutation.mutate()}
+                  disabled={profileMutation.isPending}
+                  data-testid="button-save-profile"
+                >
+                  {profileMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Child Hero Card */}
         <Card className="border-border/50 overflow-hidden">
