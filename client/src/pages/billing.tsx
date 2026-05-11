@@ -11,6 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Redirect } from "wouter";
 
 const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/00w14n789dtf2ul3nB8k803";
+const STRIPE_PORTAL_LINK = "https://billing.stripe.com/p/login/5kQdR99ghdtf4Ct1ft8k800";
 
 interface BillingStatus {
   subscribed: boolean;
@@ -77,8 +78,8 @@ export default function BillingPage() {
     onSuccess: (data: { url: string }) => {
       window.open(data.url, "_blank", "noopener,noreferrer");
     },
-    onError: (err: Error) => {
-      toast({ title: "Could not open billing portal", description: err.message, variant: "destructive" });
+    onError: () => {
+      window.open(STRIPE_PORTAL_LINK, "_blank", "noopener,noreferrer");
     },
   });
 
