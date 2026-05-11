@@ -20,6 +20,7 @@ import ChildProfile from "@/pages/child-profile";
 import AdminUsers from "@/pages/admin-users";
 import Organizations from "@/pages/organizations";
 import SponsorPortal from "@/pages/sponsor-portal";
+import BillingPage from "@/pages/billing";
 
 const sidebarStyle = {
   "--sidebar-width": "17.5rem",
@@ -69,6 +70,7 @@ function AuthenticatedLayout() {
               <Route path="/children/:id" component={ChildProfile} />
               <Route path="/organizations" component={Organizations} />
               <Route path="/admin/users" component={AdminUsers} />
+              <Route path="/billing" component={BillingPage} />
               <Route component={NotFound} />
             </Switch>
           </main>

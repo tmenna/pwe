@@ -1060,6 +1060,96 @@ export async function registerRoutes(
     }
   });
 
+  // --- Billing (admin only) ---
+  // GET /api/billing/status — returns subscription info for the admin's org
+  app.get("/api/billing/status", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const user = req.currentUser;
+      const email = user.email || user.username;
+
+      // Find customer by email
+      const customers = await stripe.customers.list({ email, limit: 1 });
+      if (!customers.data.length) {
+        return res.json({ subscribed: false, customer: null, subscription: null });
+      }
+
+      const customer = customers.data[0];
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customer.id,
+        status: "all",
+        limit: 1,
+        expand: ["data.default_payment_method", "data.items.data.price.product"],
+      });
+
+      const sub = subscriptions.data[0] || null;
+      res.json({
+        subscribed: sub ? ["active", "trialing"].includes(sub.status) : false,
+        customer: { id: customer.id, email: customer.email, name: customer.name },
+        subscription: sub
+          ? {
+              id: sub.id,
+              status: sub.status,
+              currentPeriodEnd: (sub as any).current_period_end,
+              cancelAtPeriodEnd: sub.cancel_at_period_end,
+              planName: (sub.items.data[0]?.price?.product as any)?.name || "Subscription",
+              amount: sub.items.data[0]?.price?.unit_amount,
+              currency: sub.items.data[0]?.price?.currency,
+              interval: sub.items.data[0]?.price?.recurring?.interval,
+              paymentMethod: (sub as any).default_payment_method
+                ? {
+                    brand: (sub as any).default_payment_method?.card?.brand,
+                    last4: (sub as any).default_payment_method?.card?.last4,
+                    expMonth: (sub as any).default_payment_method?.card?.exp_month,
+                    expYear: (sub as any).default_payment_method?.card?.exp_year,
+                  }
+                : null,
+            }
+          : null,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/billing/portal — create a Stripe Customer Portal session
+  app.post("/api/billing/portal", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const user = req.currentUser;
+      const email = user.email || user.username;
+
+      // Find or create customer
+      let customerId: string;
+      const customers = await stripe.customers.list({ email, limit: 1 });
+      if (customers.data.length) {
+        customerId = customers.data[0].id;
+      } else {
+        const customer = await stripe.customers.create({
+          email,
+          name: [user.firstName, user.lastName].filter(Boolean).join(" ") || email,
+        });
+        customerId = customer.id;
+      }
+
+      const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
+      const domain = isProduction
+        ? `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`
+        : `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000"}`;
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${domain}/billing`,
+      });
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // --- Stats ---
   app.get("/api/stats", isAuthenticated, async (req: any, res) => {
     try {

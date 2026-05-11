@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Users, LogOut, UserCog, Building2, Heart, ChevronRight, Settings, Eye, EyeOff } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, UserCog, Building2, Heart, ChevronRight, Settings, Eye, EyeOff, CreditCard } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -64,6 +64,13 @@ const adminNavItems: NavItem[] = [
     icon: UserCog,
     iconBg: "bg-violet-50 dark:bg-violet-500/12",
     iconColor: "text-violet-600 dark:text-violet-400",
+  },
+  {
+    title: "Billing",
+    url: "/billing",
+    icon: CreditCard,
+    iconBg: "bg-emerald-50 dark:bg-emerald-500/12",
+    iconColor: "text-emerald-600 dark:text-emerald-400",
   },
 ];
 
