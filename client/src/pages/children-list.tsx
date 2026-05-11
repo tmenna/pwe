@@ -691,12 +691,10 @@ export default function ChildrenList() {
     queryKey: ["/api/organizations"],
   });
 
-  const orgQueryParam = orgFilter !== "all" ? `?organizationId=${orgFilter}` : "";
-
   const { data: children, isLoading } = useQuery<Child[]>({
-    queryKey: ["/api/children", orgFilter],
+    queryKey: ["/api/children"],
     queryFn: async () => {
-      const res = await fetch(`/api/children${orgQueryParam}`, { credentials: "include" });
+      const res = await fetch("/api/children", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch children");
       return res.json();
     },
@@ -704,10 +702,9 @@ export default function ChildrenList() {
   });
 
   const { data: archivedChildren, isLoading: archivedLoading } = useQuery<Child[]>({
-    queryKey: ["/api/children/archived", orgFilter],
+    queryKey: ["/api/children/archived"],
     queryFn: async () => {
-      const param = orgFilter !== "all" ? `?organizationId=${orgFilter}` : "";
-      const res = await fetch(`/api/children/archived${param}`, { credentials: "include" });
+      const res = await fetch("/api/children/archived", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch archived children");
       return res.json();
     },
