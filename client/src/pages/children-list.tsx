@@ -734,7 +734,7 @@ function BulkDeleteDialog({ open, onOpenChange, organizations }: {
         <div className="space-y-5 py-1">
           {/* Scope selector */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Select Program (Organization)</Label>
+            <Label className="text-sm font-medium">Select Program</Label>
             <Select value={selectedOrg} onValueChange={setSelectedOrg}>
               <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-bulk-delete-org">
                 <SelectValue />
