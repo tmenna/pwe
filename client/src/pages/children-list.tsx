@@ -18,6 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Child, Organization } from "@shared/schema";
 
 const EXPORT_FIELDS = [
+  { key: "childId", label: "Child ID" },
   { key: "fullName", label: "Full Name" },
   { key: "age", label: "Age" },
   { key: "gender", label: "Gender" },
@@ -726,6 +727,8 @@ export default function ChildrenList() {
     onError: (err: Error) => toast({ title: "Restore failed", description: err.message, variant: "destructive" }),
   });
 
+  const selectedOrg = orgFilter !== "all" ? organizations?.find((o) => String(o.id) === orgFilter) : null;
+
   const filtered = children?.filter((c) => {
     const q = search.toLowerCase();
     const matchesSearch =
@@ -737,7 +740,11 @@ export default function ChildrenList() {
       sponsoredFilter === "all" ||
       (sponsoredFilter === "sponsored" && c.isSponsored) ||
       (sponsoredFilter === "non-sponsored" && !c.isSponsored);
-    return matchesSearch && matchesStatus && matchesSponsored;
+    const matchesProgram =
+      !selectedOrg ||
+      (c as any).organizationId === selectedOrg.id ||
+      c.programEnrollment?.toLowerCase() === selectedOrg.name.toLowerCase();
+    return matchesSearch && matchesStatus && matchesSponsored && matchesProgram;
   });
 
   const filteredArchived = archivedChildren?.filter((c) => {
