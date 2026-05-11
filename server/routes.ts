@@ -462,6 +462,18 @@ export async function registerRoutes(
     }
   });
 
+  // Bulk delete children by program/org — admin only
+  app.delete("/api/children/bulk", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { organizationId, programName } = req.body as { organizationId?: number; programName?: string };
+      const orgId = organizationId ? Number(organizationId) : undefined;
+      const deleted = await storage.bulkDeleteChildren(orgId, programName);
+      res.json({ deleted });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/children/:id", isAuthenticated, isNotReadOnly, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);

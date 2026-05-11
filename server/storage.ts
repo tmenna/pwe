@@ -23,6 +23,7 @@ export interface IStorage {
   createChild(child: InsertChild): Promise<Child>;
   updateChild(id: number, child: Partial<InsertChild>): Promise<Child | undefined>;
   deleteChild(id: number): Promise<void>;
+  bulkDeleteChildren(organizationId?: number, programName?: string): Promise<number>;
   archiveChild(id: number): Promise<Child | undefined>;
   unarchiveChild(id: number): Promise<Child | undefined>;
 
@@ -114,6 +115,24 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChild(id: number): Promise<void> {
     await db.delete(children).where(eq(children.id, id));
+  }
+
+  async bulkDeleteChildren(organizationId?: number, programName?: string): Promise<number> {
+    let targets: Child[];
+    if (organizationId || programName) {
+      const all = await db.select().from(children);
+      targets = all.filter((c) => {
+        const matchesOrgId = organizationId ? c.organizationId === organizationId : false;
+        const matchesProgram = programName ? c.programEnrollment?.toLowerCase() === programName.toLowerCase() : false;
+        return matchesOrgId || matchesProgram;
+      });
+    } else {
+      targets = await db.select().from(children);
+    }
+    for (const c of targets) {
+      await db.delete(children).where(eq(children.id, c.id));
+    }
+    return targets.length;
   }
 
   async archiveChild(id: number): Promise<Child | undefined> {

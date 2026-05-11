@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "wouter";
-import { Plus, Search, Users, MapPin, Download, Heart, Building2, Archive, ArchiveRestore, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Newspaper, X } from "lucide-react";
+import { Plus, Search, Users, MapPin, Download, Heart, Building2, Archive, ArchiveRestore, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Newspaper, X, Trash2, TriangleAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -665,6 +665,141 @@ function NewsletterDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
+function BulkDeleteDialog({ open, onOpenChange, organizations }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  organizations: Organization[] | undefined;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedOrg, setSelectedOrg] = useState("__all__");
+  const [confirmText, setConfirmText] = useState("");
+
+  const reset = () => {
+    setSelectedOrg("__all__");
+    setConfirmText("");
+  };
+
+  const handleClose = (v: boolean) => {
+    if (!v) reset();
+    onOpenChange(v);
+  };
+
+  const org = selectedOrg !== "__all__" ? organizations?.find((o) => String(o.id) === selectedOrg) : null;
+  const scopeLabel = org ? org.name : "ALL programs";
+  const CONFIRM_PHRASE = "DELETE";
+  const confirmed = confirmText.trim() === CONFIRM_PHRASE;
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const body: { organizationId?: number; programName?: string } = {};
+      if (org) {
+        body.organizationId = org.id;
+        body.programName = org.name;
+      }
+      const res = await fetch("/api/children/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error((await res.json()).message);
+      return res.json() as Promise<{ deleted: number }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/children"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: `${data.deleted} ${data.deleted === 1 ? "child" : "children"} deleted`,
+        description: `All records for ${scopeLabel} have been permanently removed.`,
+        variant: "destructive",
+      });
+      handleClose(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-500">
+            <Trash2 className="h-5 w-5" />
+            Bulk Delete Children
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 py-1">
+          {/* Scope selector */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Select Program (Organization)</Label>
+            <Select value={selectedOrg} onValueChange={setSelectedOrg}>
+              <SelectTrigger className="h-11 rounded-lg border-border/60" data-testid="select-bulk-delete-org">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Programs (entire database)</SelectItem>
+                {organizations?.map((o) => (
+                  <SelectItem key={o.id} value={String(o.id)}>{o.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              This will delete all children in <span className="font-semibold text-foreground">{scopeLabel}</span>, including their documents, timeline entries, and messages.
+            </p>
+          </div>
+
+          {/* Warning box */}
+          <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-500/8 dark:border-red-500/25 px-4 py-3.5 space-y-2">
+            <div className="flex items-start gap-2.5">
+              <TriangleAlert className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                  Warning: this will delete everything and you do it at your own risk.
+                </p>
+                <p className="text-xs text-red-600/80 dark:text-red-400/70">
+                  This action is <span className="font-bold">permanent and cannot be undone</span>. All child records, uploaded documents, timeline entries, and messages will be lost forever.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Confirmation input */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Type <span className="font-mono font-bold text-red-600 dark:text-red-400">{CONFIRM_PHRASE}</span> to confirm
+            </Label>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={CONFIRM_PHRASE}
+              className="h-11 rounded-lg border-red-300 dark:border-red-500/40 font-mono focus-visible:ring-red-500"
+              data-testid="input-bulk-delete-confirm"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 pt-2">
+          <Button variant="outline" className="rounded-lg" onClick={() => handleClose(false)} data-testid="button-bulk-delete-cancel">
+            Cancel
+          </Button>
+          <Button
+            className="rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm"
+            disabled={!confirmed || deleteMutation.isPending}
+            onClick={() => deleteMutation.mutate()}
+            data-testid="button-bulk-delete-confirm"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {deleteMutation.isPending ? "Deleting..." : `Delete ${scopeLabel}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ChildrenList() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -682,6 +817,7 @@ export default function ChildrenList() {
   const [sponsoredFilter, setSponsoredFilter] = useState(initialSponsored);
   const [orgFilter, setOrgFilter] = useState("all");
   const [exportOpen, setExportOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [newsletterOpen, setNewsletterOpen] = useState(false);
 
@@ -823,10 +959,22 @@ export default function ChildrenList() {
                       Import
                     </Button>
                     {isAdmin && (
-                      <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setNewsletterOpen(true)} data-testid="button-newsletter-open">
-                        <Newspaper className="mr-2 h-4 w-4" />
-                        Newsletter
-                      </Button>
+                      <>
+                        <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setNewsletterOpen(true)} data-testid="button-newsletter-open">
+                          <Newspaper className="mr-2 h-4 w-4" />
+                          Newsletter
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-lg border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+                          onClick={() => setBulkDeleteOpen(true)}
+                          data-testid="button-bulk-delete-open"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete All
+                        </Button>
+                      </>
                     )}
                     <Button asChild size="sm" className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="button-add-child-list">
                       <Link href="/children/new">
@@ -1053,6 +1201,7 @@ export default function ChildrenList() {
         <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
         <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
         <NewsletterDialog open={newsletterOpen} onOpenChange={setNewsletterOpen} />
+        <BulkDeleteDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen} organizations={organizations} />
       </div>
     </div>
   );
