@@ -809,6 +809,7 @@ export async function registerRoutes(
       const allChildren = await storage.getChildren(orgId);
 
       const fieldMap: Record<string, { label: string; getter: (c: any) => string }> = {
+        childId: { label: "Child ID", getter: (c) => c.childId || "" },
         fullName: { label: "Full Name", getter: (c) => c.fullName },
         age: { label: "Age", getter: (c) => String(c.age) },
         gender: { label: "Gender", getter: (c) => c.gender },
