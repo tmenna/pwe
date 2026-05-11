@@ -727,9 +727,11 @@ export default function ChildrenList() {
   });
 
   const filtered = children?.filter((c) => {
+    const q = search.toLowerCase();
     const matchesSearch =
-      c.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      c.location.toLowerCase().includes(search.toLowerCase());
+      c.fullName.toLowerCase().includes(q) ||
+      c.location.toLowerCase().includes(q) ||
+      c.childId.toLowerCase().includes(q);
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     const matchesSponsored =
       sponsoredFilter === "all" ||
@@ -738,10 +740,14 @@ export default function ChildrenList() {
     return matchesSearch && matchesStatus && matchesSponsored;
   });
 
-  const filteredArchived = archivedChildren?.filter((c) =>
-    c.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    c.location.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredArchived = archivedChildren?.filter((c) => {
+    const q = search.toLowerCase();
+    return (
+      c.fullName.toLowerCase().includes(q) ||
+      c.location.toLowerCase().includes(q) ||
+      c.childId.toLowerCase().includes(q)
+    );
+  });
 
   const loading = view === "active" ? isLoading : archivedLoading;
 
