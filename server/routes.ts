@@ -292,7 +292,26 @@ export async function registerRoutes(
           const childId = (row.childId && String(row.childId).trim())
             ? String(row.childId).trim()
             : `C${Date.now().toString(36).toUpperCase().slice(-6)}${i}`;
-          const dobStr = row.dateOfBirth ? String(row.dateOfBirth).trim() : null;
+          // Convert Excel date serial numbers (e.g. 36892) to YYYY-MM-DD strings
+          function excelSerialToDate(serial: number): Date {
+            // Excel's epoch is Dec 30, 1899; also skip its phantom leap day (serial 60)
+            const utc = (serial - (serial > 59 ? 2 : 1)) * 86400000;
+            return new Date(Date.UTC(1900, 0, 1) + utc);
+          }
+          function normalizeDob(raw: string): string {
+            const n = Number(raw);
+            if (!isNaN(n) && n > 1 && n < 2958466) {
+              // Looks like an Excel serial number — convert it
+              const d = excelSerialToDate(n);
+              const y = d.getUTCFullYear();
+              const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+              const dy = String(d.getUTCDate()).padStart(2, "0");
+              return `${y}-${mo}-${dy}`;
+            }
+            return raw;
+          }
+          const rawDob = row.dateOfBirth ? String(row.dateOfBirth).trim() : null;
+          const dobStr = rawDob ? normalizeDob(rawDob) : null;
           function calcAgeFromDob(dob: string): number {
             const birth = new Date(dob);
             if (isNaN(birth.getTime())) return 0;

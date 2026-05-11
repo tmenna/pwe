@@ -193,18 +193,28 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
     try {
       const XLSX = (await import("xlsx")).default ?? await import("xlsx");
       const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: "array" });
+      // cellDates: true makes XLSX parse date cells into JS Date objects
+      // instead of leaving them as Excel serial numbers
+      const wb = XLSX.read(buffer, { type: "array", cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as string[][];
+      const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as any[][];
 
       if (raw.length < 2) {
         setParseError("The file appears to be empty or has only a header row.");
         return;
       }
 
+      // Format a JS Date as YYYY-MM-DD (local time)
+      const formatDate = (d: Date): string => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+
       // Row 0 = headers, Row 1 = notes (template) or data, Row 2+ = data
-      const headerRow = raw[0].map((h: string) => String(h).toLowerCase().trim());
-      const fieldKeys = headerRow.map((h) => HEADER_MAP[h] || h);
+      const headerRow = raw[0].map((h: any) => String(h).toLowerCase().trim());
+      const fieldKeys = headerRow.map((h: string) => HEADER_MAP[h] || h);
 
       // Detect if row 1 is a notes/instructions row (starts with "REQUIRED" or "Optional")
       const row1First = String(raw[1]?.[0] || "").trim().toUpperCase();
@@ -213,10 +223,16 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
       const parsed: ParsedRow[] = [];
       for (let i = dataStartRow; i < raw.length; i++) {
         const cells = raw[i];
-        if (cells.every((c: string) => String(c).trim() === "")) continue; // skip blank rows
+        if (cells.every((c: any) => String(c).trim() === "")) continue; // skip blank rows
         const entry: ParsedRow = {};
-        fieldKeys.forEach((key, idx) => {
-          entry[key] = String(cells[idx] ?? "").trim();
+        fieldKeys.forEach((key: string, idx: number) => {
+          const raw = cells[idx];
+          // Excel date cells come through as JS Date objects when cellDates: true
+          if (raw instanceof Date && !isNaN(raw.getTime())) {
+            entry[key] = formatDate(raw);
+          } else {
+            entry[key] = String(raw ?? "").trim();
+          }
         });
         parsed.push(entry);
       }
