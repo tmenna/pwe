@@ -855,10 +855,10 @@ export default function ChildrenList() {
           {isAdmin && organizations && organizations.length > 0 && (
             <Select value={orgFilter} onValueChange={setOrgFilter}>
               <SelectTrigger className="w-full sm:w-[200px] h-11 rounded-lg border-border/60" data-testid="select-org-filter">
-                <SelectValue placeholder="All Organizations" />
+                <SelectValue placeholder="All Programs" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Organizations</SelectItem>
+                <SelectItem value="all">All Programs</SelectItem>
                 {organizations.map((org) => (
                   <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
                 ))}

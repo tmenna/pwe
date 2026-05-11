@@ -239,10 +239,10 @@ export default function Dashboard() {
                 <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Select value={orgFilter} onValueChange={setOrgFilter}>
                   <SelectTrigger className="w-[200px] h-10 rounded-xl border-border/60 bg-background" data-testid="select-org-filter">
-                    <SelectValue placeholder="All Organizations" />
+                    <SelectValue placeholder="All Programs" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Organizations</SelectItem>
+                    <SelectItem value="all">All Programs</SelectItem>
                     {organizations.map((org) => (
                       <SelectItem key={org.id} value={String(org.id)}>{org.name}</SelectItem>
                     ))}
