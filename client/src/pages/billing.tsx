@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap } from "lucide-react";
+import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -15,6 +18,7 @@ const STRIPE_PORTAL_LINK = "https://billing.stripe.com/p/login/5kQdR99ghdtf4Ct1f
 
 interface BillingStatus {
   subscribed: boolean;
+  lookupEmail?: string;
   customer: { id: string; email: string | null; name: string | null } | null;
   subscription: {
     id: string;
@@ -61,13 +65,28 @@ function StatusBadge({ status }: { status: string }) {
 export default function BillingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [lookupEmail, setLookupEmail] = useState("");
+  const [activeEmail, setActiveEmail] = useState("");
 
   if (user?.role !== "admin") {
     return <Redirect to="/" />;
   }
 
+  const queryEmail = activeEmail || undefined;
+  const queryKey = queryEmail
+    ? ["/api/billing/status", queryEmail]
+    : ["/api/billing/status"];
+
   const { data: billing, isLoading, refetch } = useQuery<BillingStatus>({
-    queryKey: ["/api/billing/status"],
+    queryKey,
+    queryFn: async () => {
+      const url = queryEmail
+        ? `/api/billing/status?email=${encodeURIComponent(queryEmail)}`
+        : "/api/billing/status";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error((await res.json()).message);
+      return res.json();
+    },
   });
 
   const portalMutation = useMutation({
@@ -83,8 +102,20 @@ export default function BillingPage() {
     },
   });
 
+  const handleLookup = () => {
+    const email = lookupEmail.trim();
+    if (!email) return;
+    setActiveEmail(email);
+  };
+
+  const handleReset = () => {
+    setLookupEmail("");
+    setActiveEmail("");
+  };
+
   const sub = billing?.subscription;
   const isActive = billing?.subscribed;
+  const displayEmail = billing?.customer?.email || activeEmail || user?.email || user?.username;
 
   return (
     <div className="flex-1 overflow-auto p-5 sm:p-8">
@@ -112,6 +143,58 @@ export default function BillingPage() {
           </Button>
         </div>
 
+        {/* Email lookup — shown when no subscription found */}
+        {!isLoading && !isActive && (
+          <Card className="border-border/50 px-6 py-5 space-y-3">
+            <div>
+              <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
+                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
+                Look up subscription by email
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1.5 ml-3.5">
+                If you subscribed with a different email address, enter it below to find your subscription.
+                {" "}<span className="font-medium text-foreground">Note:</span> In test mode, Stripe does not send confirmation emails.
+              </p>
+            </div>
+            <div className="flex gap-2 ml-3.5">
+              <Input
+                value={lookupEmail}
+                onChange={(e) => setLookupEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLookup()}
+                placeholder="email@example.com"
+                className="h-10 rounded-lg border-border/60 max-w-sm"
+                data-testid="input-lookup-email"
+              />
+              <Button
+                size="sm"
+                className="h-10 rounded-lg px-4"
+                onClick={handleLookup}
+                disabled={!lookupEmail.trim()}
+                data-testid="button-lookup-email"
+              >
+                <Search className="mr-1.5 h-3.5 w-3.5" />
+                Look up
+              </Button>
+              {activeEmail && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-10 rounded-lg"
+                  onClick={handleReset}
+                  data-testid="button-reset-lookup"
+                >
+                  Reset
+                </Button>
+              )}
+            </div>
+            {activeEmail && !isLoading && !isActive && (
+              <p className="text-xs text-muted-foreground ml-3.5">
+                No subscription found for <span className="font-medium text-foreground">{activeEmail}</span>. Try a different email or check your Stripe dashboard.
+              </p>
+            )}
+          </Card>
+        )}
+
         {isLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-44 w-full rounded-2xl" />
@@ -136,7 +219,7 @@ export default function BillingPage() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {isActive
-                          ? `Billed ${sub?.interval}ly`
+                          ? `Billed ${sub?.interval}ly · ${displayEmail}`
                           : "Subscribe to unlock full portal access"
                         }
                       </p>
@@ -215,9 +298,9 @@ export default function BillingPage() {
                 ) : (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      You don't have an active subscription linked to your account email{" "}
-                      <span className="font-medium text-foreground">{user?.email || user?.username}</span>.
-                      Click below to subscribe or, if you already subscribed with a different email, use the billing portal to manage your account.
+                      No subscription found for{" "}
+                      <span className="font-medium text-foreground">{activeEmail || user?.email || user?.username}</span>.
+                      {" "}Use the lookup above if you subscribed with a different email, or click Subscribe Now to get started.
                     </p>
                     <div className="flex flex-wrap gap-3">
                       <Button
@@ -276,7 +359,7 @@ export default function BillingPage() {
             {/* Help note */}
             <div className="rounded-xl border border-border/40 bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
               <p>
-                <span className="font-semibold text-foreground">Need help?</span> The billing portal lets you update your payment card, download invoices, and manage your subscription at any time. If you subscribed using a different email address, open the portal and sign in with that email to access your account.
+                <span className="font-semibold text-foreground">Test mode note:</span> Stripe does not send real confirmation emails in test mode. After subscribing with a test card, use the email you entered at checkout to look up your subscription above.
               </p>
             </div>
           </>

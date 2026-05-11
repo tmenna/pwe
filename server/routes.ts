@@ -1067,12 +1067,13 @@ export async function registerRoutes(
       const { getUncachableStripeClient } = await import("./stripeClient");
       const stripe = await getUncachableStripeClient();
       const user = req.currentUser;
-      const email = user.email || user.username;
+      // Allow overriding the lookup email via query param (admin only)
+      const email = (req.query.email as string) || user.email || user.username;
 
       // Find customer by email
       const customers = await stripe.customers.list({ email, limit: 1 });
       if (!customers.data.length) {
-        return res.json({ subscribed: false, customer: null, subscription: null });
+        return res.json({ subscribed: false, customer: null, subscription: null, lookupEmail: email });
       }
 
       const customer = customers.data[0];
