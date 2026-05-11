@@ -298,6 +298,7 @@ export default function ChildProfile() {
     return stored ? parseInt(stored, 10) : 0;
   });
   const canEdit = user?.role !== "sponsor";
+  const isAdmin = user?.role === "admin";
 
   const { data: child, isLoading } = useQuery<Child>({
     queryKey: ["/api/children", childId],
@@ -473,6 +474,16 @@ export default function ChildProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/children", childId, "messages"] });
       toast({ title: "Comment deleted" });
+    },
+  });
+
+  const deleteNewsletterMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/newsletters/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/newsletters"] });
+      toast({ title: "Newsletter deleted" });
     },
   });
 
@@ -1145,26 +1156,62 @@ export default function ChildProfile() {
             ) : (
               <div className="space-y-2">
                 {newsletters.map((nl) => (
-                  <a
+                  <div
                     key={nl.id}
-                    href={nl.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-violet-200/60 bg-violet-50/40 dark:bg-violet-500/5 dark:border-violet-500/20 p-4 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors group"
+                    className="flex items-center gap-3 rounded-xl border border-violet-200/60 bg-violet-50/40 dark:bg-violet-500/5 dark:border-violet-500/20 p-4 transition-colors hover:bg-violet-50 dark:hover:bg-violet-500/10"
                     data-testid={`newsletter-item-${nl.id}`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/20">
                       <Newspaper className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{nl.title}</p>
+                    <a
+                      href={nl.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-w-0 group"
+                    >
+                      <p className="text-sm font-medium text-foreground truncate group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">{nl.title}</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         {new Date(nl.createdAt!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                         {nl.fileName && <span className="ml-2 opacity-60">· {nl.fileName}</span>}
+                        {nl.targetProgram && <span className="ml-2 text-violet-500/70">· {nl.targetProgram}</span>}
                       </p>
+                    </a>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" asChild>
+                        <a href={nl.fileUrl} target="_blank" rel="noopener noreferrer" data-testid={`button-download-nl-${nl.id}`}>
+                          <Download className="h-4 w-4 text-muted-foreground" />
+                        </a>
+                      </Button>
+                      {isAdmin && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-destructive/8 hover:text-destructive" data-testid={`button-delete-nl-${nl.id}`}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this newsletter?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently remove <strong>{nl.title}</strong> and it will no longer be visible to sponsors. This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="rounded-lg">Keep it</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteNewsletterMutation.mutate(nl.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg"
+                                data-testid={`button-confirm-delete-nl-${nl.id}`}
+                              >
+                                Yes, delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
-                    <Download className="h-4 w-4 text-muted-foreground group-hover:text-violet-600 transition-colors shrink-0" />
-                  </a>
+                  </div>
                 ))}
               </div>
             )}
