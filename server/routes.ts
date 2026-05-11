@@ -1172,7 +1172,13 @@ export async function registerRoutes(
       if (req.currentUser?.role !== "admin" && req.currentUser?.organizationId) {
         orgId = req.currentUser.organizationId;
       }
-      const stats = await storage.getStats(orgId);
+      // Look up org name so stats can match by programEnrollment text as well as FK
+      let programName: string | undefined;
+      if (orgId) {
+        const org = await storage.getOrganization(orgId);
+        if (org) programName = org.name;
+      }
+      const stats = await storage.getStats(orgId, programName);
       res.json(stats);
     } catch (error: any) {
       res.status(500).json({ message: error.message });

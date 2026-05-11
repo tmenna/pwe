@@ -44,7 +44,7 @@ export interface IStorage {
   deleteMessage(id: number): Promise<void>;
   reactToMessage(id: number, type: "like" | "love", action: "react" | "unreact"): Promise<Message | undefined>;
 
-  getStats(organizationId?: number): Promise<{ totalChildren: number; active: number; paused: number; exited: number; totalDocuments: number; sponsored: number; nonSponsored: number }>;
+  getStats(organizationId?: number, programName?: string): Promise<{ totalChildren: number; active: number; paused: number; exited: number; totalDocuments: number; sponsored: number; nonSponsored: number }>;
 
   getNewsletters(): Promise<Newsletter[]>;
   createNewsletter(nl: InsertNewsletter): Promise<Newsletter>;
@@ -206,11 +206,17 @@ export class DatabaseStorage implements IStorage {
     return result || undefined;
   }
 
-  async getStats(organizationId?: number) {
+  async getStats(organizationId?: number, programName?: string) {
     let allChildren: Child[];
-    if (organizationId) {
-      allChildren = await db.select().from(children)
-        .where(and(eq(children.organizationId, organizationId), isNull(children.archivedAt)));
+    if (organizationId || programName) {
+      // Fetch all non-archived children, then filter by orgId FK or programEnrollment text
+      // (children may have programEnrollment set without the organizationId FK)
+      const all = await db.select().from(children).where(isNull(children.archivedAt));
+      allChildren = all.filter((c) => {
+        const matchesOrgId = organizationId ? c.organizationId === organizationId : false;
+        const matchesProgram = programName ? c.programEnrollment?.toLowerCase() === programName.toLowerCase() : false;
+        return matchesOrgId || matchesProgram;
+      });
     } else {
       allChildren = await db.select().from(children).where(isNull(children.archivedAt));
     }
