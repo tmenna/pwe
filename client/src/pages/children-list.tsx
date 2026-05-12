@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "wouter";
-import { Plus, Search, Users, MapPin, Download, Heart, Building2, Archive, ArchiveRestore, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Newspaper, X, Trash2, TriangleAlert } from "lucide-react";
+import { Plus, Search, Users, MapPin, Download, Heart, Building2, Archive, ArchiveRestore, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X, Trash2, TriangleAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -487,183 +487,6 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
   );
 }
 
-function NewsletterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [title, setTitle] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [targetProgram, setTargetProgram] = useState("__all__");
-
-  const { data: organizations } = useQuery<{ id: number; name: string }[]>({
-    queryKey: ["/api/organizations"],
-  });
-
-  const reset = () => {
-    setTitle("");
-    setFile(null);
-    setUploading(false);
-    setTargetProgram("__all__");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const handleClose = (v: boolean) => {
-    if (!v) reset();
-    onOpenChange(v);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) {
-      setFile(f);
-      if (!title) setTitle(f.name.replace(/\.[^.]+$/, ""));
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!file || !title.trim()) return;
-    setUploading(true);
-    try {
-      const slotRes = await fetch("/api/uploads/request-url", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-      });
-      if (!slotRes.ok) throw new Error("Failed to get upload URL");
-      const { uploadURL, objectPath } = await slotRes.json();
-
-      const putRes = await fetch(uploadURL, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-      });
-      if (!putRes.ok) throw new Error("File upload failed");
-
-      const saveRes = await fetch("/api/newsletters", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          objectPath,
-          fileName: file.name,
-          title: title.trim(),
-          contentType: file.type,
-          fileSize: file.size,
-          targetProgram: targetProgram === "__all__" ? null : targetProgram,
-        }),
-      });
-      if (!saveRes.ok) throw new Error("Failed to save newsletter");
-
-      await queryClient.invalidateQueries({ queryKey: ["/api/newsletters"] });
-      const programLabel = targetProgram === "__all__" ? "all sponsors" : `sponsors in "${targetProgram}"`;
-      toast({ title: "Newsletter uploaded", description: `"${title.trim()}" is now visible to ${programLabel}.` });
-      handleClose(false);
-    } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="rounded-xl max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Newspaper className="h-4 w-4 text-violet-500" />
-            Upload Newsletter
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="nl-title" className="text-sm font-medium">Title</Label>
-            <Input
-              id="nl-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Spring 2026 Newsletter"
-              className="h-10 rounded-lg border-border/60"
-              data-testid="input-newsletter-title"
-            />
-          </div>
-
-          {/* Program audience selector */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Send to</Label>
-            <div className="grid gap-2">
-              {[{ value: "__all__", label: "All Programs", sub: "Every sponsor sees this newsletter" }, ...(organizations ?? []).map(o => ({ value: o.name, label: o.name, sub: `Only sponsors in ${o.name}` }))].map(opt => {
-                const active = targetProgram === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setTargetProgram(opt.value)}
-                    data-testid={`button-nl-program-${opt.value}`}
-                    className={`flex items-center gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors ${
-                      active
-                        ? "border-violet-400 bg-violet-50 dark:bg-violet-500/10 dark:border-violet-500/40"
-                        : "border-border/60 hover:border-border hover:bg-muted/40"
-                    }`}
-                  >
-                    <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${active ? "border-violet-500 bg-violet-500" : "border-muted-foreground/30"}`}>
-                      {active && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                    </div>
-                    <div>
-                      <p className={`text-sm font-medium leading-none ${active ? "text-violet-700 dark:text-violet-300" : ""}`}>{opt.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{opt.sub}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">File</Label>
-            <div
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/50 bg-muted/30 p-6 cursor-pointer hover:border-violet-300 hover:bg-violet-50/30 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-              data-testid="drop-zone-newsletter"
-            >
-              {file ? (
-                <div className="flex items-center gap-2 text-sm">
-                  <Newspaper className="h-4 w-4 text-violet-500 shrink-0" />
-                  <span className="font-medium truncate max-w-[220px]">{file.name}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <Upload className="h-6 w-6 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground text-center">Click to select a file <br /><span className="text-xs">PDF, Word, or any document</span></p>
-                </>
-              )}
-            </div>
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} data-testid="input-newsletter-file" />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" className="rounded-lg" onClick={() => handleClose(false)}>Cancel</Button>
-          <Button
-            className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
-            onClick={handleUpload}
-            disabled={uploading || !file || !title.trim()}
-            data-testid="button-upload-newsletter"
-          >
-            {uploading ? "Uploading…" : "Upload"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function BulkDeleteDialog({ open, onOpenChange, organizations }: {
   open: boolean;
@@ -820,7 +643,6 @@ export default function ChildrenList() {
   const [exportOpen, setExportOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [newsletterOpen, setNewsletterOpen] = useState(false);
 
   const handleDownloadTemplate = async () => {
     try {
@@ -963,10 +785,6 @@ export default function ChildrenList() {
                     </Button>
                     {isAdmin && (
                       <>
-                        <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setNewsletterOpen(true)} data-testid="button-newsletter-open">
-                          <Newspaper className="mr-2 h-4 w-4" />
-                          Newsletter
-                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -1223,7 +1041,6 @@ export default function ChildrenList() {
         )}
         <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
         <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
-        <NewsletterDialog open={newsletterOpen} onOpenChange={setNewsletterOpen} />
         <BulkDeleteDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen} organizations={organizations} />
       </div>
     </div>
