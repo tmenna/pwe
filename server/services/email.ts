@@ -379,6 +379,50 @@ export async function sendAdminPasswordResetEmail(
 }
 
 // ---------------------------------------------------------------------------
+// Notification: new newsletter published
+// ---------------------------------------------------------------------------
+
+export interface NewsletterNotificationPayload {
+  recipientEmail: string;
+  recipientName: string;
+  newsletterTitle: string;
+  uploadedBy: string;
+  targetProgram?: string | null;
+}
+
+export async function sendNewsletterNotification(
+  payload: NewsletterNotificationPayload
+): Promise<SendResult> {
+  const portalUrl = APP_URL || "#";
+
+  const programNote = payload.targetProgram && payload.targetProgram !== "__all__"
+    ? `This newsletter is shared for the <strong style="color:#1e3a5f;">${payload.targetProgram}</strong> program.`
+    : "This newsletter has been shared with all sponsors.";
+
+  const html = brandedEmail(
+    "New Newsletter Available",
+    [
+      paragraph(
+        `Hello ${highlight(payload.recipientName)}, a new newsletter has been published on the PWE Child Sponsorship Portal.`
+      ),
+      infoBox([
+        ["Title", payload.newsletterTitle],
+        ["Published by", payload.uploadedBy],
+      ]),
+      paragraph(programNote),
+      actionButton("View in Portal", portalUrl),
+    ].join("\n"),
+    `New newsletter: ${payload.newsletterTitle}`
+  );
+
+  return send(
+    payload.recipientEmail,
+    `New Newsletter: ${payload.newsletterTitle} — PWE Portal`,
+    html
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Test email (admin utility)
 // ---------------------------------------------------------------------------
 

@@ -6,7 +6,7 @@ import { setupAuth, isAuthenticated, registerUserRoutes } from "./auth";
 import { insertChildSchema } from "@shared/schema";
 import { z } from "zod";
 import { registerUploadRoutes } from "./uploads";
-import { sendNewMessageNotification, isEmailConfigured } from "./services/email";
+import { sendNewMessageNotification, sendNewsletterNotification, isEmailConfigured } from "./services/email";
 import { jobQueue } from "./services/jobs";
 import { deleteFile } from "./services/storage";
 import { authStorage } from "./auth/storage";
@@ -1061,6 +1061,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "objectPath, fileName and title are required" });
       }
       const fileKey = objectPath.startsWith("/objects/") ? objectPath.slice("/objects/".length) : null;
+      const uploaderName = getUserName(req);
       const nl = await storage.createNewsletter({
         title,
         fileName,
@@ -1069,8 +1070,30 @@ export async function registerRoutes(
         mimeType: contentType || null,
         fileSize: fileSize ? parseInt(fileSize) : null,
         targetProgram: targetProgram || null,
-        uploadedBy: getUserName(req),
+        uploadedBy: uploaderName,
       });
+
+      // Notify all sponsor users with an email address
+      if (isEmailConfigured()) {
+        const sponsorUsers = await authStorage.getUsersByRoles(["sponsor"]);
+        for (const sponsor of sponsorUsers) {
+          const recipientEmail = sponsor.email || (sponsor.username.includes("@") ? sponsor.username : null);
+          if (!recipientEmail) continue;
+          const recipientName = sponsor.firstName && sponsor.lastName
+            ? `${sponsor.firstName} ${sponsor.lastName}`
+            : sponsor.username;
+          jobQueue.add("email-newsletter", () =>
+            sendNewsletterNotification({
+              recipientEmail,
+              recipientName,
+              newsletterTitle: title,
+              uploadedBy: uploaderName,
+              targetProgram: targetProgram || null,
+            })
+          );
+        }
+      }
+
       res.status(201).json(nl);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
