@@ -816,6 +816,7 @@ export default function ChildrenList() {
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [sponsoredFilter, setSponsoredFilter] = useState(initialSponsored);
   const [orgFilter, setOrgFilter] = useState("all");
+  const [pageSize, setPageSize] = useState<number | "all">(12);
   const [exportOpen, setExportOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -906,6 +907,8 @@ export default function ChildrenList() {
   });
 
   const loading = view === "active" ? isLoading : archivedLoading;
+
+  const visibleChildren = pageSize === "all" ? filtered : filtered?.slice(0, pageSize);
 
   return (
     <div className="flex-1 overflow-auto p-5 sm:p-8">
@@ -1039,6 +1042,20 @@ export default function ChildrenList() {
               </SelectContent>
             </Select>
           )}
+          {view === "active" && (
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(v === "all" ? "all" : Number(v))}>
+              <SelectTrigger className="w-full sm:w-[130px] h-11 rounded-lg border-border/60" data-testid="select-page-size">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="12">Show 12</SelectItem>
+                <SelectItem value="36">Show 36</SelectItem>
+                <SelectItem value="48">Show 48</SelectItem>
+                <SelectItem value="60">Show 60</SelectItem>
+                <SelectItem value="all">Show All</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Archive notice */}
@@ -1080,8 +1097,9 @@ export default function ChildrenList() {
               )}
             </Card>
           ) : (
+            <>
             <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-              {filtered.map((child) => (
+              {visibleChildren!.map((child) => (
                 <Link key={child.id} href={`/children/${child.id}`}>
                   <Card className="p-5 cursor-pointer border-border/50 transition-all duration-200 hover:shadow-md hover:border-primary/15 hover:-translate-y-0.5" data-testid={`card-child-list-${child.id}`}>
                     <div className="flex items-start gap-3">
@@ -1092,7 +1110,6 @@ export default function ChildrenList() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="overflow-hidden">
                             <p className="truncate font-medium">{child.fullName}</p>
-
                           </div>
                           <StatusBadge status={child.status} />
                         </div>
@@ -1125,6 +1142,12 @@ export default function ChildrenList() {
                 </Link>
               ))}
             </div>
+            {pageSize !== "all" && filtered && filtered.length > pageSize && (
+              <p className="mt-5 text-center text-sm text-muted-foreground" data-testid="text-showing-count">
+                Showing {Math.min(pageSize, filtered.length)} of {filtered.length} children
+              </p>
+            )}
+            </>
           )
         ) : (
           /* Archived view */
