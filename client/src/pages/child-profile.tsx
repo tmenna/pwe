@@ -903,7 +903,7 @@ export default function ChildProfile() {
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-violet-100 dark:bg-violet-500/20">
                 <Newspaper className="h-3 w-3 text-violet-600 dark:text-violet-400" />
               </span>
-              News Letters
+              Newsletter
             </TabsTrigger>
           </TabsList>
 
@@ -1139,7 +1139,7 @@ export default function ChildProfile() {
             <div className="mb-5 flex items-center justify-between gap-4">
               <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
                 <span className="inline-block w-1 h-5 rounded-full bg-violet-500" />
-                News Letters
+                Newsletter
               </h2>
             </div>
 

@@ -596,17 +596,17 @@ function ChildPortal({ child }: { child: Child }) {
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-violet-100 dark:bg-violet-500/20">
                 <Newspaper className="h-3 w-3 text-violet-600 dark:text-violet-400" />
               </span>
-              News Letters
+              Newsletter
             </TabsTrigger>
           </TabsList>
 
-          {/* News Letters Tab */}
+          {/* Newsletter Tab */}
           <TabsContent value="newsletters">
             <Card className="border-border/50">
               <div className="p-6">
                 <h3 className="text-[15px] font-semibold flex items-center gap-2.5 mb-5">
                   <span className="inline-block w-1 h-5 rounded-full bg-violet-500" />
-                  News Letters
+                  Newsletter
                 </h3>
                 {newslettersLoading ? (
                   <div className="space-y-3">
