@@ -934,7 +934,12 @@ export default function SponsorPortal() {
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
 
   const { data: children, isLoading } = useQuery<Child[]>({
-    queryKey: ["/api/children"],
+    queryKey: ["/api/children", "sponsor", user?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/children", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch children");
+      return res.json();
+    },
   });
 
   if (isLoading) {
