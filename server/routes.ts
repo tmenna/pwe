@@ -1167,14 +1167,18 @@ export async function registerRoutes(
         customerId = customer.id;
       }
 
-      const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
-      const domain = isProduction
-        ? `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`
-        : `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000"}`;
+      // Prefer explicit APP_URL env var (set this on Render/production to your real domain)
+      // Fall back to Replit domain, then request origin, then localhost
+      const appUrl =
+        process.env.APP_URL?.replace(/\/$/, "") ||
+        (process.env.REPLIT_DOMAINS
+          ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+          : null) ||
+        `${req.protocol}://${req.get("host")}`;
 
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        return_url: `${domain}/billing`,
+        return_url: `${appUrl}/billing`,
       });
 
       res.json({ url: session.url });
