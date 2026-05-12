@@ -224,8 +224,8 @@ export default function BillingPage() {
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
                       No subscription found for{" "}
-                      <span className="font-medium text-foreground">{activeEmail || user?.email || user?.username}</span>.
-                      {" "}Use the lookup above if you subscribed with a different email, or click Subscribe Now to get started.
+                      <span className="font-medium text-foreground">{user?.email || user?.username}</span>.
+                      {" "}Click Subscribe Now to get started.
                     </p>
                     <div className="flex flex-wrap gap-3">
                       <Button
