@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { Redirect } from "wouter";
 
-const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_5kQdR99ghdtf4Ct1ft8k800";
+const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/00w14n789dtf2ul3nB8k803";
 const STRIPE_PORTAL_LINK = "https://billing.stripe.com/p/login/5kQdR99ghdtf4Ct1ft8k800";
 
 interface BillingStatus {
