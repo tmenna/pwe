@@ -1,13 +1,10 @@
-import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap, Search } from "lucide-react";
+import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -65,25 +62,15 @@ function StatusBadge({ status }: { status: string }) {
 export default function BillingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [lookupEmail, setLookupEmail] = useState("");
-  const [activeEmail, setActiveEmail] = useState("");
 
   if (user?.role !== "admin") {
     return <Redirect to="/" />;
   }
 
-  const queryEmail = activeEmail || undefined;
-  const queryKey = queryEmail
-    ? ["/api/billing/status", queryEmail]
-    : ["/api/billing/status"];
-
   const { data: billing, isLoading, refetch } = useQuery<BillingStatus>({
-    queryKey,
+    queryKey: ["/api/billing/status"],
     queryFn: async () => {
-      const url = queryEmail
-        ? `/api/billing/status?email=${encodeURIComponent(queryEmail)}`
-        : "/api/billing/status";
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch("/api/billing/status", { credentials: "include" });
       if (!res.ok) throw new Error((await res.json()).message);
       return res.json();
     },
@@ -102,20 +89,9 @@ export default function BillingPage() {
     },
   });
 
-  const handleLookup = () => {
-    const email = lookupEmail.trim();
-    if (!email) return;
-    setActiveEmail(email);
-  };
-
-  const handleReset = () => {
-    setLookupEmail("");
-    setActiveEmail("");
-  };
-
   const sub = billing?.subscription;
   const isActive = billing?.subscribed;
-  const displayEmail = billing?.customer?.email || activeEmail || user?.email || user?.username;
+  const displayEmail = billing?.customer?.email || user?.email || user?.username;
 
   return (
     <div className="flex-1 overflow-auto p-5 sm:p-8">
@@ -143,56 +119,6 @@ export default function BillingPage() {
           </Button>
         </div>
 
-        {/* Email lookup — always shown */}
-        {!isLoading && (
-          <Card className="border-border/50 px-6 py-5 space-y-3">
-            <div>
-              <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
-                <span className="inline-block w-1 h-5 rounded-full bg-primary" />
-                Look up subscription by email
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1.5 ml-3.5">
-                If you subscribed with a different email address, enter it below to find your subscription.
-              </p>
-            </div>
-            <div className="flex gap-2 ml-3.5">
-              <Input
-                value={lookupEmail}
-                onChange={(e) => setLookupEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLookup()}
-                placeholder="email@example.com"
-                className="h-10 rounded-lg border-border/60 max-w-sm"
-                data-testid="input-lookup-email"
-              />
-              <Button
-                size="sm"
-                className="h-10 rounded-lg px-4"
-                onClick={handleLookup}
-                disabled={!lookupEmail.trim()}
-                data-testid="button-lookup-email"
-              >
-                <Search className="mr-1.5 h-3.5 w-3.5" />
-                Look up
-              </Button>
-              {activeEmail && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-10 rounded-lg"
-                  onClick={handleReset}
-                  data-testid="button-reset-lookup"
-                >
-                  Reset
-                </Button>
-              )}
-            </div>
-            {activeEmail && !isLoading && !isActive && (
-              <p className="text-xs text-muted-foreground ml-3.5">
-                No subscription found for <span className="font-medium text-foreground">{activeEmail}</span>. Try a different email or check your Stripe dashboard.
-              </p>
-            )}
-          </Card>
-        )}
 
         {isLoading ? (
           <div className="space-y-4">
