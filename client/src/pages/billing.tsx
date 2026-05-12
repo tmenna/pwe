@@ -143,8 +143,8 @@ export default function BillingPage() {
           </Button>
         </div>
 
-        {/* Email lookup — shown when no subscription found */}
-        {!isLoading && !isActive && (
+        {/* Email lookup — always shown */}
+        {!isLoading && (
           <Card className="border-border/50 px-6 py-5 space-y-3">
             <div>
               <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
@@ -153,7 +153,6 @@ export default function BillingPage() {
               </h2>
               <p className="text-xs text-muted-foreground mt-1.5 ml-3.5">
                 If you subscribed with a different email address, enter it below to find your subscription.
-                {" "}<span className="font-medium text-foreground">Note:</span> In test mode, Stripe does not send confirmation emails.
               </p>
             </div>
             <div className="flex gap-2 ml-3.5">
@@ -356,12 +355,6 @@ export default function BillingPage() {
               </Card>
             )}
 
-            {/* Help note */}
-            <div className="rounded-xl border border-border/40 bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
-              <p>
-                <span className="font-semibold text-foreground">Test mode note:</span> Stripe does not send real confirmation emails in test mode. After subscribing with a test card, use the email you entered at checkout to look up your subscription above.
-              </p>
-            </div>
           </>
         )}
       </div>
