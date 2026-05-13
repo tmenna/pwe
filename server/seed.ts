@@ -1,8 +1,10 @@
 import { db } from "./db";
 import { organizations } from "@shared/schema";
 import { users } from "@shared/models/auth";
-import { sql } from "drizzle-orm";
+import { sql, eq, and, ne } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+
+const SUPERADMIN_EMAIL = "teki.menna@gmail.com";
 
 export async function seedDatabase() {
   const existingOrgs = await db.select({ count: sql<number>`count(*)` }).from(organizations);
@@ -29,5 +31,19 @@ export async function seedDatabase() {
       role: "admin",
     });
     console.log("Default admin created (username: admin, password: admin123)");
+  }
+
+  // Ensure the designated superadmin account always has the superadmin role.
+  // This is idempotent — a no-op if the role is already correct.
+  const [superadminUser] = await db
+    .select({ id: users.id, role: users.role })
+    .from(users)
+    .where(eq(users.username, SUPERADMIN_EMAIL));
+  if (superadminUser && superadminUser.role !== "superadmin") {
+    await db
+      .update(users)
+      .set({ role: "superadmin" })
+      .where(eq(users.id, superadminUser.id));
+    console.log(`[setup] Promoted ${SUPERADMIN_EMAIL} to superadmin`);
   }
 }
