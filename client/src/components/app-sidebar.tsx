@@ -82,7 +82,7 @@ const roleBadgeStyles: Record<string, string> = {
 };
 
 const roleLabels: Record<string, string> = {
-  superadmin: "Super Admin",
+  superadmin: "Super Administrator",
   admin: "Admin",
   case_worker: "Case Worker",
   sponsor: "Sponsor",

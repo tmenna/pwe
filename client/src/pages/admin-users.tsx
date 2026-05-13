@@ -55,7 +55,7 @@ type ChildSummary = {
 };
 
 const roleLabels: Record<string, string> = {
-  superadmin: "Super Admin",
+  superadmin: "Super Administrator",
   admin: "Administrator",
   case_worker: "Case Worker",
   sponsor: "Sponsor",
@@ -76,7 +76,7 @@ const roleIcons: Record<string, React.ElementType> = {
 };
 
 const rolePermissionDesc: Record<string, string> = {
-  superadmin: "Super Admin — full access plus managing admin accounts and viewing all billing",
+  superadmin: "Super Administrator — full access plus managing admin accounts and viewing all billing",
   admin: "Full access — all children, settings, and user management",
   case_worker: "Can create and edit children, documents, and comments",
   sponsor: "Read-only portal for their assigned children; can comment if enabled",
