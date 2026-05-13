@@ -176,9 +176,10 @@ export default function AdminUsers() {
   const [editForm, setEditForm] = useState<EditForm>(emptyEdit);
 
   const { data: usersRaw, isLoading } = useQuery<SafeUser[]>({ queryKey: ["/api/users"] });
+  // Superadmin sees everyone; regular admins see everyone except superadmin accounts
   const users = isSuperAdmin
     ? usersRaw
-    : usersRaw?.filter((u) => !["admin", "superadmin"].includes(u.role));
+    : usersRaw?.filter((u) => u.role !== "superadmin");
   const { data: organizations } = useQuery<Organization[]>({ queryKey: ["/api/organizations"] });
   const { data: children } = useQuery<ChildSummary[]>({ queryKey: ["/api/children"] });
 
@@ -706,7 +707,7 @@ export default function AdminUsers() {
                   </SelectTrigger>
                   <SelectContent>
                     {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
-                    {isSuperAdmin && <SelectItem value="admin">Administrator</SelectItem>}
+                    <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="case_worker">Case Worker</SelectItem>
                     <SelectItem value="sponsor">Sponsor</SelectItem>
                   </SelectContent>
@@ -953,7 +954,7 @@ export default function AdminUsers() {
                   </SelectTrigger>
                   <SelectContent>
                     {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
-                    {isSuperAdmin && <SelectItem value="admin">Administrator</SelectItem>}
+                    <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="case_worker">Case Worker</SelectItem>
                     <SelectItem value="sponsor">Sponsor</SelectItem>
                   </SelectContent>
