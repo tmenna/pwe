@@ -1100,6 +1100,26 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/newsletters/bulk", isAuthenticated, isAdmin, express.json(), async (req, res) => {
+    try {
+      const { ids } = req.body as { ids: number[] };
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "ids array is required" });
+      }
+      const items = await storage.getNewsletters();
+      for (const id of ids) {
+        const nl = items.find((n) => n.id === id);
+        if (nl?.fileKey) {
+          jobQueue.add("delete-file", () => deleteFile(nl.fileKey!));
+        }
+        await storage.deleteNewsletter(id);
+      }
+      res.json({ message: `Deleted ${ids.length} newsletter(s)` });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/newsletters/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

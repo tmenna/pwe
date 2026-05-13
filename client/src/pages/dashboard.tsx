@@ -1,18 +1,21 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Plus, Building2, ArrowRight, Users, Heart, TrendingUp, Newspaper, Upload, X } from "lucide-react";
+import { Plus, Building2, ArrowRight, Users, Heart, TrendingUp, Newspaper, Upload, X, Trash2, Settings2, CheckSquare, Square, FileText, Calendar, User, ExternalLink } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import type { Organization } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import type { Organization, Newsletter } from "@shared/schema";
 
 interface Stats {
   totalChildren: number;
@@ -144,6 +147,235 @@ function ProgressRing({
         <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">Sponsored</span>
       </div>
     </div>
+  );
+}
+
+/* ─── Newsletter management dialog ──────────────────────────────── */
+function NewsletterManageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const { data: newsletters, isLoading } = useQuery<Newsletter[]>({
+    queryKey: ["/api/newsletters"],
+  });
+
+  const allIds = (newsletters ?? []).map((n) => n.id);
+  const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
+  const someSelected = selected.size > 0;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(allIds));
+    }
+  };
+
+  const toggleOne = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("DELETE", "/api/newsletters/bulk", { ids: Array.from(selected) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/newsletters"] });
+      toast({ title: `${selected.size} newsletter${selected.size !== 1 ? "s" : ""} deleted` });
+      setSelected(new Set());
+      setConfirmOpen(false);
+    },
+    onError: (e: Error) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+  });
+
+  const singleDeleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/newsletters/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/newsletters"] });
+      toast({ title: "Newsletter deleted" });
+      setSelected((prev) => { const next = new Set(prev); next.delete(singleDeleteMutation.variables as number); return next; });
+    },
+    onError: (e: Error) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+  });
+
+  const formatSize = (bytes: number | null) => {
+    if (!bytes) return null;
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const formatDate = (d: string | Date | null) => {
+    if (!d) return "—";
+    return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) setSelected(new Set()); onOpenChange(v); }}>
+        <DialogContent className="rounded-xl max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-violet-500" />
+              Manage Newsletters
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Toolbar */}
+          <div className="shrink-0 flex items-center justify-between border-b border-border/50 pb-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleAll}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="button-select-all-newsletters"
+              >
+                {allSelected ? (
+                  <CheckSquare className="h-4 w-4 text-primary" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
+                {allSelected ? "Deselect all" : "Select all"}
+              </button>
+              {someSelected && (
+                <span className="text-xs text-muted-foreground">
+                  ({selected.size} selected)
+                </span>
+              )}
+            </div>
+            {someSelected && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-8 rounded-lg text-xs gap-1.5"
+                onClick={() => setConfirmOpen(true)}
+                data-testid="button-delete-selected-newsletters"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete {selected.size} selected
+              </Button>
+            )}
+          </div>
+
+          {/* List */}
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-1.5 py-1">
+            {isLoading ? (
+              <div className="space-y-2 p-1">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+              </div>
+            ) : !newsletters?.length ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Newspaper className="h-9 w-9 text-muted-foreground/30 mb-3" />
+                <p className="text-sm font-medium text-muted-foreground">No newsletters yet</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Upload a newsletter to see it here</p>
+              </div>
+            ) : (
+              newsletters.map((nl) => (
+                <div
+                  key={nl.id}
+                  className={`flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer ${
+                    selected.has(nl.id)
+                      ? "border-primary/30 bg-primary/5"
+                      : "border-border/40 hover:border-border/70 hover:bg-muted/30"
+                  }`}
+                  onClick={() => toggleOne(nl.id)}
+                  data-testid={`newsletter-manage-row-${nl.id}`}
+                >
+                  <Checkbox
+                    checked={selected.has(nl.id)}
+                    onCheckedChange={() => toggleOne(nl.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-0.5 shrink-0"
+                    data-testid={`checkbox-newsletter-${nl.id}`}
+                  />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/20">
+                    <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{nl.title}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <User className="h-3 w-3" />
+                        {nl.uploadedBy}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {formatDate(nl.createdAt)}
+                      </span>
+                      {nl.targetProgram && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-violet-200/70 text-violet-700 dark:text-violet-400">
+                          {nl.targetProgram}
+                        </Badge>
+                      )}
+                      {nl.fileSize && (
+                        <span className="text-xs text-muted-foreground/60">{formatSize(nl.fileSize)}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <a
+                      href={nl.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                      title="Open file"
+                      data-testid={`link-newsletter-open-${nl.id}`}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                    <button
+                      onClick={() => singleDeleteMutation.mutate(nl.id)}
+                      disabled={singleDeleteMutation.isPending}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                      title="Delete"
+                      data-testid={`button-delete-newsletter-${nl.id}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter className="shrink-0 border-t border-border/50 pt-3">
+            <p className="text-xs text-muted-foreground mr-auto">
+              {newsletters?.length ?? 0} newsletter{(newsletters?.length ?? 0) !== 1 ? "s" : ""} total
+            </p>
+            <Button variant="outline" className="rounded-lg" onClick={() => { setSelected(new Set()); onOpenChange(false); }}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk delete confirm */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selected.size} newsletter{selected.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the selected newsletter{selected.size !== 1 ? "s" : ""} and their files. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-lg bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => bulkDeleteMutation.mutate()}
+              data-testid="button-confirm-bulk-delete"
+            >
+              {bulkDeleteMutation.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -353,6 +585,7 @@ export default function Dashboard() {
   const [orgFilter, setOrgFilter] = useState<string>(userOrgId ? String(userOrgId) : "all");
   const [chartAnimated, setChartAnimated] = useState(false);
   const [newsletterOpen, setNewsletterOpen] = useState(false);
+  const [newsletterManageOpen, setNewsletterManageOpen] = useState(false);
 
   const { data: organizations } = useQuery<Organization[]>({ queryKey: ["/api/organizations"] });
 
@@ -437,15 +670,26 @@ export default function Dashboard() {
               </div>
             )}
             {isAdmin && (
-              <Button
-                variant="outline"
-                className="rounded-xl h-10 px-4 border-violet-200 text-violet-700 hover:bg-violet-50 hover:text-violet-800 hover:border-violet-300 dark:border-violet-500/30 dark:text-violet-400 dark:hover:bg-violet-500/10"
-                onClick={() => setNewsletterOpen(true)}
-                data-testid="button-newsletter-dashboard"
-              >
-                <Newspaper className="mr-2 h-4 w-4" />
-                Newsletter
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="rounded-xl h-10 px-4 border-violet-200 text-violet-700 hover:bg-violet-50 hover:text-violet-800 hover:border-violet-300 dark:border-violet-500/30 dark:text-violet-400 dark:hover:bg-violet-500/10"
+                  onClick={() => setNewsletterOpen(true)}
+                  data-testid="button-newsletter-dashboard"
+                >
+                  <Newspaper className="mr-2 h-4 w-4" />
+                  Newsletter
+                </Button>
+                <Button
+                  variant="outline"
+                  className="rounded-xl h-10 px-4 border-violet-200 text-violet-700 hover:bg-violet-50 hover:text-violet-800 hover:border-violet-300 dark:border-violet-500/30 dark:text-violet-400 dark:hover:bg-violet-500/10"
+                  onClick={() => setNewsletterManageOpen(true)}
+                  data-testid="button-newsletter-manage"
+                >
+                  <Settings2 className="mr-2 h-4 w-4" />
+                  Manage
+                </Button>
+              </div>
             )}
             {canEdit && (
               <Button asChild className="rounded-xl h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200 dark:shadow-none font-medium" data-testid="button-add-child">
@@ -589,6 +833,7 @@ export default function Dashboard() {
 
       </div>
       <NewsletterDialog open={newsletterOpen} onOpenChange={setNewsletterOpen} />
+      <NewsletterManageDialog open={newsletterManageOpen} onOpenChange={setNewsletterManageOpen} />
     </div>
   );
 }
