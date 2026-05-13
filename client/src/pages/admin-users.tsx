@@ -422,16 +422,52 @@ export default function AdminUsers() {
           </TabsList>
 
           {/* ── Admin / Case Worker tab ──────────────── */}
-          <TabsContent value="all" className="space-y-3 mt-0">
-            {users?.filter(u => u.role !== "sponsor").map((u) => (
-              <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />
-            ))}
-            {users?.filter(u => u.role !== "sponsor").length === 0 && (
-              <div className="py-16 text-center text-muted-foreground">
-                <UserCog className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p>No admins or case workers yet. Add one to get started.</p>
-              </div>
-            )}
+          <TabsContent value="all" className="space-y-5 mt-0">
+
+            {/* Super Administrators section — only visible to superadmin */}
+            {isSuperAdmin && (() => {
+              const superAdmins = (users ?? []).filter(u => u.role === "superadmin");
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <ShieldCheck className="h-4 w-4 text-amber-600" />
+                    <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Super Administrators</h3>
+                    <span className="rounded-full bg-amber-100 dark:bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">{superAdmins.length}</span>
+                  </div>
+                  {superAdmins.length > 0
+                    ? superAdmins.map((u) => (
+                        <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />
+                      ))
+                    : <p className="text-sm text-muted-foreground pl-1">No super administrators found.</p>
+                  }
+                </div>
+              );
+            })()}
+
+            {/* Admins & Case Workers */}
+            {(() => {
+              const staffUsers = (users ?? []).filter(u => u.role === "admin" || u.role === "case_worker");
+              return (
+                <div className="space-y-3">
+                  {isSuperAdmin && (
+                    <div className="flex items-center gap-2.5">
+                      <Shield className="h-4 w-4 text-violet-600" />
+                      <h3 className="text-sm font-semibold text-violet-800 dark:text-violet-300">Administrators & Case Workers</h3>
+                      <span className="rounded-full bg-violet-100 dark:bg-violet-500/20 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-300">{staffUsers.length}</span>
+                    </div>
+                  )}
+                  {staffUsers.map((u) => (
+                    <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />
+                  ))}
+                  {staffUsers.length === 0 && !isSuperAdmin && (
+                    <div className="py-16 text-center text-muted-foreground">
+                      <UserCog className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
+                      <p>No admins or case workers yet. Add one to get started.</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </TabsContent>
 
           {/* ── Sponsors tab ─────────────────────────── */}
