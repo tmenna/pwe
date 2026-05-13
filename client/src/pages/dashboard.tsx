@@ -687,7 +687,7 @@ export default function Dashboard() {
                   data-testid="button-newsletter-manage"
                 >
                   <Settings2 className="mr-2 h-4 w-4" />
-                  Manage
+                  Manage Newsletter
                 </Button>
               </div>
             )}
