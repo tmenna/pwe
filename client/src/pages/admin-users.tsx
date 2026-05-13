@@ -706,7 +706,7 @@ export default function AdminUsers() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                    {isSuperAdmin && <SelectItem value="superadmin">Super Administrator</SelectItem>}
                     <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="case_worker">Case Worker</SelectItem>
                     <SelectItem value="sponsor">Sponsor</SelectItem>
@@ -953,7 +953,7 @@ export default function AdminUsers() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                    {isSuperAdmin && <SelectItem value="superadmin">Super Administrator</SelectItem>}
                     <SelectItem value="admin">Administrator</SelectItem>
                     <SelectItem value="case_worker">Case Worker</SelectItem>
                     <SelectItem value="sponsor">Sponsor</SelectItem>
