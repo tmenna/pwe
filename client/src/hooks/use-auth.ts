@@ -33,7 +33,7 @@ export function useAuth() {
       await fetch("/api/logout", { method: "POST", credentials: "include" });
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.clear();
     },
   });
 
