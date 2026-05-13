@@ -298,7 +298,7 @@ export default function ChildProfile() {
     return stored ? parseInt(stored, 10) : 0;
   });
   const canEdit = user?.role !== "sponsor";
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
   const { data: child, isLoading } = useQuery<Child>({
     queryKey: ["/api/children", childId],

@@ -36,7 +36,7 @@ const isAdmin: RequestHandler = async (req: any, res, next) => {
   try {
     const user = req.currentUser;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-    if (user.role !== "admin") {
+    if (!["admin", "superadmin"].includes(user.role)) {
       return res.status(403).json({ message: "Admin access required" });
     }
     next();
@@ -53,14 +53,14 @@ function getUserName(req: any): string {
 
 function getUserOrgId(req: any): number | null {
   const user = req.currentUser;
-  if (!user || user.role === "admin" || user.role === "sponsor") return null;
+  if (!user || ["admin", "superadmin", "sponsor"].includes(user.role)) return null;
   return user.organizationId || null;
 }
 
 function canAccessChild(req: any, child: { organizationId: number | null; sponsorUserId?: string | null }): boolean {
   const user = req.currentUser;
   if (!user) return false;
-  if (user.role === "admin") return true;
+  if (user.role === "admin" || user.role === "superadmin") return true;
   if (user.role === "sponsor") {
     return child.sponsorUserId === user.id;
   }
@@ -194,7 +194,7 @@ export async function registerRoutes(
         return res.json(filtered);
       }
       let orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
-      if (req.currentUser?.role !== "admin" && req.currentUser?.organizationId) {
+      if (!["admin", "superadmin"].includes(req.currentUser?.role) && req.currentUser?.organizationId) {
         orgId = req.currentUser.organizationId;
       }
       const result = await storage.getChildren(orgId);
@@ -834,7 +834,7 @@ export async function registerRoutes(
       }
 
       let orgId = organizationId ? parseInt(organizationId) : undefined;
-      if (req.currentUser?.role !== "admin" && req.currentUser?.organizationId) {
+      if (!["admin", "superadmin"].includes(req.currentUser?.role) && req.currentUser?.organizationId) {
         orgId = req.currentUser.organizationId;
       }
       const allChildren = await storage.getChildren(orgId);
@@ -893,7 +893,7 @@ export async function registerRoutes(
   // --- Export: Sponsors ---
   app.post("/api/export/sponsors", isAuthenticated, async (req: any, res) => {
     try {
-      if (req.currentUser?.role !== "admin") {
+      if (!["admin", "superadmin"].includes(req.currentUser?.role)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       const { format = "xlsx", userIds } = req.body;
@@ -963,7 +963,7 @@ export async function registerRoutes(
   // --- Sponsors: import template ---
   app.get("/api/sponsors/template", isAuthenticated, async (req: any, res) => {
     try {
-      if (req.currentUser?.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+      if (!["admin", "superadmin"].includes(req.currentUser?.role)) return res.status(403).json({ message: "Admin access required" });
       const XLSX = await import("xlsx");
       const headers = ["Email Address", "Password", "First Name", "Last Name", "Street Address 1", "Street Address 2", "City", "State", "Zip Code", "Country"];
       const notes = ["REQUIRED — used as login username", "REQUIRED — min 6 chars", "Optional", "Optional", "Optional", "Optional", "Optional", "Optional", "Optional", "Optional"];
@@ -984,7 +984,7 @@ export async function registerRoutes(
   // --- Sponsors: bulk import ---
   app.post("/api/import/sponsors", isAuthenticated, async (req: any, res) => {
     try {
-      if (req.currentUser?.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+      if (!["admin", "superadmin"].includes(req.currentUser?.role)) return res.status(403).json({ message: "Admin access required" });
       const rows: any[] = req.body.rows;
       if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ message: "No rows provided" });
       const bcrypt = await import("bcryptjs");
@@ -1029,7 +1029,7 @@ export async function registerRoutes(
   app.post("/api/admin/test-email", isAuthenticated, async (req: any, res) => {
     try {
       const user = req.currentUser;
-      if (user?.role !== "admin") {
+      if (!["admin", "superadmin"].includes(user?.role)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       const { sendTestEmail } = await import("./services/email");
@@ -1247,7 +1247,7 @@ export async function registerRoutes(
         });
       }
       let orgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : undefined;
-      if (req.currentUser?.role !== "admin" && req.currentUser?.organizationId) {
+      if (!["admin", "superadmin"].includes(req.currentUser?.role) && req.currentUser?.organizationId) {
         orgId = req.currentUser.organizationId;
       }
       // Look up org name so stats can match by programEnrollment text as well as FK

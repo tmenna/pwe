@@ -580,7 +580,7 @@ export { StatusBadge };
 export default function Dashboard() {
   const { user } = useAuth();
   const canEdit = user?.role !== "sponsor";
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const userOrgId = user?.organizationId;
   const [orgFilter, setOrgFilter] = useState<string>(userOrgId ? String(userOrgId) : "all");
   const [chartAnimated, setChartAnimated] = useState(false);

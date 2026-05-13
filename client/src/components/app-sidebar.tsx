@@ -75,12 +75,14 @@ const adminNavItems: NavItem[] = [
 ];
 
 const roleBadgeStyles: Record<string, string> = {
+  superadmin: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30",
   admin: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/25",
   case_worker: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/25",
   sponsor: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/15 dark:text-pink-300 dark:border-pink-500/25",
 };
 
 const roleLabels: Record<string, string> = {
+  superadmin: "Super Admin",
   admin: "Admin",
   case_worker: "Case Worker",
   sponsor: "Sponsor",
@@ -166,7 +168,7 @@ export function AppSidebar() {
 
   const allNavItems = user?.role === "sponsor"
     ? sponsorNavItems
-    : user?.role === "admin"
+    : (user?.role === "admin" || user?.role === "superadmin")
       ? [...navItems, ...adminNavItems]
       : navItems;
 

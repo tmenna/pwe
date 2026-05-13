@@ -14,11 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import {
   UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2,
   Shield, Eye, Heart, Users, Baby, MessageSquare, Search, X, Check,
   KeyRound, Copy, CheckCheck, Mail, MailX, SendHorizonal, Download, MapPin, BookOpen,
-  Upload, FileSpreadsheet, CheckCircle2,
+  Upload, FileSpreadsheet, CheckCircle2, ShieldCheck,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
@@ -54,24 +55,28 @@ type ChildSummary = {
 };
 
 const roleLabels: Record<string, string> = {
+  superadmin: "Super Admin",
   admin: "Administrator",
   case_worker: "Case Worker",
   sponsor: "Sponsor",
 };
 
 const roleBadgeColors: Record<string, string> = {
+  superadmin: "bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30",
   admin: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/25",
   case_worker: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/25",
   sponsor: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/25",
 };
 
 const roleIcons: Record<string, React.ElementType> = {
+  superadmin: ShieldCheck,
   admin: Shield,
   case_worker: Users,
   sponsor: Heart,
 };
 
 const rolePermissionDesc: Record<string, string> = {
+  superadmin: "Super Admin — full access plus managing admin accounts and viewing all billing",
   admin: "Full access — all children, settings, and user management",
   case_worker: "Can create and edit children, documents, and comments",
   sponsor: "Read-only portal for their assigned children; can comment if enabled",
@@ -127,6 +132,8 @@ const emptyEdit: EditForm = {
 
 export default function AdminUsers() {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === "superadmin";
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<SafeUser | null>(null);
@@ -168,7 +175,10 @@ export default function AdminUsers() {
   const [form, setForm] = useState<CreateForm>(emptyCreate);
   const [editForm, setEditForm] = useState<EditForm>(emptyEdit);
 
-  const { data: users, isLoading } = useQuery<SafeUser[]>({ queryKey: ["/api/users"] });
+  const { data: usersRaw, isLoading } = useQuery<SafeUser[]>({ queryKey: ["/api/users"] });
+  const users = isSuperAdmin
+    ? usersRaw
+    : usersRaw?.filter((u) => !["admin", "superadmin"].includes(u.role));
   const { data: organizations } = useQuery<Organization[]>({ queryKey: ["/api/organizations"] });
   const { data: children } = useQuery<ChildSummary[]>({ queryKey: ["/api/children"] });
 
@@ -695,7 +705,8 @@ export default function AdminUsers() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Administrator</SelectItem>
+                    {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                    {isSuperAdmin && <SelectItem value="admin">Administrator</SelectItem>}
                     <SelectItem value="case_worker">Case Worker</SelectItem>
                     <SelectItem value="sponsor">Sponsor</SelectItem>
                   </SelectContent>
@@ -941,7 +952,8 @@ export default function AdminUsers() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Administrator</SelectItem>
+                    {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                    {isSuperAdmin && <SelectItem value="admin">Administrator</SelectItem>}
                     <SelectItem value="case_worker">Case Worker</SelectItem>
                     <SelectItem value="sponsor">Sponsor</SelectItem>
                   </SelectContent>

@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap } from "lucide-react";
+import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap, ChevronDown, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -35,6 +37,8 @@ interface BillingStatus {
   } | null;
 }
 
+type SafeUser = { id: string; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; };
+
 function formatAmount(amount: number | null, currency: string | null) {
   if (!amount || !currency) return null;
   return new Intl.NumberFormat("en-US", {
@@ -62,15 +66,37 @@ function StatusBadge({ status }: { status: string }) {
 export default function BillingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isSuperAdmin = user?.role === "superadmin";
+  const isAdminOrSuper = user?.role === "admin" || isSuperAdmin;
 
-  if (user?.role !== "admin") {
+  const [lookupUserId, setLookupUserId] = useState<string>("__self__");
+
+  if (!isAdminOrSuper) {
     return <Redirect to="/" />;
   }
 
+  const { data: adminUsers } = useQuery<SafeUser[]>({
+    queryKey: ["/api/users"],
+    enabled: isSuperAdmin,
+  });
+
+  const adminAccounts = adminUsers?.filter((u) => ["admin", "superadmin"].includes(u.role)) ?? [];
+
+  const lookupUser = lookupUserId === "__self__"
+    ? null
+    : adminAccounts.find((u) => u.id === lookupUserId);
+
+  const lookupEmail = lookupUser?.email || lookupUser?.username || undefined;
+  const isViewingOther = isSuperAdmin && lookupUserId !== "__self__";
+
+  const billingUrl = lookupEmail
+    ? `/api/billing/status?email=${encodeURIComponent(lookupEmail)}`
+    : "/api/billing/status";
+
   const { data: billing, isLoading, refetch } = useQuery<BillingStatus>({
-    queryKey: ["/api/billing/status"],
+    queryKey: ["/api/billing/status", lookupEmail ?? "self"],
     queryFn: async () => {
-      const res = await fetch("/api/billing/status", { credentials: "include" });
+      const res = await fetch(billingUrl, { credentials: "include" });
       if (!res.ok) throw new Error((await res.json()).message);
       return res.json();
     },
@@ -91,7 +117,16 @@ export default function BillingPage() {
 
   const sub = billing?.subscription;
   const isActive = billing?.subscribed;
-  const displayEmail = billing?.customer?.email || user?.email || user?.username;
+  const displayEmail = billing?.customer?.email || (isViewingOther ? lookupEmail : user?.email || user?.username);
+
+  const getLookupLabel = () => {
+    if (!isSuperAdmin || lookupUserId === "__self__") return null;
+    if (!lookupUser) return null;
+    const name = lookupUser.firstName && lookupUser.lastName
+      ? `${lookupUser.firstName} ${lookupUser.lastName}`
+      : lookupUser.username;
+    return name;
+  };
 
   return (
     <div className="flex-1 overflow-auto p-5 sm:p-8">
@@ -104,7 +139,9 @@ export default function BillingPage() {
               Billing
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Manage your PWE Portal subscription and payment details
+              {isSuperAdmin
+                ? "View subscription status for any admin account"
+                : "Manage your PWE Portal subscription and payment details"}
             </p>
           </div>
           <Button
@@ -119,6 +156,41 @@ export default function BillingPage() {
           </Button>
         </div>
 
+        {/* Superadmin: account selector */}
+        {isSuperAdmin && (
+          <Card className="border-border/50 px-6 py-5 space-y-3">
+            <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
+              <span className="inline-block w-1 h-5 rounded-full bg-primary" />
+              Look Up Account
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Select an admin account to view their subscription status. You cannot manage their billing — only view the status.
+            </p>
+            <Select
+              value={lookupUserId}
+              onValueChange={(v) => setLookupUserId(v)}
+            >
+              <SelectTrigger className="h-11 rounded-lg border-border/60 max-w-sm" data-testid="select-billing-user">
+                <SelectValue placeholder="Select an account..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__self__">My account ({user?.email || user?.username})</SelectItem>
+                {adminAccounts
+                  .filter((u) => u.id !== user?.id)
+                  .map((u) => {
+                    const name = u.firstName && u.lastName
+                      ? `${u.firstName} ${u.lastName}`
+                      : u.username;
+                    return (
+                      <SelectItem key={u.id} value={u.id}>
+                        {name} ({u.email || u.username})
+                      </SelectItem>
+                    );
+                  })}
+              </SelectContent>
+            </Select>
+          </Card>
+        )}
 
         {isLoading ? (
           <div className="space-y-4">
@@ -127,6 +199,14 @@ export default function BillingPage() {
           </div>
         ) : (
           <>
+            {/* Viewing other account notice */}
+            {isViewingOther && getLookupLabel() && (
+              <div className="flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+                <Search className="h-4 w-4 shrink-0" />
+                Viewing subscription status for <span className="font-semibold">{getLookupLabel()}</span>. You cannot manage their billing.
+              </div>
+            )}
+
             {/* Subscription status card */}
             <Card className="border-border/50 overflow-hidden">
               <div className={`px-6 py-4 border-b border-border/40 ${isActive ? "bg-emerald-50/60 dark:bg-emerald-500/5" : "bg-slate-50/60 dark:bg-slate-800/30"}`}>
@@ -145,7 +225,9 @@ export default function BillingPage() {
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {isActive
                           ? `Billed ${sub?.interval}ly · ${displayEmail}`
-                          : "Subscribe to unlock full portal access"
+                          : isViewingOther
+                            ? `No subscription found for ${displayEmail}`
+                            : "Subscribe to unlock full portal access"
                         }
                       </p>
                     </div>
@@ -205,51 +287,55 @@ export default function BillingPage() {
 
                     <Separator className="opacity-50" />
 
-                    <div className="flex flex-wrap gap-3">
-                      <Button
-                        className="rounded-lg shadow-sm"
-                        onClick={() => portalMutation.mutate()}
-                        disabled={portalMutation.isPending}
-                        data-testid="button-manage-billing"
-                      >
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        {portalMutation.isPending ? "Opening..." : "Manage Billing"}
-                      </Button>
-                      <p className="self-center text-xs text-muted-foreground">
-                        Update payment method, view invoices, or cancel subscription
-                      </p>
-                    </div>
+                    {!isViewingOther && (
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          className="rounded-lg shadow-sm"
+                          onClick={() => portalMutation.mutate()}
+                          disabled={portalMutation.isPending}
+                          data-testid="button-manage-billing"
+                        >
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          {portalMutation.isPending ? "Opening..." : "Manage Billing"}
+                        </Button>
+                        <p className="self-center text-xs text-muted-foreground">
+                          Update payment method, view invoices, or cancel subscription
+                        </p>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
                       No subscription found for{" "}
-                      <span className="font-medium text-foreground">{user?.email || user?.username}</span>.
-                      {" "}Click Subscribe Now to get started.
+                      <span className="font-medium text-foreground">{displayEmail || (isViewingOther ? lookupEmail : user?.email || user?.username)}</span>.
+                      {!isViewingOther && " Click Subscribe Now to get started."}
                     </p>
-                    <div className="flex flex-wrap gap-3">
-                      <Button
-                        className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-                        asChild
-                        data-testid="button-subscribe"
-                      >
-                        <a href={STRIPE_PAYMENT_LINK} target="_blank" rel="noopener noreferrer">
-                          <Zap className="mr-2 h-4 w-4" />
-                          Subscribe Now
-                          <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70" />
-                        </a>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="rounded-lg"
-                        onClick={() => portalMutation.mutate()}
-                        disabled={portalMutation.isPending}
-                        data-testid="button-manage-billing-unsubscribed"
-                      >
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        {portalMutation.isPending ? "Opening..." : "Manage Billing"}
-                      </Button>
-                    </div>
+                    {!isViewingOther && (
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                          asChild
+                          data-testid="button-subscribe"
+                        >
+                          <a href={STRIPE_PAYMENT_LINK} target="_blank" rel="noopener noreferrer">
+                            <Zap className="mr-2 h-4 w-4" />
+                            Subscribe Now
+                            <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70" />
+                          </a>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="rounded-lg"
+                          onClick={() => portalMutation.mutate()}
+                          disabled={portalMutation.isPending}
+                          data-testid="button-manage-billing-unsubscribed"
+                        >
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          {portalMutation.isPending ? "Opening..." : "Manage Billing"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

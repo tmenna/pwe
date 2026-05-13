@@ -36,8 +36,15 @@ function generateRandomPassword(): string {
 }
 
 const isAdmin = async (req: any, res: any, next: any) => {
-  if (req.currentUser?.role !== "admin") {
+  if (!["admin", "superadmin"].includes(req.currentUser?.role)) {
     return res.status(403).json({ message: "Admin access required" });
+  }
+  next();
+};
+
+const isSuperAdmin = async (req: any, res: any, next: any) => {
+  if (req.currentUser?.role !== "superadmin") {
+    return res.status(403).json({ message: "Superadmin access required" });
   }
   next();
 };
@@ -184,9 +191,13 @@ export function registerUserRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/users", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const parsed = createUserSchema.parse(req.body);
+      // Only superadmin can create admin or superadmin accounts
+      if (["admin", "superadmin"].includes(parsed.role) && req.currentUser?.role !== "superadmin") {
+        return res.status(403).json({ message: "Only a superadmin can create admin accounts" });
+      }
       const existing = await authStorage.getUserByUsername(parsed.username);
       if (existing) {
         return res.status(409).json({ message: "Username already exists" });
@@ -232,9 +243,18 @@ export function registerUserRoutes(app: Express): void {
     }
   });
 
-  app.patch("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.patch("/api/users/:id", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const parsed = updateUserSchema.parse(req.body);
+      // Only superadmin can edit admin/superadmin accounts
+      const target = await authStorage.getUser(req.params.id);
+      if (target && ["admin", "superadmin"].includes(target.role) && req.currentUser?.role !== "superadmin") {
+        return res.status(403).json({ message: "Only a superadmin can edit admin accounts" });
+      }
+      // Only superadmin can assign admin/superadmin roles
+      if (parsed.role && ["admin", "superadmin"].includes(parsed.role) && req.currentUser?.role !== "superadmin") {
+        return res.status(403).json({ message: "Only a superadmin can assign admin roles" });
+      }
       const updateData: any = {};
       if (parsed.username !== undefined) {
         const existing = await authStorage.getUserByUsername(parsed.username);
@@ -271,6 +291,11 @@ export function registerUserRoutes(app: Express): void {
     try {
       if (req.params.id === req.currentUser.id) {
         return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      // Only superadmin can delete admin/superadmin accounts
+      const target = await authStorage.getUser(req.params.id);
+      if (target && ["admin", "superadmin"].includes(target.role) && req.currentUser?.role !== "superadmin") {
+        return res.status(403).json({ message: "Only a superadmin can delete admin accounts" });
       }
       await authStorage.deleteUser(req.params.id);
       res.json({ message: "User deleted" });
