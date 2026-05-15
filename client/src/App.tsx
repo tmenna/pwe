@@ -86,7 +86,11 @@ function AppContent() {
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !user && location !== "/") {
+    const isPublicPath =
+      location === "/" ||
+      location.startsWith("/reset-password") ||
+      location.startsWith("/2fa-setup");
+    if (!isLoading && !user && !isPublicPath) {
       setLocation("/");
     }
   }, [isLoading, user, location, setLocation]);
