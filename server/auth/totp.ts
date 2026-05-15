@@ -1,10 +1,7 @@
 import type { Express } from "express";
 import crypto from "crypto";
-import { createRequire } from "module";
+import QRCode from "qrcode";
 import { authStorage } from "./storage";
-
-const _require = createRequire(import.meta.url);
-const QRCode = _require("qrcode") as { toDataURL: (text: string) => Promise<string> };
 
 declare module "express-session" {
   interface SessionData {
