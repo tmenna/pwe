@@ -88,7 +88,7 @@ export default function Organizations() {
     });
   };
 
-  if (user?.role !== "admin") {
+  if (user?.role !== "admin" && user?.role !== "superadmin") {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
         <Card className="max-w-md p-8 text-center border-border/50">
