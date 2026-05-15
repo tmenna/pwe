@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Lock, AlertCircle, ArrowRight, Heart, Mail, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Shield, Lock, AlertCircle, ArrowRight, Heart, Mail, CheckCircle2, ArrowLeft, KeyRound, Smartphone } from "lucide-react";
 import pweLogo from "@assets/pwe-large-logo_1772038246752.jpg";
 
 declare global {
@@ -58,7 +59,12 @@ export default function LandingPage() {
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState("");
+  const [loginStep, setLoginStep] = useState<"credentials" | "totp_verify">("credentials");
+  const [totpCode, setTotpCode] = useState("");
+  const [totpError, setTotpError] = useState("");
+  const [totpLoading, setTotpLoading] = useState(false);
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const { siteKey, getToken } = useRecaptcha();
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
@@ -99,14 +105,44 @@ export default function LandingPage() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    onSuccess: (data) => {
+      if (data?.status === "totp_required") {
+        setLoginStep("totp_verify");
+      } else if (data?.status === "totp_setup_required") {
+        setLocation("/2fa-setup");
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      }
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     loginMutation.mutate();
+  };
+
+  const handleTotpVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTotpError("");
+    setTotpLoading(true);
+    try {
+      const res = await fetch("/api/auth/2fa/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code: totpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTotpError(data.message || "Verification failed");
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    } catch {
+      setTotpError("Failed to verify. Please try again.");
+    } finally {
+      setTotpLoading(false);
+    }
   };
 
   return (
@@ -154,7 +190,65 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {!showForgot ? (
+            {loginStep === "totp_verify" ? (
+              <div className="space-y-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#66DAB5]/12">
+                    <Smartphone className="h-4 w-4 text-[#4ec9a0]" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-semibold">Two-Factor Authentication</h3>
+                    <p className="text-xs text-muted-foreground">Enter the 6-digit code from your authenticator app</p>
+                  </div>
+                </div>
+                {totpError && (
+                  <div className="flex items-center gap-2.5 rounded-xl bg-destructive/8 p-3.5 text-sm text-destructive border border-destructive/10" data-testid="text-totp-error">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <span>{totpError}</span>
+                  </div>
+                )}
+                <form onSubmit={handleTotpVerify} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Authenticator Code</Label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9 ]*"
+                      maxLength={7}
+                      value={totpCode}
+                      onChange={(e) => setTotpCode(e.target.value)}
+                      placeholder="000 000"
+                      autoFocus
+                      required
+                      className="h-14 rounded-lg text-center text-2xl font-mono tracking-[0.4em] border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50"
+                      data-testid="input-totp-code"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full h-11 rounded-lg text-[15px] font-medium shadow-md hover:shadow-lg transition-all bg-[#66DAB5] hover:bg-[#55c9a4] text-white"
+                    disabled={totpLoading}
+                    data-testid="button-verify-totp"
+                  >
+                    {totpLoading ? "Verifying…" : (
+                      <>
+                        Verify Code
+                        <KeyRound className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+                <button
+                  type="button"
+                  onClick={() => { setLoginStep("credentials"); setTotpCode(""); setTotpError(""); }}
+                  className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-back-to-credentials"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back to login
+                </button>
+              </div>
+            ) : !showForgot ? (
               <form onSubmit={handleSubmit} className="space-y-5">
                 {loginMutation.isError && (
                   <div className="flex items-center gap-2.5 rounded-xl bg-destructive/8 p-3.5 text-sm text-destructive border border-destructive/10" data-testid="text-login-error">

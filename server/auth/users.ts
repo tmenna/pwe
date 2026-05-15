@@ -173,11 +173,26 @@ export function registerUserRoutes(app: Express): void {
 
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const { hashedPassword, ...safeUser } = req.currentUser;
+      const { hashedPassword, totpSecret, ...safeUser } = req.currentUser;
       res.json(safeUser);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Admin override: reset 2FA for any user (removes secret + disables TOTP)
+  app.delete("/api/users/:id/totp", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const target = await authStorage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ message: "User not found" });
+      if (target.role === "superadmin" && req.currentUser?.role !== "superadmin") {
+        return res.status(403).json({ message: "Only a superadmin can reset another superadmin's 2FA" });
+      }
+      await authStorage.updateUser(req.params.id, { totpSecret: null, totpEnabled: false });
+      res.json({ message: "2FA has been reset for this user. They will be prompted to set it up on next login." });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

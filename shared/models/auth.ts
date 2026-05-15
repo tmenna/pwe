@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -30,6 +30,8 @@ export const users = pgTable("users", {
   zipCode: varchar("zip_code", { length: 20 }),
   country: varchar("country", { length: 100 }),
   sponsoredPrograms: text("sponsored_programs"),
+  totpSecret: text("totp_secret"),
+  totpEnabled: boolean("totp_enabled").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

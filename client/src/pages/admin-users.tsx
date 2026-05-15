@@ -19,7 +19,7 @@ import {
   UserPlus, Pencil, Trash2, UserCog, AlertCircle, Building2,
   Shield, Eye, Heart, Users, Baby, MessageSquare, Search, X, Check,
   KeyRound, Copy, CheckCheck, Mail, MailX, SendHorizonal, Download, MapPin, BookOpen,
-  Upload, FileSpreadsheet, CheckCircle2, ShieldCheck,
+  Upload, FileSpreadsheet, CheckCircle2, ShieldCheck, Smartphone,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
@@ -39,6 +39,7 @@ type SafeUser = {
   zipCode: string | null;
   country: string | null;
   sponsoredPrograms: string | null;
+  totpEnabled: boolean;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -140,6 +141,7 @@ export default function AdminUsers() {
   const [deleteUser, setDeleteUser] = useState<SafeUser | null>(null);
   const [resetUser, setResetUser] = useState<SafeUser | null>(null);
   const [resetResult, setResetResult] = useState<{ newPassword: string; emailSent: boolean; emailError?: string; email: string } | null>(null);
+  const [reset2faUser, setReset2faUser] = useState<SafeUser | null>(null);
   const [copied, setCopied] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
@@ -321,6 +323,19 @@ export default function AdminUsers() {
     onError: (err: Error) => toast({ title: "Reset failed", description: err.message, variant: "destructive" }),
   });
 
+  const reset2faMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/users/${reset2faUser!.id}/totp`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "2FA reset", description: `Two-factor authentication has been disabled for ${reset2faUser?.username}. They will be prompted to re-enroll on next login.` });
+      setReset2faUser(null);
+    },
+    onError: (err: Error) => toast({ title: "Reset failed", description: err.message, variant: "destructive" }),
+  });
+
   const copyPassword = () => {
     if (resetResult?.newPassword) {
       navigator.clipboard.writeText(resetResult.newPassword);
@@ -436,7 +451,7 @@ export default function AdminUsers() {
                   </div>
                   {superAdmins.length > 0
                     ? superAdmins.map((u) => (
-                        <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />
+                        <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} onReset2FA={setReset2faUser} />
                       ))
                     : <p className="text-sm text-muted-foreground pl-1">No super administrators found.</p>
                   }
@@ -457,7 +472,7 @@ export default function AdminUsers() {
                     </div>
                   )}
                   {staffUsers.map((u) => (
-                    <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} />
+                    <UserCard key={u.id} u={u} organizations={organizations} assignedChildren={getAssignedChildren(u.id)} onEdit={openEdit} onReset={setResetUser} onDelete={setDeleteUser} onReset2FA={setReset2faUser} />
                   ))}
                   {staffUsers.length === 0 && !isSuperAdmin && (
                     <div className="py-16 text-center text-muted-foreground">
@@ -580,6 +595,7 @@ export default function AdminUsers() {
                         onEdit={openEdit}
                         onReset={setResetUser}
                         onDelete={setDeleteUser}
+                        onReset2FA={setReset2faUser}
                         selectable
                         selected={selectedSponsorIds.has(u.id)}
                         onToggleSelect={(id, checked) => {
@@ -1193,6 +1209,39 @@ export default function AdminUsers() {
           </DialogContent>
         </Dialog>
 
+        {/* ── Reset 2FA dialog ──────────────────────── */}
+        <Dialog open={!!reset2faUser} onOpenChange={(open) => !open && setReset2faUser(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Two-Factor Authentication</DialogTitle>
+            </DialogHeader>
+            <div className="flex items-start gap-3 py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10">
+                <Smartphone className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm leading-relaxed">
+                  Reset 2FA for <strong>{reset2faUser?.username}</strong>? Their authenticator app link will be removed. They will be required to set up 2FA again on their next login.
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Use this if a user has lost access to their authenticator device.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" className="rounded-lg" onClick={() => setReset2faUser(null)} data-testid="button-cancel-reset-2fa">Cancel</Button>
+              <Button
+                className="rounded-lg shadow-sm bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => reset2faMutation.mutate()}
+                disabled={reset2faMutation.isPending}
+                data-testid="button-confirm-reset-2fa"
+              >
+                {reset2faMutation.isPending ? "Resetting…" : "Reset 2FA"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* ── Delete dialog ─────────────────────────── */}
         <Dialog open={!!deleteUser} onOpenChange={(open) => !open && setDeleteUser(null)}>
           <DialogContent>
@@ -1481,7 +1530,7 @@ export default function AdminUsers() {
 
 // ── User card (shared between All Users and Sponsors tabs) ───────────────────
 function UserCard({
-  u, organizations, assignedChildren, onEdit, onReset, onDelete,
+  u, organizations, assignedChildren, onEdit, onReset, onDelete, onReset2FA,
   selectable = false, selected = false, onToggleSelect,
 }: {
   u: SafeUser;
@@ -1490,6 +1539,7 @@ function UserCard({
   onEdit: (u: SafeUser) => void;
   onReset: (u: SafeUser) => void;
   onDelete: (u: SafeUser) => void;
+  onReset2FA: (u: SafeUser) => void;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string, checked: boolean) => void;
@@ -1547,6 +1597,12 @@ function UserCard({
                     {assignedOrg.name}
                   </Badge>
                 )}
+                {u.totpEnabled && (
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/25 text-xs font-medium" data-testid={`badge-2fa-${u.id}`}>
+                    <Smartphone className="mr-1 h-3 w-3" />
+                    2FA On
+                  </Badge>
+                )}
                 <span className="text-xs text-muted-foreground/60">
                   {u.role === "sponsor" && assignedChildren.length > 0
                     ? `View-only access to ${assignedChildren.length} child profile${assignedChildren.length > 1 ? "s" : ""}`
@@ -1563,6 +1619,11 @@ function UserCard({
             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-500/10" onClick={() => onReset(u)} title="Reset password" data-testid={`button-reset-password-${u.id}`}>
               <KeyRound className="h-4 w-4" />
             </Button>
+            {u.totpEnabled && (
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-500/10" onClick={() => onReset2FA(u)} title="Reset 2FA — user will re-enroll on next login" data-testid={`button-reset-2fa-${u.id}`}>
+                <Smartphone className="h-4 w-4" />
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-destructive/8 hover:text-destructive" onClick={() => onDelete(u)} data-testid={`button-delete-${u.id}`}>
               <Trash2 className="h-4 w-4" />
             </Button>

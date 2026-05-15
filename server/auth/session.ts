@@ -4,10 +4,13 @@ import connectPg from "connect-pg-simple";
 import bcrypt from "bcryptjs";
 import { authStorage } from "./storage";
 import { loginSchema } from "@shared/models/auth";
+import { requires2FA, registerTotpRoutes } from "./totp";
 
 declare module "express-session" {
   interface SessionData {
     userId?: string;
+    pendingUserId?: string;
+    totpSetupRequired?: boolean;
   }
 }
 
@@ -85,8 +88,23 @@ export async function setupAuth(app: Express) {
       if (!valid) {
         return res.status(401).json({ message: "Invalid username or password" });
       }
+
+      // 2FA required for case_worker, admin, superadmin
+      if (requires2FA(user.role)) {
+        req.session.pendingUserId = user.id;
+        if (user.totpEnabled) {
+          // User has 2FA set up — require code entry
+          return res.json({ status: "totp_required" });
+        } else {
+          // User has never set up 2FA — force enrollment
+          req.session.totpSetupRequired = true;
+          return res.json({ status: "totp_setup_required" });
+        }
+      }
+
+      // Sponsors and other roles: complete login immediately
       req.session.userId = user.id;
-      const { hashedPassword, ...safeUser } = user;
+      const { hashedPassword, totpSecret, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -100,6 +118,8 @@ export async function setupAuth(app: Express) {
       res.json({ message: "Logged out" });
     });
   });
+
+  registerTotpRoutes(app);
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
