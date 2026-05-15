@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation, Link } from "wouter";
 import {
@@ -215,6 +215,224 @@ function UploadDocumentDialog({ childId, onClose, photoOnly }: { childId: number
 }
 
 
+type BulkFileItem = {
+  id: string;
+  file: File;
+  preview: string;
+  status: "pending" | "uploading" | "done" | "error";
+  error?: string;
+};
+
+function BulkPhotoUploadDialog({ childId, onClose }: { childId: number; onClose: () => void }) {
+  const [items, setItems] = useState<BulkFileItem[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const addFiles = useCallback((newFiles: FileList | File[]) => {
+    const imageFiles = Array.from(newFiles).filter((f) => f.type.startsWith("image/"));
+    if (imageFiles.length === 0) return;
+    const newItems: BulkFileItem[] = imageFiles.map((file) => ({
+      id: `${file.name}-${file.size}-${Math.random()}`,
+      file,
+      preview: URL.createObjectURL(file),
+      status: "pending",
+    }));
+    setItems((prev) => [...prev, ...newItems]);
+  }, []);
+
+  const removeItem = (id: string) => {
+    setItems((prev) => {
+      const item = prev.find((i) => i.id === id);
+      if (item) URL.revokeObjectURL(item.preview);
+      return prev.filter((i) => i.id !== id);
+    });
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    addFiles(e.dataTransfer.files);
+  };
+
+  const uploadSingle = async (item: BulkFileItem): Promise<"done" | "error"> => {
+    try {
+      const urlRes = await fetch("/api/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: item.file.name, size: item.file.size, contentType: item.file.type }),
+      });
+      if (!urlRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadURL, objectPath } = await urlRes.json();
+
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: item.file,
+        headers: { "Content-Type": item.file.type || "image/jpeg" },
+      });
+      if (!putRes.ok) throw new Error("Storage upload failed");
+
+      const docRes = await fetch(`/api/children/${childId}/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ objectPath, fileName: item.file.name, documentType: "photos", description: "" }),
+      });
+      if (!docRes.ok) throw new Error("Failed to save document record");
+      return "done";
+    } catch {
+      return "error";
+    }
+  };
+
+  const handleUploadAll = async () => {
+    const pending = items.filter((i) => i.status === "pending");
+    if (pending.length === 0) return;
+    setUploading(true);
+
+    for (const item of pending) {
+      setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, status: "uploading" } : i));
+      const result = await uploadSingle(item);
+      setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, status: result } : i));
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["/api/children", String(childId), "documents"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/children", String(childId), "timeline"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/timeline/recent"] });
+
+    const finalItems = items.map((i) =>
+      pending.find((p) => p.id === i.id) ? { ...i, status: "done" as const } : i
+    );
+    const doneCount = finalItems.filter((i) => i.status === "done").length;
+    const errorCount = finalItems.filter((i) => i.status === "error").length;
+
+    if (errorCount === 0) {
+      toast({ title: `${doneCount} photo${doneCount !== 1 ? "s" : ""} uploaded`, description: "All photos have been added to this child's profile." });
+      onClose();
+    } else {
+      toast({
+        title: `${doneCount} uploaded, ${errorCount} failed`,
+        description: "Some photos failed. You can retry the failed ones.",
+        variant: "destructive",
+      });
+    }
+    setUploading(false);
+  };
+
+  const pendingCount = items.filter((i) => i.status === "pending").length;
+  const doneCount = items.filter((i) => i.status === "done").length;
+  const errorCount = items.filter((i) => i.status === "error").length;
+
+  return (
+    <div className="space-y-4">
+      {/* Drop zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => !uploading && fileInputRef.current?.click()}
+        className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
+          isDragOver
+            ? "border-primary bg-primary/5"
+            : "border-border/60 hover:border-primary/50 hover:bg-muted/30"
+        } ${uploading ? "pointer-events-none opacity-60" : ""}`}
+        data-testid="bulk-photo-dropzone"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/8">
+          <Image className="h-6 w-6 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-medium">Drop photos here or click to browse</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">JPEG, PNG, WebP, HEIC — any number of files</p>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => e.target.files && addFiles(e.target.files)}
+          data-testid="input-bulk-photo-files"
+        />
+      </div>
+
+      {/* File list */}
+      {items.length > 0 && (
+        <div className="max-h-60 overflow-y-auto rounded-xl border border-border/50 divide-y divide-border/40">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center gap-3 px-3 py-2.5" data-testid={`bulk-photo-item-${item.id}`}>
+              <div className="relative h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-muted">
+                <img src={item.preview} alt={item.file.name} className="h-full w-full object-cover" />
+                {item.status === "uploading" && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </div>
+                )}
+                {item.status === "done" && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/70">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
+                )}
+                {item.status === "error" && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-destructive/70">
+                    <X className="h-4 w-4 text-white" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-sm font-medium">{item.file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {(item.file.size / 1024).toFixed(0)} KB
+                  {item.status === "uploading" && <span className="ml-2 text-primary">Uploading…</span>}
+                  {item.status === "done" && <span className="ml-2 text-emerald-600">Done</span>}
+                  {item.status === "error" && <span className="ml-2 text-destructive">Failed</span>}
+                </p>
+              </div>
+              {(item.status === "pending" || item.status === "error") && !uploading && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0 rounded-lg hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => removeItem(item.id)}
+                  data-testid={`button-remove-bulk-photo-${item.id}`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Progress summary */}
+      {uploading && (
+        <p className="text-center text-sm text-muted-foreground">
+          Uploading… {doneCount + errorCount} / {items.length} done
+        </p>
+      )}
+
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <Button variant="outline" className="rounded-lg" onClick={onClose} disabled={uploading} data-testid="button-cancel-bulk-upload">
+          {doneCount > 0 && !uploading ? "Close" : "Cancel"}
+        </Button>
+        <Button
+          className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+          onClick={handleUploadAll}
+          disabled={uploading || pendingCount === 0}
+          data-testid="button-start-bulk-upload"
+        >
+          <Upload className="mr-2 h-4 w-4" />
+          {uploading ? "Uploading…" : `Upload ${pendingCount > 0 ? pendingCount : ""} Photo${pendingCount !== 1 ? "s" : ""}`}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
 function InlineDescription({ child, canEdit }: { child: Child; canEdit: boolean }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(child.description || "");
@@ -285,6 +503,7 @@ export default function ChildProfile() {
   const childId = params?.id;
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadPhotoOpen, setUploadPhotoOpen] = useState(false);
+  const [bulkPhotoOpen, setBulkPhotoOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -1019,20 +1238,36 @@ export default function ChildProfile() {
                 Photos
               </h2>
               {canEdit && (
-                <Dialog open={uploadPhotoOpen} onOpenChange={setUploadPhotoOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="rounded-lg shadow-sm" data-testid="button-upload-photo-doc">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Photo
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Upload Photo</DialogTitle>
-                    </DialogHeader>
-                    <UploadDocumentDialog childId={child.id} onClose={() => setUploadPhotoOpen(false)} photoOnly />
-                  </DialogContent>
-                </Dialog>
+                <div className="flex items-center gap-2">
+                  <Dialog open={uploadPhotoOpen} onOpenChange={setUploadPhotoOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="rounded-lg" data-testid="button-upload-photo-doc">
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload Photo
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Upload Photo</DialogTitle>
+                      </DialogHeader>
+                      <UploadDocumentDialog childId={child.id} onClose={() => setUploadPhotoOpen(false)} photoOnly />
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={bulkPhotoOpen} onOpenChange={(open) => { if (!open) setBulkPhotoOpen(false); else setBulkPhotoOpen(true); }}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="rounded-lg shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="button-bulk-upload-photos">
+                        <Image className="mr-2 h-4 w-4" />
+                        Bulk Upload
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[520px]">
+                      <DialogHeader>
+                        <DialogTitle>Bulk Photo Upload</DialogTitle>
+                      </DialogHeader>
+                      <BulkPhotoUploadDialog childId={child.id} onClose={() => setBulkPhotoOpen(false)} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
               )}
             </div>
 
