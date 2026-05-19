@@ -1135,6 +1135,41 @@ export async function registerRoutes(
     }
   });
 
+  // --- Stripe Diagnostics (superadmin only) ---
+  app.get("/api/billing/diagnose", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      if (req.currentUser?.role !== "superadmin") {
+        return res.status(403).json({ message: "Superadmin only" });
+      }
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const email = req.query.email as string;
+      if (!email) return res.status(400).json({ message: "email query param required" });
+
+      // Detect mode from the key
+      const keySnippet = (stripe as any)._api?.auth || "";
+      const isLiveKey = keySnippet.startsWith("sk_live") || keySnippet.includes("_live_");
+      const mode = isLiveKey ? "live" : "unknown (likely test)";
+
+      const customers = await stripe.customers.list({ email, limit: 10 });
+      const results = await Promise.all(
+        customers.data.map(async (c) => {
+          const subs = await stripe.subscriptions.list({ customer: c.id, status: "all", limit: 5 });
+          return {
+            customerId: c.id,
+            email: c.email,
+            name: c.name,
+            created: new Date(c.created * 1000).toISOString(),
+            subscriptions: subs.data.map((s) => ({ id: s.id, status: s.status, created: new Date((s as any).created * 1000).toISOString() })),
+          };
+        })
+      );
+      res.json({ stripeMode: mode, email, customersFound: customers.data.length, customers: results });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // --- Stripe Webhook (unauthenticated — verified by signature) ---
   app.post("/api/stripe/webhook", async (req: any, res) => {
     try {
@@ -1239,24 +1274,54 @@ export async function registerRoutes(
       // Allow overriding the lookup email via query param (admin only)
       const email = (req.query.email as string) || user.email || user.username;
 
-      // Find customer by email
-      const customers = await stripe.customers.list({ email, limit: 1 });
+      // Detect live vs test mode from the internal key reference
+      let stripeMode: "live" | "test" | "unknown" = "unknown";
+      try {
+        const authHeader: string = (stripe as any)._api?.auth ?? (stripe as any).stripeAccount ?? "";
+        if (authHeader.includes("_live_") || authHeader.startsWith("sk_live")) stripeMode = "live";
+        else if (authHeader.includes("_test_") || authHeader.startsWith("sk_test")) stripeMode = "test";
+      } catch { /* ignore */ }
+
+      // Find ALL customers with this email — Stripe can have duplicates;
+      // we scan each one until we find a customer with an active/relevant subscription.
+      const customers = await stripe.customers.list({ email, limit: 10 });
       if (!customers.data.length) {
+        console.log(`[billing] No Stripe customer found for email: ${email}`);
         return res.json({ subscribed: false, customer: null, subscription: null, lookupEmail: email });
       }
 
-      const customer = customers.data[0];
-      const subscriptions = await stripe.subscriptions.list({
-        customer: customer.id,
-        status: "all",
-        limit: 1,
-        expand: ["data.default_payment_method", "data.items.data.price.product"],
-      });
+      console.log(`[billing] Found ${customers.data.length} customer record(s) for ${email}: ${customers.data.map(c => c.id).join(", ")}`);
 
-      const sub = subscriptions.data[0] || null;
+      // Check each customer for subscriptions — prefer active/trialing, fall back to any
+      let bestCustomer = customers.data[0];
+      let bestSub: any = null;
+
+      for (const cust of customers.data) {
+        const subs = await stripe.subscriptions.list({
+          customer: cust.id,
+          status: "all",
+          limit: 5,
+          expand: ["data.default_payment_method", "data.items.data.price.product"],
+        });
+        console.log(`[billing] Customer ${cust.id}: ${subs.data.length} subscription(s) — statuses: ${subs.data.map(s => s.status).join(", ") || "none"}`);
+        const activeSub = subs.data.find(s => ["active", "trialing"].includes(s.status));
+        if (activeSub) {
+          bestCustomer = cust;
+          bestSub = activeSub;
+          break;
+        }
+        // Keep the most recent subscription as fallback
+        if (!bestSub && subs.data.length) {
+          bestCustomer = cust;
+          bestSub = subs.data[0];
+        }
+      }
+
+      const sub = bestSub;
       res.json({
         subscribed: sub ? ["active", "trialing"].includes(sub.status) : false,
-        customer: { id: customer.id, email: customer.email, name: customer.name },
+        stripeMode,
+        customer: { id: bestCustomer.id, email: bestCustomer.email, name: bestCustomer.name },
         subscription: sub
           ? {
               id: sub.id,
@@ -1277,6 +1342,7 @@ export async function registerRoutes(
                 : null,
             }
           : null,
+        lookupEmail: email,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

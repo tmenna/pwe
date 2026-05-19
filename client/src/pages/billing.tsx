@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap, ChevronDown, Search, Mail } from "lucide-react";
+import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap, ChevronDown, Search, Mail, FlaskConical } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ const STRIPE_PORTAL_LINK = "https://billing.stripe.com/p/login/5kQdR99ghdtf4Ct1f
 
 interface BillingStatus {
   subscribed: boolean;
+  stripeMode?: "live" | "test" | "unknown";
   lookupEmail?: string;
   customer: { id: string; email: string | null; name: string | null } | null;
   subscription: {
@@ -251,6 +252,19 @@ export default function BillingPage() {
           </div>
         ) : (
           <>
+            {/* Test-mode warning */}
+            {billing?.stripeMode === "test" && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-500/30 dark:bg-orange-500/10 px-4 py-3 text-sm text-orange-800 dark:text-orange-300">
+                <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Stripe is in Test Mode</p>
+                  <p className="mt-0.5 text-xs text-orange-700/80 dark:text-orange-400/80">
+                    This environment is connected to Stripe's test data — it cannot see live subscriptions made through the real payment link. To view live billing, check from the <strong>deployed production app</strong> instead of this preview environment.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Viewing other account notice */}
             {isViewingOther && getLookupLabel() && (
               <div className="flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
