@@ -85,7 +85,7 @@ export default function BillingPage() {
     enabled: isSuperAdmin,
   });
 
-  const adminAccounts = adminUsers?.filter((u) => ["admin", "superadmin"].includes(u.role)) ?? [];
+  const adminAccounts = adminUsers?.filter((u) => ["admin", "superadmin", "case_worker"].includes(u.role)) ?? [];
 
   const lookupUser = lookupUserId === "__self__"
     ? null
@@ -226,7 +226,7 @@ export default function BillingPage() {
               Look Up Account via Portal
             </h2>
             <p className="text-xs text-muted-foreground">
-              This reads from the same Stripe account the portal is connected to. If the portal is in test mode, use the Stripe Dashboard links above instead.
+              Shows all admins and case workers. Reads from the same Stripe account the portal is connected to — if in test mode, use the Stripe Dashboard links above instead.
             </p>
 
             <Select
