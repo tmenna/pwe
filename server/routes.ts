@@ -6,7 +6,7 @@ import { setupAuth, isAuthenticated, registerUserRoutes } from "./auth";
 import { insertChildSchema } from "@shared/schema";
 import { z } from "zod";
 import { registerUploadRoutes } from "./uploads";
-import { sendNewMessageNotification, sendNewsletterNotification, isEmailConfigured } from "./services/email";
+import { sendNewMessageNotification, sendNewsletterNotification, sendNewSubscriptionNotification, isEmailConfigured } from "./services/email";
 import { jobQueue } from "./services/jobs";
 import { deleteFile } from "./services/storage";
 import { authStorage } from "./auth/storage";
@@ -1131,6 +1131,100 @@ export async function registerRoutes(
       await storage.deleteNewsletter(id);
       res.json({ message: "Deleted" });
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Stripe Webhook (unauthenticated — verified by signature) ---
+  app.post("/api/stripe/webhook", async (req: any, res) => {
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      const sig = req.headers["stripe-signature"] as string | undefined;
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      const rawBody = req.rawBody as Buffer | undefined;
+
+      let event: any;
+      if (webhookSecret && sig && rawBody) {
+        try {
+          event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+        } catch (err: any) {
+          console.error("[stripe webhook] Signature verification failed:", err.message);
+          return res.status(400).json({ message: `Webhook signature invalid: ${err.message}` });
+        }
+      } else {
+        // No secret configured — accept but warn (useful during initial setup)
+        if (!webhookSecret) {
+          console.warn("[stripe webhook] STRIPE_WEBHOOK_SECRET not set — skipping signature verification");
+        }
+        event = req.body;
+      }
+
+      const relevantStatuses = ["active", "trialing", "past_due"];
+      if (
+        event.type === "customer.subscription.created" ||
+        event.type === "customer.subscription.updated"
+      ) {
+        const sub = event.data.object as any;
+        if (relevantStatuses.includes(sub.status)) {
+          // Look up customer details
+          let customerEmail = "";
+          let customerName: string | null = null;
+          try {
+            const customer = await stripe.customers.retrieve(sub.customer);
+            if (customer && !("deleted" in customer)) {
+              customerEmail = (customer as any).email || "";
+              customerName = (customer as any).name || null;
+            }
+          } catch {
+            // ignore customer lookup failure
+          }
+
+          // Expand product name
+          let planName = "PWE Portal Subscription";
+          try {
+            const item = sub.items?.data?.[0];
+            if (item?.price?.product) {
+              const product = await stripe.products.retrieve(item.price.product);
+              planName = product.name || planName;
+            }
+          } catch {
+            // ignore product lookup failure
+          }
+
+          const amount = sub.items?.data?.[0]?.price?.unit_amount ?? null;
+          const currency = sub.items?.data?.[0]?.price?.currency ?? null;
+          const interval = sub.items?.data?.[0]?.price?.recurring?.interval ?? null;
+
+          // Find all superadmin emails
+          const allUsers = await authStorage.getUsers();
+          const superadminEmails = allUsers
+            .filter((u) => u.role === "superadmin" && (u.email || u.username))
+            .map((u) => u.email || u.username)
+            .filter(Boolean) as string[];
+
+          if (superadminEmails.length && customerEmail) {
+            await sendNewSubscriptionNotification({
+              superadminEmails,
+              customerEmail,
+              customerName,
+              planName,
+              amount,
+              currency,
+              interval,
+              subscriptionId: sub.id,
+              status: sub.status,
+            });
+          }
+
+          console.log(`[stripe webhook] ${event.type} — ${customerEmail} — ${sub.status}`);
+        }
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error("[stripe webhook] Error:", error.message);
       res.status(500).json({ message: error.message });
     }
   });

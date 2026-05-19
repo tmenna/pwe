@@ -423,6 +423,69 @@ export async function sendNewsletterNotification(
 }
 
 // ---------------------------------------------------------------------------
+// Notification: new Stripe subscription created/activated
+// ---------------------------------------------------------------------------
+
+export interface NewSubscriptionNotificationPayload {
+  superadminEmails: string[];
+  customerEmail: string;
+  customerName: string | null;
+  planName: string;
+  amount: number | null;
+  currency: string | null;
+  interval: string | null;
+  subscriptionId: string;
+  status: string;
+}
+
+export async function sendNewSubscriptionNotification(
+  payload: NewSubscriptionNotificationPayload
+): Promise<SendResult> {
+  if (!payload.superadminEmails.length) return { success: true };
+
+  const portalUrl = APP_URL ? `${APP_URL}/billing` : "#";
+
+  const amountStr =
+    payload.amount && payload.currency
+      ? new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: payload.currency.toUpperCase(),
+        }).format(payload.amount / 100) +
+        (payload.interval ? ` / ${payload.interval}` : "")
+      : "—";
+
+  const rows: [string, string][] = [
+    ["Customer", payload.customerName || payload.customerEmail],
+    ["Email", payload.customerEmail],
+    ["Plan", payload.planName],
+    ["Amount", amountStr],
+    ["Status", payload.status],
+    ["Subscription ID", payload.subscriptionId],
+  ];
+
+  const html = brandedEmail(
+    "New Subscription Activated",
+    [
+      paragraph(
+        `A new subscription has been activated on the PWE Portal. Here are the details:`
+      ),
+      infoBox(rows),
+      paragraph(
+        `You can view the full billing status in the portal's Billing section.`
+      ),
+      actionButton("View Billing in Portal", portalUrl),
+    ].join("\n"),
+    `New subscription from ${payload.customerEmail}`
+  );
+
+  return send(
+    payload.superadminEmails,
+    `New Subscription — ${payload.customerEmail} — PWE Portal`,
+    html
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Test email (admin utility)
 // ---------------------------------------------------------------------------
 

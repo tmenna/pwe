@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap, ChevronDown, Search } from "lucide-react";
+import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap, ChevronDown, Search, Mail } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +70,8 @@ export default function BillingPage() {
   const isAdminOrSuper = user?.role === "admin" || isSuperAdmin;
 
   const [lookupUserId, setLookupUserId] = useState<string>("__self__");
+  const [customEmail, setCustomEmail] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
 
   if (!isAdminOrSuper) {
     return <Redirect to="/" />;
@@ -86,8 +88,10 @@ export default function BillingPage() {
     ? null
     : adminAccounts.find((u) => u.id === lookupUserId);
 
-  const lookupEmail = lookupUser?.email || lookupUser?.username || undefined;
-  const isViewingOther = isSuperAdmin && lookupUserId !== "__self__";
+  const profileEmail = lookupUser?.email || lookupUser?.username || undefined;
+  // searchEmail wins over profile email if superadmin typed one manually
+  const lookupEmail = searchEmail || profileEmail;
+  const isViewingOther = isSuperAdmin && (lookupUserId !== "__self__" || !!searchEmail);
 
   const billingUrl = lookupEmail
     ? `/api/billing/status?email=${encodeURIComponent(lookupEmail)}`
@@ -158,17 +162,18 @@ export default function BillingPage() {
 
         {/* Superadmin: account selector */}
         {isSuperAdmin && (
-          <Card className="border-border/50 px-6 py-5 space-y-3">
+          <Card className="border-border/50 px-6 py-5 space-y-4">
             <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
               <span className="inline-block w-1 h-5 rounded-full bg-primary" />
               Look Up Account
             </h2>
             <p className="text-xs text-muted-foreground">
-              Select an admin account to view their subscription status. You cannot manage their billing — only view the status.
+              Select an admin account or enter any email address to search Stripe directly. You cannot manage their billing — only view the status.
             </p>
+
             <Select
               value={lookupUserId}
-              onValueChange={(v) => setLookupUserId(v)}
+              onValueChange={(v) => { setLookupUserId(v); setCustomEmail(""); setSearchEmail(""); }}
             >
               <SelectTrigger className="h-11 rounded-lg border-border/60 max-w-sm" data-testid="select-billing-user">
                 <SelectValue placeholder="Select an account..." />
@@ -189,6 +194,53 @@ export default function BillingPage() {
                   })}
               </SelectContent>
             </Select>
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">
+                Or search by the exact email used during Stripe checkout:
+              </p>
+              <div className="flex gap-2 max-w-sm">
+                <div className="relative flex-1">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={customEmail}
+                    onChange={(e) => setCustomEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { setSearchEmail(customEmail.trim()); setLookupUserId("__self__"); } }}
+                    placeholder="customer@example.com"
+                    className="w-full h-10 pl-8 pr-3 text-sm rounded-lg border border-border/60 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60"
+                    data-testid="input-billing-email-search"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10 rounded-lg px-4 shrink-0"
+                  onClick={() => { setSearchEmail(customEmail.trim()); setLookupUserId("__self__"); }}
+                  disabled={!customEmail.trim()}
+                  data-testid="button-billing-email-search"
+                >
+                  <Search className="h-3.5 w-3.5 mr-1.5" />
+                  Search
+                </Button>
+                {searchEmail && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-10 rounded-lg px-3 shrink-0 text-muted-foreground"
+                    onClick={() => { setSearchEmail(""); setCustomEmail(""); }}
+                    data-testid="button-billing-clear-search"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {searchEmail && (
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  Searching Stripe for: <strong>{searchEmail}</strong>
+                </p>
+              )}
+            </div>
           </Card>
         )}
 
