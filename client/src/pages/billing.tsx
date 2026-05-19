@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap, ChevronDown, Search, Mail, FlaskConical } from "lucide-react";
+import { CreditCard, CheckCircle2, AlertCircle, Clock, ExternalLink, RefreshCw, Zap, Search, Mail, FlaskConical, LayoutDashboard, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,8 @@ import { Redirect } from "wouter";
 
 const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/00w14n789dtf2ul3nB8k803";
 const STRIPE_PORTAL_LINK = "https://billing.stripe.com/p/login/5kQdR99ghdtf4Ct1ft8k800";
+const STRIPE_DASHBOARD_CUSTOMERS = "https://dashboard.stripe.com/customers";
+const STRIPE_DASHBOARD_SUBSCRIPTIONS = "https://dashboard.stripe.com/subscriptions";
 
 interface BillingStatus {
   subscribed: boolean;
@@ -90,7 +92,6 @@ export default function BillingPage() {
     : adminAccounts.find((u) => u.id === lookupUserId);
 
   const profileEmail = lookupUser?.email || lookupUser?.username || undefined;
-  // searchEmail wins over profile email if superadmin typed one manually
   const lookupEmail = searchEmail || profileEmail;
   const isViewingOther = isSuperAdmin && (lookupUserId !== "__self__" || !!searchEmail);
 
@@ -123,15 +124,21 @@ export default function BillingPage() {
   const sub = billing?.subscription;
   const isActive = billing?.subscribed;
   const displayEmail = billing?.customer?.email || (isViewingOther ? lookupEmail : user?.email || user?.username);
+  const isTestMode = billing?.stripeMode === "test";
 
   const getLookupLabel = () => {
+    if (searchEmail) return searchEmail;
     if (!isSuperAdmin || lookupUserId === "__self__") return null;
     if (!lookupUser) return null;
-    const name = lookupUser.firstName && lookupUser.lastName
+    return lookupUser.firstName && lookupUser.lastName
       ? `${lookupUser.firstName} ${lookupUser.lastName}`
       : lookupUser.username;
-    return name;
   };
+
+  const currentLookupEmail = lookupEmail || user?.email || user?.username || "";
+  const stripeDashboardCustomerUrl = currentLookupEmail
+    ? `${STRIPE_DASHBOARD_CUSTOMERS}?query=${encodeURIComponent("email:" + currentLookupEmail)}`
+    : STRIPE_DASHBOARD_CUSTOMERS;
 
   return (
     <div className="flex-1 overflow-auto p-5 sm:p-8">
@@ -161,15 +168,65 @@ export default function BillingPage() {
           </Button>
         </div>
 
+        {/* Superadmin: Stripe Dashboard Quick Access — always reliable */}
+        {isSuperAdmin && (
+          <Card className="border-border/50 overflow-hidden">
+            <div className="px-6 py-4 border-b border-border/40 bg-slate-50/60 dark:bg-slate-800/30">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#635BFF]/10">
+                  <LayoutDashboard className="h-4 w-4 text-[#635BFF]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Stripe Dashboard — Always Shows Live Data</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Go directly to Stripe to see any customer's live subscription status</p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a
+                  href={stripeDashboardCustomerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="link-stripe-customer-search"
+                >
+                  <Button className="w-full rounded-lg bg-[#635BFF] hover:bg-[#5249e0] text-white shadow-sm" type="button">
+                    <Search className="mr-2 h-4 w-4" />
+                    {currentLookupEmail ? "Find This Customer in Stripe" : "Search Customers in Stripe"}
+                    <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70" />
+                  </Button>
+                </a>
+                <a
+                  href={STRIPE_DASHBOARD_SUBSCRIPTIONS}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="link-stripe-all-subscriptions"
+                >
+                  <Button variant="outline" className="w-full rounded-lg" type="button">
+                    <Users className="mr-2 h-4 w-4" />
+                    All Subscriptions
+                    <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70" />
+                  </Button>
+                </a>
+              </div>
+              {currentLookupEmail && (
+                <p className="text-xs text-muted-foreground">
+                  Will search Stripe for: <strong className="text-foreground">{currentLookupEmail}</strong>
+                </p>
+              )}
+            </div>
+          </Card>
+        )}
+
         {/* Superadmin: account selector */}
         {isSuperAdmin && (
           <Card className="border-border/50 px-6 py-5 space-y-4">
             <h2 className="text-[15px] font-semibold flex items-center gap-2.5">
               <span className="inline-block w-1 h-5 rounded-full bg-primary" />
-              Look Up Account
+              Look Up Account via Portal
             </h2>
             <p className="text-xs text-muted-foreground">
-              Select an admin account or enter any email address to search Stripe directly. You cannot manage their billing — only view the status.
+              This reads from the same Stripe account the portal is connected to. If the portal is in test mode, use the Stripe Dashboard links above instead.
             </p>
 
             <Select
@@ -238,7 +295,7 @@ export default function BillingPage() {
               </div>
               {searchEmail && (
                 <p className="text-xs text-blue-600 dark:text-blue-400">
-                  Searching Stripe for: <strong>{searchEmail}</strong>
+                  Searching for: <strong>{searchEmail}</strong>
                 </p>
               )}
             </div>
@@ -253,20 +310,21 @@ export default function BillingPage() {
         ) : (
           <>
             {/* Test-mode warning */}
-            {billing?.stripeMode === "test" && (
+            {isTestMode && (
               <div className="flex items-start gap-2.5 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-500/30 dark:bg-orange-500/10 px-4 py-3 text-sm text-orange-800 dark:text-orange-300">
                 <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold">Stripe is in Test Mode</p>
+                  <p className="font-semibold">Stripe Test Mode — showing test data only</p>
                   <p className="mt-0.5 text-xs text-orange-700/80 dark:text-orange-400/80">
-                    This environment is connected to Stripe's test data — it cannot see live subscriptions made through the real payment link. To view live billing, check from the <strong>deployed production app</strong> instead of this preview environment.
+                    This portal environment is connected to Stripe test mode. Real subscriptions are in live mode and won't appear here.
+                    Use the <strong>Stripe Dashboard</strong> buttons above to see live subscription data.
                   </p>
                 </div>
               </div>
             )}
 
             {/* Viewing other account notice */}
-            {isViewingOther && getLookupLabel() && (
+            {isViewingOther && getLookupLabel() && !isTestMode && (
               <div className="flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
                 <Search className="h-4 w-4 shrink-0" />
                 Viewing subscription status for <span className="font-semibold">{getLookupLabel()}</span>. You cannot manage their billing.
@@ -292,7 +350,7 @@ export default function BillingPage() {
                         {isActive
                           ? `Billed ${sub?.interval}ly · ${displayEmail}`
                           : isViewingOther
-                            ? `No subscription found for ${displayEmail}`
+                            ? `No subscription found for ${displayEmail}${isTestMode ? " (test mode)" : ""}`
                             : "Subscribe to unlock full portal access"
                         }
                       </p>
@@ -365,19 +423,35 @@ export default function BillingPage() {
                           {portalMutation.isPending ? "Opening..." : "Manage Billing"}
                         </Button>
                         <p className="self-center text-xs text-muted-foreground">
-                          Update payment method, view invoices, or cancel subscription
+                          Update payment method, view invoices, or cancel
                         </p>
                       </div>
+                    )}
+
+                    {/* Superadmin: jump to this customer in Stripe */}
+                    {isSuperAdmin && billing?.customer?.id && (
+                      <a
+                        href={`https://dashboard.stripe.com/customers/${billing.customer.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid="link-stripe-customer-detail"
+                      >
+                        <Button variant="outline" size="sm" className="rounded-lg">
+                          <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                          Open Customer in Stripe Dashboard
+                        </Button>
+                      </a>
                     )}
                   </>
                 ) : (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
                       No subscription found for{" "}
-                      <span className="font-medium text-foreground">{displayEmail || (isViewingOther ? lookupEmail : user?.email || user?.username)}</span>.
-                      {!isViewingOther && " Click Subscribe Now to get started."}
+                      <span className="font-medium text-foreground">{displayEmail || (isViewingOther ? lookupEmail : user?.email || user?.username)}</span>
+                      {isTestMode ? " in test mode." : "."}
+                      {!isViewingOther && !isTestMode && " Click Subscribe Now to get started."}
                     </p>
-                    {!isViewingOther && (
+                    {!isViewingOther && !isTestMode && (
                       <div className="flex flex-wrap gap-3">
                         <Button
                           className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
@@ -426,8 +500,21 @@ export default function BillingPage() {
                     </div>
                   )}
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Customer ID</p>
-                    <p className="mt-1 font-mono text-xs text-muted-foreground">{billing.customer.id}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Stripe Customer ID</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="font-mono text-xs text-muted-foreground">{billing.customer.id}</p>
+                      {isSuperAdmin && (
+                        <a
+                          href={`https://dashboard.stripe.com/customers/${billing.customer.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary/80"
+                          title="Open in Stripe Dashboard"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Card>
