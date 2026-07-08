@@ -1390,7 +1390,13 @@ export default function ChildProfile() {
               </Card>
             ) : (
               <div className="space-y-2">
-                {newsletters.map((nl) => (
+                {(newsletters.filter(nl => !nl.targetProgram || nl.targetProgram === child?.programEnrollment)).length === 0 ? (
+                  <Card className="flex flex-col items-center justify-center p-14 text-center border-border/50">
+                    <Newspaper className="mb-3 h-10 w-10 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">No newsletters yet</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Newsletters uploaded by admins will appear here</p>
+                  </Card>
+                ) : newsletters.filter(nl => !nl.targetProgram || nl.targetProgram === child?.programEnrollment).map((nl) => (
                   <div
                     key={nl.id}
                     className="flex items-center gap-3 rounded-xl border border-violet-200/60 bg-violet-50/40 dark:bg-violet-500/5 dark:border-violet-500/20 p-4 transition-colors hover:bg-violet-50 dark:hover:bg-violet-500/10"
