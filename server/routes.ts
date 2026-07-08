@@ -843,6 +843,14 @@ export async function registerRoutes(
         childId: { label: "Child ID", getter: (c) => c.childId || "" },
         fullName: { label: "Full Name", getter: (c) => c.fullName },
         age: { label: "Age", getter: (c) => String(c.age) },
+        dateOfBirth: {
+          label: "Date of Birth",
+          getter: (c) => {
+            if (!c.dateOfBirth) return "";
+            const d = new Date(c.dateOfBirth + "T00:00:00");
+            return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+          },
+        },
         gender: { label: "Gender", getter: (c) => c.gender },
         location: { label: "Location", getter: (c) => c.location },
         programEnrollment: { label: "Program", getter: (c) => c.programEnrollment },

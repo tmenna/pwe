@@ -21,6 +21,7 @@ const EXPORT_FIELDS = [
   { key: "childId", label: "Child ID" },
   { key: "fullName", label: "Full Name" },
   { key: "age", label: "Age" },
+  { key: "dateOfBirth", label: "Date of Birth" },
   { key: "gender", label: "Gender" },
   { key: "location", label: "Location" },
   { key: "programEnrollment", label: "Program Enrollment" },
